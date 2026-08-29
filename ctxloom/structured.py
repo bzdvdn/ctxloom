@@ -4,15 +4,11 @@ import asyncio
 import json
 import logging
 import re
-from typing import Any, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from .agents import Agent
-from .artifacts import Artifact
 from .context import Context
-from .events import Event
-from .patches import Patch
 from .providers import LLMRequest, Message
 
 logger = logging.getLogger(__name__)
@@ -135,37 +131,34 @@ async def structured_llm(
     return None
 
 
-class StructuredGenerate(Agent):
-    """Base agent: LLM→pydantic schema→artifact (provenance via reads/commits).
+class StructuredLLM(Generic[TModel]):
+    """A reusable structured call: a fixed schema + system, varying only `user`.
 
-    Declare `schema`, override `build_prompt(inputs)`, optionally
-    `fallback(inputs)` for a deterministic fallback variant (§67).
+    Build a role once, use it wherever the same struct is needed:
+
+        extract_facts = StructuredLLM(schema=Facts, system=SYSTEM_EXTRACTOR)
+        facts = await extract_facts.call(context, user="Summarize this page: …")
+
+    All deterministic logic (JSON extraction, retries, backoff) is delegated to
+    `structured_llm` (§67); the object only carries the fixed parts.
     """
 
-    schema: type[BaseModel] | None = None
-    system_prompt: str = SYSTEM_STRUCTURED
-    attempts: int = 2
+    def __init__(
+        self,
+        schema: type[TModel],
+        *,
+        system: str = SYSTEM_STRUCTURED,
+        attempts: int = 2,
+    ):
+        self.schema = schema
+        self.system = system
+        self.attempts = attempts
 
-    def build_prompt(self, inputs: list[Artifact[Any]]) -> str:
-        raise NotImplementedError
-
-    def fallback(self, inputs: list[Artifact[Any]]) -> BaseModel | None:
-        return None
-
-    async def run(self, event: Event, context: Context) -> Patch | None:
-        inputs = self.collect_inputs(context)
-        if not inputs or self.schema is None:
-            return None
-        text = self.build_prompt(inputs)
-        result = await structured_llm(
+    async def call(self, context: Context, user: str) -> TModel | None:
+        return await structured_llm(
             context,
             schema=self.schema,
-            system=self.system_prompt,
-            user=text,
+            system=self.system,
+            user=user,
             attempts=self.attempts,
         )
-        if result is None:
-            result = self.fallback(inputs)
-        if result is None:
-            return None
-        return Patch().create(result)

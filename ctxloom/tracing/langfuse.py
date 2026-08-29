@@ -22,6 +22,14 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value is not None else None
 
 
+def _type_summary(refs: list[Any]) -> dict[str, int]:
+    summary: dict[str, int] = {}
+    for ref in refs:
+        kind = getattr(ref, "data_type", None) or type(ref).__name__
+        summary[kind] = summary.get(kind, 0) + 1
+    return summary
+
+
 class LangfuseTracer(Tracer):
     """Observer that exports traces to Langfuse."""
 
@@ -68,6 +76,17 @@ class LangfuseTracer(Tracer):
                     "name": span.agent,
                     "type": "SPAN",
                     "startTime": _iso(span.started_at),
+                    # Meaningful input/output for the Langfuse UI: what the agent
+                    # received (reads) and what it produced (writes), with
+                    # per-type counts that mirror the trace dashboard grouping.
+                    "input": {
+                        "reads": [r.model_dump() for r in span.reads],
+                        "read_summary": _type_summary(span.reads),
+                    },
+                    "output": {
+                        "writes": [w.model_dump() for w in span.writes],
+                        "write_summary": _type_summary(span.writes),
+                    },
                     "metadata": {
                         "event_type": span.event_type,
                         "latency_ms": span.latency_ms,

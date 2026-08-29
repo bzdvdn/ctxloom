@@ -17,6 +17,9 @@ from .streaming import ProgressEvent
 from .tracing.models import AgentSpan, ArtifactRef, LLMCall, RunTrace
 from .tracing.tracer import CompositeTracer, RecordingLLM, Tracer, _clip
 
+#: A scheduled patch with its trigger reads and (optional) trace span.
+PatchWork = tuple[Patch, Agent, list[Read], AgentSpan | None]
+
 
 class Runtime:
     def __init__(
@@ -212,21 +215,72 @@ class Runtime:
             else:
                 work = work[:remaining]
 
-        if self.max_concurrency is None:
-            results = [await self._execute(item) for item in work]
-        else:
-            semaphore = asyncio.Semaphore(self.max_concurrency)
-            results = await asyncio.gather(
-                *(self._execute(item, semaphore) for item in work)
-            )
+        results = await self._dispatch(work)
+        patches_to_apply, runs = self._get_patches_to_apply(results)
+        self._commit_patches_to_apply(patches_to_apply)
+        return runs
 
-        patches_to_apply: list[tuple[Patch, Agent, list[Read], AgentSpan | None]] = []
+    async def _dispatch(self, work: list[tuple[Agent, Event, list[Read]]]) -> list[Any]:
+        """Runs the generation's workers.
+
+        Sequential when there is nothing to parallelize (no runtime cap and no
+        per-agent limits); otherwise concurrent with: the global
+        `max_concurrency` cap plus per-agent `concurrency_limit` tiers — so
+        LLM-bound producers can be throttled separately from cheap I/O.
+        Semaphores are acquired global-first (fixed order avoids deadlocks) and
+        released in reverse.
+        """
+        if not work:
+            return []
+        limiters = {
+            agent.concurrency_limit
+            for agent, _, _ in work
+            if agent.concurrency_limit is not None and agent.concurrency_limit > 0
+        }
+        if self.max_concurrency is None and not limiters:
+            return [await self._execute(item) for item in work]
+
+        global_semaphore = (
+            asyncio.Semaphore(self.max_concurrency)
+            if self.max_concurrency is not None
+            else None
+        )
+        limit_semaphores = {limit: asyncio.Semaphore(limit) for limit in limiters}
+
+        async def _worker(item: tuple[Agent, Event, list[Read]]) -> Any:
+            agent = item[0]
+            acquired: list[asyncio.Semaphore] = []
+            tier = agent.concurrency_limit
+            if tier is not None and tier > 0:
+                acquired.append(limit_semaphores[tier])
+            if global_semaphore is not None:
+                acquired.append(global_semaphore)
+            for semaphore in acquired:
+                await semaphore.acquire()
+            try:
+                return await self._execute(item, None)
+            finally:
+                for semaphore in reversed(acquired):
+                    semaphore.release()
+
+        return await asyncio.gather(*(_worker(item) for item in work))
+
+    def _get_patches_to_apply(self, results: list[Any]) -> tuple[list[PatchWork], int]:
+        """Turns agent results into the patches to apply (+ the run count).
+
+        Executions that changed nothing are not applied and not traced (a
+        monotonic flood of "checked, no work" spans would make traces
+        unreadable, §54), but they still count toward the run budget.
+        """
+        patches_to_apply: list[PatchWork] = []
         runs = 0
         for patch, agent, event, reads, latency in results:
             if self._budget_exhausted():
                 break
             runs += 1
             self._runs_used += 1
+            if patch is None or patch.is_empty():
+                continue
             span: AgentSpan | None = None
             if self.tracer is not None:
                 read_refs = [
@@ -248,10 +302,12 @@ class Runtime:
                 )
                 self._spans.append(span)
                 self.tracer.on_span(span)
-            if patch is not None and not patch.is_empty():
-                self._validate_patch_types(patch, agent)
-                patches_to_apply.append((patch, agent, reads, span))
+            self._validate_patch_types(patch, agent)
+            patches_to_apply.append((patch, agent, reads, span))
+        return patches_to_apply, runs
 
+    def _commit_patches_to_apply(self, patches_to_apply: list[PatchWork]) -> None:
+        """Applies each patch as a commit: provenance, span writes, persistence."""
         for patch, agent, reads, span in patches_to_apply:
             commit = Commit(
                 author=agent.name,
@@ -267,8 +323,6 @@ class Runtime:
                 # git-like persist after each commit: the session survives a crash
                 # at the boundary of any agent generation
                 self.session.save()
-
-        return runs
 
     def _collect_reads(self, agent: Agent, event: Event) -> list[Read]:
         """Records consumed artifacts: the trigger event + inputs per consumes.
@@ -387,7 +441,7 @@ class Runtime:
 
         task = asyncio.create_task(_runner())
         try:
-            yield ProgressEvent(kind="run_start", message="Starting processing")
+            yield ProgressEvent(kind="run_start", message="Processing started")
             while True:
                 if done.is_set() and queue.empty():
                     break
@@ -400,6 +454,9 @@ class Runtime:
                     yield get_event.result()
                 else:
                     get_event.cancel()
+            # Re-raise any agent/runtime exception instead of silently dropping it:
+            # an error inside a run must reach the caller, not hide in the task.
+            await task
             stats = self.last_stats
             yield ProgressEvent(
                 kind="run_end",

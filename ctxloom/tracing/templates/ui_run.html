@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -48,20 +48,29 @@
   .meta-item .k{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
   .meta-item .v{font-size:13.5px;font-weight:550;font-variant-numeric:tabular-nums;word-break:break-all;}
   .meta-item .v.mono{font-family:var(--mono);}
-  .spans{display:flex;flex-direction:column;gap:10px;}
-  details.node{border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel-alt);overflow:hidden;}
-  details.node summary{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13.5px;}
+  .agents{display:flex;flex-direction:column;gap:12px;}
+  details.agent{border:1px solid var(--border);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden;}
+  details.agent>summary{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;font-size:14px;}
+  details.agent>summary:hover{background:var(--hover);}
+  .caret{color:var(--muted);transition:transform .15s;} details[open]>.caret,.caret.open{transform:rotate(90deg);}
+  .agent .muted,.spans-stat{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums;}
+  .agent-body{padding:6px 16px 16px;border-top:1px solid var(--border);background:var(--panel-alt);}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:2px 9px;font-family:var(--mono);font-size:11.5px;}
+  .spans{display:flex;flex-direction:column;gap:8px;}
+  details.node{border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel);overflow:hidden;}
+  details.node summary{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;font-size:13px;}
   details.node summary:hover{background:var(--hover);}
-  .caret{color:var(--muted);transition:transform .15s;} details.node[open] .caret{transform:rotate(90deg);}
   .s-dot{width:9px;height:9px;border-radius:50%;flex:none;} .s-dot.ok{background:var(--ok);} .s-dot.err{background:var(--err);}
   .nid{font-family:var(--mono);font-weight:600;}
   .ntype{color:var(--muted);font-family:var(--mono);font-size:12px;}
-  .stat{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap;}
-  .body{padding:0 14px 14px;border-top:1px solid var(--border);}
+  .stat{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap;}
+  .node-body{padding:0 14px 14px;border-top:1px solid var(--border);}
   .io-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;}
   @media(max-width:700px){.io-grid{grid-template-columns:1fr;}}
   .io h3{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 8px;}
   .io{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  details.io-more summary{cursor:pointer;font-size:11.5px;color:var(--muted);font-family:var(--mono);}
   .art{font-family:var(--mono);font-size:12.5px;padding:3px 0;color:var(--text);}
   .art-head{display:flex;gap:8px;align-items:baseline;}
   .art .tag{color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 6px;font-size:11px;}
@@ -104,7 +113,7 @@
   <div class="crumbs"><a href="/traces">traces</a><span class="sep">/</span><b id="cid">#…</b></div>
   <div class="head-row" id="head"></div>
   <section class="card"><h2>Run</h2><div class="meta-grid" id="meta"></div></section>
-  <section class="card"><h2>Spans</h2><div class="spans" id="spans"></div></section>
+  <section class="card"><h2>Work by agent</h2><div class="agents" id="agents"></div></section>
 </main>
 <script>
 const RUN_ID=__RUN_ID__;
@@ -114,12 +123,27 @@ document.getElementById('theme').addEventListener('click',()=>applyTheme(!docume
 
 async function load(){
   const res=await fetch('/api/traces/'+RUN_ID);
-  if(!res.ok){document.getElementById('cid').textContent='#'+RUN_ID+' — не найден';return;}
+  if(!res.ok){document.getElementById('cid').textContent='#'+RUN_ID+' — not found';return;}
   render(await res.json());
 }
 function meta(k,v,mono){return '<div class="meta-item"><span class="k">'+k+'</span><span class="v'+(mono?' mono':'')+'">'+v+'</span></div>';}
 function fmtTime(t){try{const d=typeof t==='number'?new Date(t*1000):new Date(t);return d.toLocaleString();}catch(_){return '—';}}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+
+function typeCounts(arts){const m={};for(const a of arts||[]){const k=a.data_type||'artifact';m[k]=(m[k]||0)+1;}return m;}
+function chipsHtml(arts){
+  return Object.entries(typeCounts(arts)).map(([t,n])=>'<span class="chip">'+escapeHtml(t)+' '+n+'</span>').join('');
+}
+const SHOWN=6;
+function artsBlock(arts){
+  const list=arts||[]; const n=list.length;
+  if(!n) return '<div class="art" style="color:var(--muted)">—</div>';
+  const chips=chipsHtml(list);
+  if(n<=SHOWN) return chips+'<div class="art-list">'+list.map(artHtml).join('')+'</div>';
+  const first=list.slice(0,SHOWN).map(artHtml).join('');
+  const rest=list.slice(SHOWN).map(artHtml).join('');
+  return chips+'<div class="art-list">'+first+'<details class="io-more" open><summary>… + '+(n-SHOWN)+' more</summary>'+rest+'</details></div>';
+}
 
 function render(t){
   document.title='Trace #'+t.id+' · ctxloom';
@@ -133,24 +157,47 @@ function render(t){
     meta('created',fmtTime(t.started_at));
 
   const spans=t.spans||[];
-  document.getElementById('spans').innerHTML=spans.length
-    ? spans.map((s,i)=>spanHtml(s,i===0)).join('')
-    : '<div class="empty">спанов не записано</div>';
+  const byAgent={};
+  for(const s of spans){(byAgent[s.agent]=byAgent[s.agent]||[]).push(s);}
+  const keys=Object.keys(byAgent);
+  document.getElementById('agents').innerHTML = keys.length
+    ? keys.map(agent=>agentHtml(agent,byAgent[agent])).join('')
+    : '<div class="empty">no spans recorded</div>';
 }
 
-function spanHtml(s,open){
+function agentHtml(agent,list){
+  const ms=list.reduce((a,s)=>a+Number(s.latency_ms||0),0)/list.length;
+  let writes=0,llm=0;
+  const readsAgg={};
+  for(const s of list){
+    writes+=(s.writes||[]).length; llm+=(s.llm_calls||[]).length;
+    for(const r of s.reads||[]){const t=r.data_type||'artifact';readsAgg[t]=(readsAgg[t]||0)+1;}
+  }
+  const chips=Object.entries(readsAgg)
+    .map(([t,n])=>'<span class="chip">'+escapeHtml(t)+' '+n+'</span>').join('');
+  return '<details class="agent" open>'+
+    '<summary><span class="caret">▸</span><b>'+escapeHtml(agent)+'</b>'+
+    '<span class="muted">'+list.length+' spans · '+ms.toFixed(1)+' ms avg</span>'+
+    '<span class="stat">'+writes+' writes · '+llm+' llm · '+'<span class="spans-stat">'+(Object.keys(readsAgg).join(', '))+'</span></span></summary>'+
+    '<div class="agent-body">'+
+    (chips?'<div class="chips">'+chips+'</div>':'')+
+    '<div class="spans">'+list.map(spanHtml).join('')+'</div>'+
+    '</div></details>';
+}
+
+function spanHtml(s){
   const ok=!s.error;
   const errBlock=s.error?'<div class="err-box">'+escapeHtml(s.error)+'</div>':'';
-  const reads=(s.reads||[]).map(a=>artHtml(a)).join('');
-  const writes=(s.writes||[]).map(a=>artHtml(a)).join('');
-  const io=(reads||writes)?'<div class="io-grid"><div class="io"><h3>reads</h3>'+(reads||'<div class="art" style="color:var(--muted)">—</div>')+'</div><div class="io"><h3>writes</h3>'+(writes||'<div class="art" style="color:var(--muted)">—</div>')+'</div></div>':'';
+  const reads=(s.reads||[]).length?('<div class="io"><h3>reads</h3>'+artsBlock(s.reads)+'</div>'):'';
+  const writes=(s.writes||[]).length?('<div class="io"><h3>writes</h3>'+artsBlock(s.writes)+'</div>'):'';
+  const io=(reads||writes)?'<div class="io-grid">'+reads+writes+'</div>':'';
   const llm=(s.llm_calls||[]).map(llmHtml).join('');
-  return '<details class="node"'+(open?' open':'')+'>'+
+  return '<details class="node">'+
     '<summary><span class="caret">▸</span><span class="s-dot '+(ok?'ok':'err')+'"></span>'+
     '<span class="nid">'+escapeHtml(s.agent)+'</span>'+
     '<span class="ntype">'+escapeHtml(s.event_type)+'</span>'+
-    '<span class="stat">'+Number(s.latency_ms).toFixed(1)+' ms · '+(s.llm_calls||[]).length+' llm · '+(s.reads||[]).length+' reads · '+(s.writes||[]).length+' writes'+(ok?'':' · failed')+'</span></summary>'+
-    '<div class="body">'+errBlock+io+(llm?'<div class="llm"><h3>LLM calls</h3>'+llm+'</div>':'')+'</div></details>';
+    '<span class="stat">'+Number(s.latency_ms).toFixed(1)+' ms · '+(s.llm_calls||[]).length+' llm'+(ok?'':' · failed')+'</span></summary>'+
+    '<div class="node-body">'+errBlock+io+(llm?'<div class="llm"><h3>LLM calls</h3>'+llm+'</div>':'')+'</div></details>';
 }
 function artHtml(a){
   const op=('<span class="tag">'+escapeHtml(a.op_type||'read')+'</span>');
@@ -161,7 +208,7 @@ function artHtml(a){
 function llmHtml(c){
   const detail=(c.messages||[]).map(m=>'<div class="role '+escapeHtml(m.role)+'"><span class="role-label">'+escapeHtml(m.role)+'</span>'+escapeHtml(m.content||'')+'</div>').join('');
   return '<details class="llm-call"><summary><span class="caret">▸</span><b>'+escapeHtml(c.provider||'llm')+'</b> <span class="muted">'+escapeHtml(c.model||'')+'</span> <span class="stat">'+c.prompt_tokens+' in / '+c.completion_tokens+' out · '+Number(c.latency_ms).toFixed(1)+' ms'+(c.error?' · err':'')+'</span></summary>'+
-    '<div class="body">'+(c.error?'<div class="err-box">'+escapeHtml(c.error)+'</div>':'')+detail+(c.response?'<div class="role assistant"><span class="role-label">response</span>'+escapeHtml(c.response)+'</div>':'')+'</div></details>';
+    '<div class="node-body">'+(c.error?'<div class="err-box">'+escapeHtml(c.error)+'</div>':'')+detail+(c.response?'<div class="role assistant"><span class="role-label">response</span>'+escapeHtml(c.response)+'</div>':'')+'</div></details>';
 }
 
 initTheme(); load();

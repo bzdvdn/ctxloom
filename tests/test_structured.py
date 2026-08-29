@@ -5,7 +5,7 @@ from ctxloom import (
     Context,
     Runtime,
     RuntimeResources,
-    StructuredGenerate,
+    StructuredGenerateAgent,
     parse_structured,
     structured_llm,
 )
@@ -74,7 +74,7 @@ class Article(BaseModel):
     content: str
 
 
-class ReportGenerator(StructuredGenerate):
+class ReportGenerator(StructuredGenerateAgent):
     name = "report_generator"
     schema = Report
     consumes = [Consume(Article)]
@@ -139,3 +139,27 @@ def test_structured_llm_retries_on_network_error():
     assert result is not None
     assert result.text == "ok"
     assert llm.calls == 2
+
+
+def test_prompt_binds_system_and_schema():
+    from ctxloom import StructuredLLM
+
+    seen = {}
+
+    class CapturingLLM(LLMProvider):
+        async def complete(self, request: LLMRequest) -> LLMResponse:
+            seen["system"] = request.messages[0].content
+            seen["user"] = request.messages[-1].content
+            return LLMResponse(text='{"text": "роль", "topics": []}')
+
+        async def stream(self, request):
+            yield LLMResponse(text="")  # pragma: no cover
+
+    llm = CapturingLLM()
+    ctx = Context(resources=RuntimeResources(llm=llm))
+    role = StructuredLLM(schema=Summary, system="You are a strict analyst.")
+    result = asyncio.run(role.call(ctx, user="сделай итог по тексту"))
+    assert result is not None
+    assert result.text == "роль"
+    assert seen["system"] == "You are a strict analyst."
+    assert "сделай итог по тексту" in seen["user"]

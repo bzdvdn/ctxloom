@@ -14,7 +14,7 @@ from .consume import Consume, consume
 from .context import Context, View
 from .events import Event, EventType
 from .interrupt import InterruptPatch, PendingQuestion
-from .llm_agent import HITLLMAgent, LLMAgent
+from .llm_agent import HITLLMAgent, LLMAgent, StructuredGenerateAgent
 from .patches import Create, Delete, Link, Patch, Relation, Unlink, Update
 from .produce import Produce, produce
 from .providers import (
@@ -32,7 +32,7 @@ from .runtime import Runtime
 from .session import Session, SessionStore
 from .streaming import EventHub, ProgressEvent
 from .structured import (
-    StructuredGenerate,
+    StructuredLLM,
     parse_structured,
     structured_llm,
 )
@@ -85,7 +85,8 @@ __all__ = [
     "SQLiteKVBackend",
     "Session",
     "SessionStore",
-    "StructuredGenerate",
+    "StructuredGenerateAgent",
+    "StructuredLLM",
     "Tool",
     "ToolAnswer",
     "ToolOutput",

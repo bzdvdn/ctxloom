@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import hashlib
+import html as _html
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -323,3 +325,123 @@ class CSVSource(Source):
 
 
 _CSV_SEARCH_SAMPLE = 5
+
+
+def _html_to_text(html: str) -> str:
+    """Strips scripts/styles/tags from an HTML document, then collapses
+    whitespace into readable paragraphs."""
+    without_scripts = re.sub(
+        r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I
+    )
+    without_tags = re.sub(r"<[^>]+>", " ", without_scripts)
+    text = _html.unescape(without_tags)
+    paragraphs = [p.strip() for p in re.split(r"\s*\n\s*", text) if p.strip()]
+    return "\n".join(paragraphs).strip()
+
+
+class WebSource(Source):
+    """HTTP source (web pages) with lazy fetching (§6, §32).
+
+    Register URLs up front (`add_url`) — nothing is fetched until a search or
+    resolve actually needs the page. `asearch` lazily fetches the registered
+    pages, ranks them by keyword overlap, and returns `SourceRef`s whose
+    `locator` is the URL. `resolve` downloads the page and returns its text.
+    This keeps "go somewhere for the data" a Source capability, not core agent
+    logic. `transport` is injectable for hermetic tests (MockTransport).
+    """
+
+    DEFAULT_UA = "ctxloom-agent (+https://github.com/bzdvdn/ctxloom)"
+
+    def __init__(
+        self,
+        urls: list[str] | None = None,
+        source_id: str = "web",
+        timeout: float = 15.0,
+        transport: Any | None = None,
+        user_agent: str = DEFAULT_UA,
+    ):
+        super().__init__(source_id=source_id)
+        self._urls: list[tuple[str, str]] = []
+        self._cache: dict[str, tuple[str, str]] = {}  # url -> (title, text)
+        self._timeout = timeout
+        self._transport = transport
+        self._headers = {"User-Agent": user_agent, "Accept": "text/html,*/*"}
+        self._client: Any | None = None
+        if urls:
+            for url in urls:
+                self.add_url(url)
+
+    def add_url(self, url: str, title: str = "") -> None:
+        """Registers a URL to consider; the page is fetched lazily."""
+        if not any(u == url for u, _ in self._urls):
+            self._urls.append((url, title))
+
+    @property
+    def urls(self) -> list[tuple[str, str]]:
+        """Registered (url, title) pairs — never fetched by just listing them."""
+        return list(self._urls)
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            import httpx
+
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout, transport=self._transport, headers=self._headers
+            )
+        return self._client
+
+    async def _fetch(self, url: str) -> str:
+        response = await self._get_client().get(url)
+        response.raise_for_status()
+        return str(response.text)
+
+    async def _ensure(self, url: str, title: str = "") -> tuple[str, str]:
+        """Fetches and caches (title, text) for a URL if it is not cached yet."""
+        if url not in self._cache:
+            html_text = await self._fetch(url)
+            page_title = title
+            if not page_title:
+                match = re.search(r"<title[^>]*>(.*?)</title>", html_text, re.S | re.I)
+                page_title = match.group(1).strip() if match else url
+            self._cache[url] = (
+                page_title,
+                _html_to_text(html_text),
+            )
+        return self._cache[url]
+
+    def search(self, query: str, limit: int = 10) -> list[SourceRef]:
+        """Keyword search over already-cached pages (§8 keyword, run on demand).
+
+        Pages that have not been fetched yet are invisible here — call
+        `asearch` for a live pass over the registered URLs.
+        """
+        results: list[SourceRef] = []
+        for url, title in self._urls:
+            entry = self._cache.get(url)
+            if entry is None:
+                continue
+            page_title, text = entry
+            score = _token_overlap_score(text, query)
+            if score <= 0:
+                continue
+            results.append(
+                SourceRef(
+                    source_id=self.source_id,
+                    locator=url,
+                    score=round(score, 3),
+                    title=page_title or title,
+                    excerpt=text[:220],
+                )
+            )
+        results.sort(key=lambda r: r.score or 0.0, reverse=True)
+        return results[:limit]
+
+    async def asearch(self, query: str, limit: int = 10) -> list[SourceRef]:
+        """Lazily fetches all registered URLs, then ranks them by relevance."""
+        if self._urls:
+            await asyncio.gather(*(self._ensure(url, t) for url, t in self._urls))
+        return self.search(query, limit)
+
+    async def resolve(self, ref: SourceRef) -> str:
+        _, text = await self._ensure(ref.locator, ref.title)
+        return text

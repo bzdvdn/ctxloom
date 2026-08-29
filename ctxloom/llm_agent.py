@@ -15,10 +15,17 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from pydantic import BaseModel
+
 from .agents import Agent
+from .artifacts import Artifact
 from .consume import Consume
+from .context import Context
+from .events import Event
 from .interrupt import PendingQuestion
+from .patches import Patch
 from .produce import Produce
+from .structured import SYSTEM_STRUCTURED, structured_llm
 from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
 from .tools import Tool
 
@@ -30,6 +37,42 @@ def _require_consumes(cls_name: str, user_consumes: list[Any]) -> None:
             "trigger. Specify at least one Consume(<question artifact>), e.g. "
             "consumes=[Consume(Question)]."
         )
+
+
+class StructuredGenerateAgent(Agent):
+    """Base agent: LLM → pydantic schema → Artifact (reads/commits as provenance).
+
+    Declare `schema`, override `build_prompt(inputs)`; optionally
+    `fallback(inputs)` for a deterministic fallback variant (§67).
+    """
+
+    schema: type[BaseModel] | None = None
+    system_prompt: str = SYSTEM_STRUCTURED
+    attempts: int = 2
+
+    def build_prompt(self, inputs: list[Artifact[Any]]) -> str:
+        raise NotImplementedError
+
+    def fallback(self, inputs: list[Artifact[Any]]) -> BaseModel | None:
+        return None
+
+    async def run(self, event: Event, context: Context) -> Patch | None:
+        inputs = self.collect_inputs(context)
+        if not inputs or self.schema is None:
+            return None
+        text = self.build_prompt(inputs)
+        result = await structured_llm(
+            context,
+            schema=self.schema,
+            system=self.system_prompt,
+            user=text,
+            attempts=self.attempts,
+        )
+        if result is None:
+            result = self.fallback(inputs)
+        if result is None:
+            return None
+        return Patch().create(result)
 
 
 class LLMAgent(Agent):

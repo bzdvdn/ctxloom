@@ -118,3 +118,31 @@ def test_parallel_snapshot_and_provenance():
     # reads relationships are recorded independently for each run
     for commit in ctx.history():
         assert any(r.artifact_id == source.id and r.version == 0 for r in commit.reads)
+
+
+def test_agent_concurrency_limit_capped():
+    """Agent.concurrency_limit caps parallel executions independent of the
+    runtime max_concurrency (e.g. throttle LLM producers to 2 calls)."""
+    import asyncio as _asyncio
+
+    tracker = {"active": 0, "peak": 0}
+
+    class Tiered(Agent):
+        concurrency_limit = 2
+        consumes = [Consume(Number)]
+
+        async def run(self, event, context):
+            tracker["active"] += 1
+            tracker["peak"] = max(tracker["peak"], tracker["active"])
+            await _asyncio.sleep(0.02)
+            tracker["active"] -= 1
+            return None
+
+    ctx = Context()
+    runtime = Runtime(
+        ctx, agents=[Tiered()] * 6
+    )  # global cap None — only the tier applies
+    for _ in range(6):
+        ctx.create(Number(value=_))
+    _asyncio.run(runtime.arun())
+    assert tracker["peak"] <= 2, tracker

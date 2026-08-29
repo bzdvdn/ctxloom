@@ -27,6 +27,10 @@ class Agent(ABC):  # noqa: B024 — interface without abstract methods, run() ha
     # Run priority within a single generation: lower value runs earlier.
     # Useful for "finishers"/evaluators that logically run last (§24).
     priority: int = 0
+    # Max parallel executions of this agent within a generation. Leave None for
+    # the runtime default (max_concurrency). Use it to throttle LLM-bound
+    # producers (rate limits) independently of cheap I/O (file reads).
+    concurrency_limit: int | None = None
 
     def __init__(
         self,

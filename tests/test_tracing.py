@@ -305,6 +305,10 @@ def test_langfuse_exports_trace_spans_and_llm():
     assert span_payload["type"] == "SPAN"
     assert span_payload["name"] == "greeter"
     assert "writes" in span_payload["metadata"]
+    # meaningful input/output: what the agent received / produced (+ type counts)
+    assert span_payload["input"]["read_summary"] == {}
+    assert span_payload["output"]["write_summary"] == {"Answer": 1}
+    assert span_payload["output"]["writes"][0]["artifact_id"] == "a1"
     llm_payload = client.requests[2][1]
     assert llm_payload["type"] == "GENERATION"
     assert llm_payload["usage"] == {"input": 3, "output": 2, "unit": "TOKENS"}
