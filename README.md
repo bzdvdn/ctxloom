@@ -88,15 +88,29 @@ runtime.run()
 ```
 
 You describe artifacts, what agents consume and produce — and the runtime derives
-the execution from state changes. See [CONSTITUTION.md](CONSTITUTION.md) for the
-design and the `examples/` for three full demos.
+the execution from state changes. Full documentation lives in [docs/](docs/README.md)
+in two languages (English & Русский); the design and invariants are in
+[CONSTITUTION.md](CONSTITUTION.md); the `examples/` ship three full demos.
 
 ## Examples (in-repo, not shipped)
 
 - `examples/knowledge` — multi-source chat: search → evidence → claim verification → answer,
   with CSV calculation (CLI + FastAPI/SSE web).
+- `examples/research` — research agent that *goes to the web* (`WebSource`):
+  lazy page fetch → evidence → verified claims → answer with URL provenance.
+- `examples/medic-lab` — hypothesis laboratory: a question spawns competing
+  hypotheses, each is investigated over an evidence pool, scored by
+  support/contradiction, and ended with an HITL steering + honest report.
 - `examples/devops` — ops assistant: HITL tool agents + LLM tool router + trace dashboard.
 - `examples/repair` — budget-aware replanning demo (chat and data are in Russian by design).
+
+## Documentation
+
+- [English docs](docs/en/index.md) — concepts, sources, providers, recipes,
+  patterns, observability, examples, API reference.
+- [Русская документация](docs/ru/index.md) — концепции, источники, провайдеры,
+  рецепты, паттерны, наблюдаемость, примеры, справочник API.
+- [CONSTITUTION.md](CONSTITUTION.md) — обоснование дизайна и инварианты.
 
 ## Development
 

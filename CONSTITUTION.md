@@ -3105,6 +3105,15 @@ Demos shipped in the repo (not in the wheel):
 
 - `examples/knowledge` — English multi-source chat: search → evidence → claim
   verification → answer, plus CSV calculation and a web dashboard.
+- `examples/research` — English research agent that *goes to the web*
+  (`WebSource`, live HTTP pages): lazy Reference → Artifact, verified claims,
+  answer with URL provenance (§32, §77).
+- `examples/medic-lab` — English **hypothesis laboratory** (§20, §36, §60):
+  a question spawns competing `Hypothesis` artifacts, each investigated over an
+  evidence pool in a per-hypothesis channel (`hypothesis_id`-tagged refs and
+  facts), scored deterministically by support/contradiction, cross-checked for
+  contradictions, and closed by a human steering pass that either deepens a
+  hypothesis or produces an honest ranked report.
 - `examples/devops` — English ops assistant: HITL tool agents, LLM tool router,
   run-trace dashboard with auth.
 - `examples/repair` — budget-aware replanning demo. Its **chat and data are
