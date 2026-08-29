@@ -8,6 +8,7 @@ Without an LLM it works on deterministic fallbacks; for real generators:
 import asyncio
 import sys
 from pathlib import Path
+from typing import Any
 
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -41,14 +42,16 @@ load_dotenv(ROOT / ".env")
 
 KNOWLEDGE_DOCS = ROOT / "docs"
 
+#: Sentinel: resolve the LLM from the environment (the demo default).
+_UNSET = object()
 
-async def main() -> None:
-    llm = llm_from_env()
-    if llm is None:
-        print("LLM not configured — demo runs on deterministic fallbacks.")
-        print("For generation set OPENAI_BASE_URL / OPENAI_MODEL / OPENAI_API_KEY.\n")
 
-    resources = RuntimeResources(
+def build_resources(llm: Any = _UNSET) -> RuntimeResources:
+    """The demo's sources (+ optional LLM). `llm`: from env by default;
+    pass an explicit provider or `None` for hermetic tests/fallbacks."""
+    if llm is _UNSET:
+        llm = llm_from_env()
+    return RuntimeResources(
         llm=llm,
         sources={
             "guide": FileSystemSource(
@@ -64,6 +67,13 @@ async def main() -> None:
             "costs": CSVSource(str(KNOWLEDGE_DOCS / "costs"), source_id="costs"),
         },
     )
+
+
+async def main() -> None:
+    resources = build_resources()
+    if resources.llm is None:
+        print("LLM not configured — demo runs on deterministic fallbacks.")
+        print("For generation set OPENAI_BASE_URL / OPENAI_MODEL / OPENAI_API_KEY.\n")
 
     store = SessionStore(FileKVBackend(str(ROOT / "sessions")))
     session = store.open("knowledge", resources=resources)

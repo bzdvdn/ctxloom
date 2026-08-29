@@ -16,19 +16,12 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import (
-    Budget,
-    FileKVBackend,
-    Runtime,
-    RuntimeResources,
-    SessionStore,
-)
-from ctxloom.providers import llm_from_env, openrouter_llm
-from ctxloom.sources import CSVSource, FileSystemSource
+from ctxloom import Budget, FileKVBackend, Runtime, SessionStore
 from dotenv import load_dotenv
 from examples.knowledge.agents import (
     AnswerBuilder,
@@ -41,6 +34,7 @@ from examples.knowledge.agents import (
     TableResolver,
     VerifierAgent,
 )
+from examples.knowledge.chat import _UNSET, build_resources
 from examples.knowledge.models import (
     Answer,
     Calculation,
@@ -48,7 +42,6 @@ from examples.knowledge.models import (
     Claim,
     UserQuery,
 )
-from examples.textutil import english_kw_score
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -57,7 +50,6 @@ from pydantic import BaseModel
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-DOCS_DIR = ROOT / "docs"
 FALLBACK_REPLY = "Failed to assemble an answer. Try rephrasing the question."
 
 
@@ -68,23 +60,6 @@ class ChatRequest(BaseModel):
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-def _resources(llm) -> RuntimeResources:
-    return RuntimeResources(
-        llm=llm,
-        sources={
-            "guide": FileSystemSource(
-                str(DOCS_DIR / "guide"), source_id="guide", scorer=english_kw_score
-            ),
-            "pricing": FileSystemSource(
-                str(DOCS_DIR / "pricing"),
-                source_id="pricing",
-                scorer=english_kw_score,
-            ),
-            "costs": CSVSource(str(DOCS_DIR / "costs"), source_id="costs"),
-        },
-    )
 
 
 def _session_state(ctx) -> dict:
@@ -142,10 +117,10 @@ def _terminal_reply(ctx, msg_id: str) -> dict:
     return {"reply": FALLBACK_REPLY, "waiting": False, "sources": []}
 
 
-def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
-    """App factory. `llm` and `store_dir` are for tests; by default the
-    providers come from .env (OpenRouter·DeepSeek for chat)."""
-    active_llm = llm if llm is not None else (llm_from_env() or openrouter_llm())
+def create_app(db=None, llm: Any = _UNSET, store_dir: str | None = None) -> FastAPI:
+    """App factory. `llm` and `store_dir` are for tests; the default resolves
+    providers from .env (OpenRouter·DeepSeek for chat). `db` is kept for CLI
+    compatibility."""
     store = SessionStore(
         FileKVBackend(str(Path(store_dir) if store_dir else ROOT / "sessions"))
     )
@@ -158,7 +133,7 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
 
     @app.post("/api/chat/stream")
     async def chat_stream(req: ChatRequest) -> StreamingResponse:
-        session = store.open(req.session_id, resources=_resources(active_llm))
+        session = store.open(req.session_id, resources=build_resources(llm=llm))
         runtime = Runtime(
             session.context,
             agents=[
