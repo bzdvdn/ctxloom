@@ -1,0 +1,110 @@
+"""LLM agent containers: thin, without logic.
+
+- `LLMAgent` — ordinary: reactive/blocking? no — simple. Uses
+  `ToolUse` (blocking loop without HITL).
+- `HITLLMAgent` — can ask clarifying questions to a human through
+  `ToolUseHITL` (reactive loop, `PendingQuestion`).
+
+Both add boilerplate: `Consume.by_field(ToolAnswer, "agent", name)`,
+`ToolUse(...)`, and the HITL variant also `Consume(Observation)`,
+`Consume(PendingQuestion)` + produces Observation/PendingQuestion.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from typing import Any
+
+from .agents import Agent
+from .consume import Consume
+from .interrupt import PendingQuestion
+from .produce import Produce
+from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
+from .tools import Tool
+
+
+def _require_consumes(cls_name: str, user_consumes: list[Any]) -> None:
+    if not user_consumes:
+        raise ValueError(
+            f"{cls_name} '{cls_name}' has no consumes: the tool loop needs a "
+            "trigger. Specify at least one Consume(<question artifact>), e.g. "
+            "consumes=[Consume(Question)]."
+        )
+
+
+class LLMAgent(Agent):
+    """Ordinary LLM agent with tools: blocking loop, no HITL.
+
+    In a subclass set: `system`, `tools`, `consumes` (questions), `produces`
+    (handling of the final answer).
+    """
+
+    system: str = ""
+    tools: Sequence[Tool] | dict[str, Tool] = ()
+    max_steps: int = 8
+
+    def __init__(self, *, name: str | None = None, **kwargs: Any):
+        llm_name = name or self.name or self.__class__.__name__.lower()
+        user_consumes = list(self.consumes) if self.consumes else []
+        _require_consumes(self.__class__.__name__, user_consumes)
+        self.consumes = [
+            *user_consumes,
+            Consume.by_field(ToolAnswer, "agent", llm_name),
+        ]
+        user_produces = list(self.produces) if self.produces else []
+        self.produces = [
+            ToolUse(
+                name=llm_name,
+                system=self.system,
+                tools=self.tools,
+                max_steps=self.max_steps,
+            ),
+            Produce(ToolAnswer),
+            *user_produces,
+        ]
+        super().__init__(name=name, **kwargs)
+
+
+class HITLLMAgent(Agent):
+    """LLM agent with HITL: reactive loop that can ask a human.
+
+    Same as `LLMAgent`, plus: the LLM can return `type:"ask"` — a `PendingQuestion`
+    (kind="clarify") is created, the loop waits for the answer, and the answer is
+    returned as `Observation(source="user")` for the loop to continue.
+    """
+
+    system: str = ""
+    tools: Sequence[Tool] | dict[str, Tool] = ()
+    max_steps: int = 8
+    max_asks: int = 2
+    resume_announce: Callable[[str], str] | None = None
+
+    def __init__(self, *, name: str | None = None, **kwargs: Any):
+        llm_name = name or self.name or self.__class__.__name__.lower()
+        user_consumes = list(self.consumes) if self.consumes else []
+        _require_consumes(self.__class__.__name__, user_consumes)
+        self.consumes = [
+            *user_consumes,
+            Consume.by_field(ToolAnswer, "agent", llm_name),
+            Consume.by_field(Observation, "agent", llm_name),
+            Consume(
+                PendingQuestion,
+                condition=lambda a: a.data.notes.get("agent") == llm_name,
+            ),
+        ]
+        user_produces = list(self.produces) if self.produces else []
+        self.produces = [
+            ToolUseHITL(
+                name=llm_name,
+                system=self.system,
+                tools=self.tools,
+                max_steps=self.max_steps,
+                max_asks=self.max_asks,
+                resume_announce=self.resume_announce,
+            ),
+            Produce(ToolAnswer),
+            Produce(Observation),
+            Produce(PendingQuestion),
+            *user_produces,
+        ]
+        super().__init__(name=name, **kwargs)

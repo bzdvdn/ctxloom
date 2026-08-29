@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctxloom"
+version = "0.1.0"
+description = "Reactive, artifact-driven agent runtime: agents transform versioned, typed, provenance-aware artifacts inside an evolving context"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.13.4",
+    "pytest>=9.1.1",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.11",
+]
+web = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+pg = [
+    "psycopg[binary]>=3.2",
+]
+
+# uv-native groups mirror the extras so `uv run`/`uv sync` installs the web demo
+# deps by default (no `--extra` flag needed to boot the examples). Extras stay
+# for PyPI (`pip install ctxloom[web]`).
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.11",
+]
+web = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+pg = [
+    "psycopg[binary]>=3.2",
+]
+
+[tool.uv]
+default-groups = ["dev", "web"]
+
+# Публикация: в wheel едет только пакет `ctxloom`; examples/tests остаются
+# в репозитории для демо и разработки, но не попадают в дистрибутив.
+[tool.setuptools]
+packages = { find = { where = ["."], include = ["ctxloom*"], exclude = ["examples*", "tests*"] } }
+
+[tool.setuptools.package-data]
+"ctxloom.tracing" = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+src = ["ctxloom", "examples"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # bugbear
+    "UP", # pyupgrade
+    "SIM",# simplify
+]
+ignore = [
+    "E501", # line length handled by formatter; long prompts allowed
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+# entry-скрипты: bootstrap sys.path перед импортом пакета src
+"web.py" = ["E402"]
+"repair/chat.py" = ["E402"]
+"assistant_chat.py" = ["E402"]
+"run_example.py" = ["E402"] # пакет-реэксорт: импорты — публичный API
+
+[tool.ruff.format]
+# Документы (CONSTITUTION.md и пр.) не трогаем форматером
+exclude = ["*.md"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["ctxloom", "examples"]
+strict = true
+warn_unused_ignores = true

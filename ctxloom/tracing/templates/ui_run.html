@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Trace #__RUN_ID__ · ctxloom</title>
+<script>(function(){try{var s=localStorage.getItem('ctxloom-theme');var d=s?s==='dark':true;document.documentElement.classList.toggle('dark',d);}catch(e){document.documentElement.classList.add('dark');}})();</script>
+<style>
+  :root{
+    --bg:#f7f7f9;--panel:#ffffff;--panel-alt:#fafafc;--border:#e6e6ee;--border-strong:#d3d3de;
+    --text:#17171f;--muted:#6f6f7e;--accent:#4f46e5;--accent-soft:#eef0ff;
+    --ok:#15803d;--err:#b91c1c;--ok-soft:#e9f7ef;--err-soft:#fdeeee;
+    --hover:#f4f4f8;--shadow:0 1px 2px rgba(16,16,30,.04),0 1px 6px rgba(16,16,30,.05);
+    --pre-bg:#fafafc;--pre-border:#ececf2;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  html.dark{
+    --bg:#0f1016;--panel:#171820;--panel-alt:#1d1e27;--border:#262733;--border-strong:#33344a;
+    --text:#e7e7f0;--muted:#9a9aae;--accent:#8b93ff;--accent-soft:#232448;
+    --ok:#3ecf7c;--err:#f97c7c;--ok-soft:#123522;--err-soft:#3c1718;
+    --hover:#1f202b;--shadow:0 1px 2px rgba(0,0,0,.4),0 1px 8px rgba(0,0,0,.3);
+    --pre-bg:#101116;--pre-border:#2a2b38;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  header{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--border);backdrop-filter:saturate(1.4) blur(6px);}
+  .header-inner{max-width:1240px;margin:0 auto;padding:0 28px;height:56px;display:flex;align-items:center;gap:14px;}
+  .logo{display:flex;align-items:center;gap:9px;color:var(--text);text-decoration:none;}
+  .logo b{font-size:15px;letter-spacing:.1px;}
+  .logo .sub{color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:400;}
+  .spacer{flex:1;}
+  #theme{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;padding:5px 11px;font-size:12.5px;cursor:pointer;}
+  #theme:hover{border-color:var(--accent);color:var(--accent);}
+  main{max-width:1240px;margin:0 auto;padding:28px;}
+  .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:16px;color:var(--muted);}
+  .crumbs a{color:var(--muted);text-decoration:none;font-weight:550;}
+  .crumbs a:hover{color:var(--accent);}
+  .crumbs .sep{opacity:.5;} .crumbs b{color:var(--text);font-family:var(--mono);}
+  .head-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
+  .head-row h1{font-size:21px;margin:0;font-weight:650;font-family:var(--mono);letter-spacing:-.2px;}
+  .badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;border-radius:20px;padding:3px 12px;}
+  .badge.ok{background:var(--ok-soft);color:var(--ok);} .badge.err{background:var(--err-soft);color:var(--err);}
+  .badge .dot{width:8px;height:8px;border-radius:50%;} .badge.ok .dot{background:var(--ok);} .badge.err .dot{background:var(--err);}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:18px 20px;margin-bottom:20px;}
+  .card h2{font-size:11px;font-weight:650;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}
+  .meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 22px;}
+  .meta-item{display:flex;flex-direction:column;gap:2px;}
+  .meta-item .k{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+  .meta-item .v{font-size:13.5px;font-weight:550;font-variant-numeric:tabular-nums;word-break:break-all;}
+  .meta-item .v.mono{font-family:var(--mono);}
+  .spans{display:flex;flex-direction:column;gap:10px;}
+  details.node{border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel-alt);overflow:hidden;}
+  details.node summary{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13.5px;}
+  details.node summary:hover{background:var(--hover);}
+  .caret{color:var(--muted);transition:transform .15s;} details.node[open] .caret{transform:rotate(90deg);}
+  .s-dot{width:9px;height:9px;border-radius:50%;flex:none;} .s-dot.ok{background:var(--ok);} .s-dot.err{background:var(--err);}
+  .nid{font-family:var(--mono);font-weight:600;}
+  .ntype{color:var(--muted);font-family:var(--mono);font-size:12px;}
+  .stat{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap;}
+  .body{padding:0 14px 14px;border-top:1px solid var(--border);}
+  .io-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;}
+  @media(max-width:700px){.io-grid{grid-template-columns:1fr;}}
+  .io h3{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 8px;}
+  .io{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .art{font-family:var(--mono);font-size:12.5px;padding:3px 0;color:var(--text);}
+  .art-head{display:flex;gap:8px;align-items:baseline;}
+  .art .tag{color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 6px;font-size:11px;}
+  .art .atype{color:var(--muted);}
+  .art code{color:var(--muted);}
+  .art .ver{color:var(--muted);}
+  .adata{background:var(--pre-bg);border:1px solid var(--pre-border);color:var(--text);border-radius:6px;padding:6px 8px;margin:4px 0 0;font-size:11.5px;white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;}
+  .muted{color:var(--muted);font-family:var(--mono);font-size:12px;}
+  .llm h3{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:14px 0 8px;}
+  details.llm-call{border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--panel);}
+  details.llm-call summary{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-size:13px;}
+  details.llm-call summary:hover{background:var(--hover);}
+  .role{padding:6px 10px;border-left:2px solid var(--border);margin:6px 0;font-size:12.5px;white-space:pre-wrap;word-break:break-word;}
+  .role.user{border-left-color:var(--accent);}
+  .role.assistant{border-left-color:var(--ok);}
+  .role.tool{border-left-color:var(--muted);}
+  .role-label{font-size:10.5px;font-weight:650;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:2px;}
+  .err-box{margin-top:12px;background:var(--err-soft);border:1px solid var(--err);color:var(--err);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;}
+  .empty{padding:32px;text-align:center;color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="logo" href="/traces">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="5" cy="12" r="2.6" fill="currentColor"/>
+        <circle cx="19" cy="5" r="2.6" fill="currentColor"/>
+        <circle cx="19" cy="19" r="2.6" fill="currentColor"/>
+        <path d="M7.4 11 16.6 6M7.4 13l9.2 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <b>ctxloom <span style="color:var(--accent)">traces</span></b>
+      <span class="sub">artifact run observer</span>
+    </a>
+    <div class="spacer"></div>
+    <button id="theme" title="toggle dark mode">dark</button>
+  </div>
+</header>
+<main>
+  <div class="crumbs"><a href="/traces">traces</a><span class="sep">/</span><b id="cid">#…</b></div>
+  <div class="head-row" id="head"></div>
+  <section class="card"><h2>Run</h2><div class="meta-grid" id="meta"></div></section>
+  <section class="card"><h2>Spans</h2><div class="spans" id="spans"></div></section>
+</main>
+<script>
+const RUN_ID=__RUN_ID__;
+function applyTheme(dark){document.documentElement.classList.toggle('dark',dark);document.getElementById('theme').textContent=dark?'light':'dark';try{localStorage.setItem('ctxloom-theme',dark?'dark':'light');}catch(_){}}
+function initTheme(){let s=null;try{s=localStorage.getItem('ctxloom-theme');}catch(_){}applyTheme(s?s==='dark':true);}
+document.getElementById('theme').addEventListener('click',()=>applyTheme(!document.documentElement.classList.contains('dark')));
+
+async function load(){
+  const res=await fetch('/api/traces/'+RUN_ID);
+  if(!res.ok){document.getElementById('cid').textContent='#'+RUN_ID+' — не найден';return;}
+  render(await res.json());
+}
+function meta(k,v,mono){return '<div class="meta-item"><span class="k">'+k+'</span><span class="v'+(mono?' mono':'')+'">'+v+'</span></div>';}
+function fmtTime(t){try{const d=typeof t==='number'?new Date(t*1000):new Date(t);return d.toLocaleString();}catch(_){return '—';}}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+
+function render(t){
+  document.title='Trace #'+t.id+' · ctxloom';
+  document.getElementById('cid').textContent='#'+t.id;
+  const cls=t.outcome==='completed'?'ok':'err';
+  document.getElementById('head').innerHTML='<h1>#'+escapeHtml(t.id)+'</h1><span class="badge '+cls+'"><span class="dot"></span>'+escapeHtml(t.outcome)+'</span>';
+  document.getElementById('meta').innerHTML=
+    meta('session',escapeHtml(t.session_id||'—'),true)+
+    meta('duration',Number(t.duration_ms).toFixed(1)+' <small>ms</small>')+
+    meta('spans',String((t.spans||[]).length))+
+    meta('created',fmtTime(t.started_at));
+
+  const spans=t.spans||[];
+  document.getElementById('spans').innerHTML=spans.length
+    ? spans.map((s,i)=>spanHtml(s,i===0)).join('')
+    : '<div class="empty">спанов не записано</div>';
+}
+
+function spanHtml(s,open){
+  const ok=!s.error;
+  const errBlock=s.error?'<div class="err-box">'+escapeHtml(s.error)+'</div>':'';
+  const reads=(s.reads||[]).map(a=>artHtml(a)).join('');
+  const writes=(s.writes||[]).map(a=>artHtml(a)).join('');
+  const io=(reads||writes)?'<div class="io-grid"><div class="io"><h3>reads</h3>'+(reads||'<div class="art" style="color:var(--muted)">—</div>')+'</div><div class="io"><h3>writes</h3>'+(writes||'<div class="art" style="color:var(--muted)">—</div>')+'</div></div>':'';
+  const llm=(s.llm_calls||[]).map(llmHtml).join('');
+  return '<details class="node"'+(open?' open':'')+'>'+
+    '<summary><span class="caret">▸</span><span class="s-dot '+(ok?'ok':'err')+'"></span>'+
+    '<span class="nid">'+escapeHtml(s.agent)+'</span>'+
+    '<span class="ntype">'+escapeHtml(s.event_type)+'</span>'+
+    '<span class="stat">'+Number(s.latency_ms).toFixed(1)+' ms · '+(s.llm_calls||[]).length+' llm · '+(s.reads||[]).length+' reads · '+(s.writes||[]).length+' writes'+(ok?'':' · failed')+'</span></summary>'+
+    '<div class="body">'+errBlock+io+(llm?'<div class="llm"><h3>LLM calls</h3>'+llm+'</div>':'')+'</div></details>';
+}
+function artHtml(a){
+  const op=('<span class="tag">'+escapeHtml(a.op_type||'read')+'</span>');
+  const type=a.data_type?'<span class="atype">['+escapeHtml(a.data_type)+']</span>':'';
+  const data=a.data?'<pre class="adata">'+escapeHtml(a.data)+'</pre>':'';
+  return '<div class="art"><div class="art-head">'+op+' '+type+' <code>'+escapeHtml(a.artifact_id.slice(0,8))+'</code> <span class="ver">v'+a.version+'</span></div>'+data+'</div>';
+}
+function llmHtml(c){
+  const detail=(c.messages||[]).map(m=>'<div class="role '+escapeHtml(m.role)+'"><span class="role-label">'+escapeHtml(m.role)+'</span>'+escapeHtml(m.content||'')+'</div>').join('');
+  return '<details class="llm-call"><summary><span class="caret">▸</span><b>'+escapeHtml(c.provider||'llm')+'</b> <span class="muted">'+escapeHtml(c.model||'')+'</span> <span class="stat">'+c.prompt_tokens+' in / '+c.completion_tokens+' out · '+Number(c.latency_ms).toFixed(1)+' ms'+(c.error?' · err':'')+'</span></summary>'+
+    '<div class="body">'+(c.error?'<div class="err-box">'+escapeHtml(c.error)+'</div>':'')+detail+(c.response?'<div class="role assistant"><span class="role-label">response</span>'+escapeHtml(c.response)+'</div>':'')+'</div></details>';
+}
+
+initTheme(); load();
+</script>
+</body>
+</html>

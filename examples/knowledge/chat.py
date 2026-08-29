@@ -1,0 +1,147 @@
+"""Console multi-source knowledge chat (a «reply from patches» demo).
+
+Run:  .venv/bin/python examples/knowledge/chat.py
+Without an LLM it works on deterministic fallbacks; for real generators:
+  export OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_MODEL=qwen2.5:7b
+"""
+
+import asyncio
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):  # run as a script — add src to sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from ctxloom import (
+    Budget,
+    FileKVBackend,
+    Runtime,
+    RuntimeResources,
+    SessionStore,
+)
+from ctxloom.providers import llm_from_env
+from ctxloom.sources import CSVSource, FileSystemSource
+from dotenv import load_dotenv
+from examples.knowledge.agents import (
+    AnswerBuilder,
+    CalculatorAgent,
+    EvidenceBuilder,
+    Planner,
+    ProgressEvaluator,
+    ResolverAgent,
+    SearchScout,
+    TableResolver,
+    VerifierAgent,
+)
+from examples.knowledge.models import Answer, ChatReply, ResearchTurn, UserQuery
+from examples.textutil import english_kw_score
+
+ROOT = Path(__file__).resolve().parent
+load_dotenv(ROOT / ".env")
+
+KNOWLEDGE_DOCS = ROOT / "docs"
+
+
+async def main() -> None:
+    llm = llm_from_env()
+    if llm is None:
+        print("LLM not configured — demo runs on deterministic fallbacks.")
+        print("For generation set OPENAI_BASE_URL / OPENAI_MODEL / OPENAI_API_KEY.\n")
+
+    resources = RuntimeResources(
+        llm=llm,
+        sources={
+            "guide": FileSystemSource(
+                str(KNOWLEDGE_DOCS / "guide"),
+                source_id="guide",
+                scorer=english_kw_score,
+            ),
+            "pricing": FileSystemSource(
+                str(KNOWLEDGE_DOCS / "pricing"),
+                source_id="pricing",
+                scorer=english_kw_score,
+            ),
+            "costs": CSVSource(str(KNOWLEDGE_DOCS / "costs"), source_id="costs"),
+        },
+    )
+
+    store = SessionStore(FileKVBackend(str(ROOT / "sessions")))
+    session = store.open("knowledge", resources=resources)
+    message = "Session restored" if session.loaded else "New session"
+    print(f"[{message}]\n")
+
+    runtime = Runtime(
+        session.context,
+        agents=[
+            Planner(),
+            SearchScout(),
+            ResolverAgent(),
+            TableResolver(),
+            EvidenceBuilder(),
+            VerifierAgent(),
+            CalculatorAgent(),
+            ProgressEvaluator(),
+            AnswerBuilder(),
+        ],
+        session=session,
+        budget=Budget(max_runs=80),
+        max_concurrency=4,
+    )
+
+    while True:
+        text = input("You: ").strip()
+        if text.lower() in {"exit", "quit"}:
+            break
+        if text.lower() == "new":
+            session.delete()
+            print("New session.\n")
+            continue
+        if not text:
+            continue
+
+        query = session.context.create(UserQuery(text=text, session_id="knowledge"))
+
+        async for event in runtime.astream():
+            if event.kind == "status":
+                print(f"   {event.message}")
+            elif event.kind == "run_end" and event.data.get("outcome") != "completed":
+                print(f"   [stopped: {event.data.get('outcome')}]")
+
+        answers = [
+            a
+            for a in session.context.list_artifacts(Answer)
+            if a.data.query_id == query.id
+        ]
+        if answers:
+            latest_answer = max(answers, key=lambda a: a.created_at)
+            print("\nAnswer:")
+            print(latest_answer.data.text)
+            if latest_answer.data.sources:
+                print("Sources:")
+                for source in latest_answer.data.sources:
+                    print("  •", source)
+        else:
+            turns = [
+                t
+                for t in session.context.list_artifacts(ResearchTurn)
+                if t.data.query_id == query.id
+            ]
+            if turns and turns[0].data.status == "insufficient":
+                print("\n→ Nothing found in the documentation. Rephrase your question.")
+            else:
+                replies = [
+                    r
+                    for r in session.context.list_artifacts(ChatReply)
+                    if r.data.query_id == query.id
+                ]
+                if replies:
+                    latest_reply = max(replies, key=lambda r: r.created_at)
+                    print("\n→", latest_reply.data.text)
+                else:
+                    print("\n(failed to assemble an answer)")
+
+        session.save()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

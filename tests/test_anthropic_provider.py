@@ -1,0 +1,93 @@
+import asyncio
+import json
+
+import httpx
+from ctxloom.providers import AnthropicProvider
+from ctxloom.providers.anthropic import anthropic_llm
+from ctxloom.providers.contracts import LLMRequest, Message
+
+COMPLETION = {
+    "content": [{"type": "text", "text": "привет от Claude"}],
+    "stop_reason": "end_turn",
+    "usage": {"input_tokens": 5, "output_tokens": 3},
+}
+SSE = (
+    'event: message_start\ndata: {"type":"message_start"}\n\n'
+    "event: content_block_delta\n"
+    'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ку"}}\n\n'
+    "event: content_block_delta\n"
+    'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ку"}}\n\n'
+    'event: message_stop\ndata: {"type":"message_stop"}\n\n'
+)
+
+
+def make_provider():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body.get("stream"):
+            return httpx.Response(
+                200,
+                content=SSE.encode(),
+                headers={"content-type": "text/event-stream"},
+            )
+        return httpx.Response(200, json=COMPLETION)
+
+    return AnthropicProvider(
+        api_key="test-key",
+        max_tokens_default=256,
+        transport=httpx.MockTransport(handler),
+    )
+
+
+def test_anthropic_complete_maps_contract():
+    provider = make_provider()
+    response = asyncio.run(
+        provider.complete(
+            LLMRequest(
+                messages=[
+                    Message(role="system", content="будь краток"),
+                    Message(role="user", content="привет"),
+                ],
+                temperature=0.1,
+            )
+        )
+    )
+    assert response.text == "привет от Claude"
+    assert response.finish_reason == "end_turn"
+
+
+def test_anthropic_stream_text_deltas():
+    provider = make_provider()
+
+    async def collect():
+        return [
+            chunk
+            async for chunk in provider.stream(
+                LLMRequest(messages=[Message(role="user", content="hi")])
+            )
+        ]
+
+    chunks = asyncio.run(collect())
+    assert [c.text for c in chunks] == ["ку", "ку"]
+
+
+def test_anthropic_payload_shape():
+    provider = make_provider()
+    payload = provider._payload(
+        LLMRequest(
+            messages=[
+                Message(role="system", content="SYS"),
+                Message(role="user", content="U"),
+            ],
+            max_tokens=99,
+        ),
+        stream=False,
+    )
+    assert payload["model"] == "claude-3-5-sonnet-latest"
+    assert payload["max_tokens"] == 99
+    assert payload["system"] == "SYS"
+    assert payload["messages"] == [{"role": "user", "content": "U"}]
+
+
+def test_anthropic_llm_factory_requires_key():
+    assert anthropic_llm() is None  # without ANTHROPIC_API_KEY — None

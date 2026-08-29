@@ -1,0 +1,147 @@
+import asyncio
+
+from ctxloom import (
+    Agent,
+    Consume,
+    FileKVBackend,
+    Patch,
+    Runtime,
+    SessionStore,
+)
+from ctxloom.interrupt import PendingQuestion
+from pydantic import BaseModel
+
+
+class Project(BaseModel):
+    name: str
+    budget: int
+
+
+class Estimate(BaseModel):
+    total: int
+
+
+class ApprovalGate(Agent):
+    """Requests budget approval and waits for a human answer."""
+
+    consumes = [Consume(Project)]
+    produces = []
+
+    async def run(self, event, context):
+        project = context.get(event.artifact_id)
+        if project is None:
+            return None
+        return Patch().create(
+            PendingQuestion(
+                question=f"Одобрить бюджет {project.data.name} на {project.data.budget}?",
+                kind="approval",
+                notes={"project_budget": project.data.budget},
+            )
+        )
+
+
+class Estimator(Agent):
+    """Computes the estimate only after approval."""
+
+    consumes = [
+        Consume.by_field(PendingQuestion, "answered", True),
+        Consume(Project),
+    ]
+    produces = []
+
+    async def run(self, event, context):
+        projects = context.list_artifacts(Project)
+        if not projects:
+            return None
+        approved = context.list_artifacts(PendingQuestion)
+        if not any(q.data.answered for q in approved):
+            return None
+        total = sum(p.data.budget for p in projects)
+        return Patch().create(Estimate(total=total))
+
+
+def make_runtime(session):
+    return Runtime(
+        session.context, agents=[ApprovalGate(), Estimator()], session=session
+    )
+
+
+def make_hitl_runtime(tmp_path):
+    store = SessionStore(FileKVBackend(str(tmp_path)))
+    session = store.open("hitl")
+    return session, make_runtime(session), store
+
+
+def test_hitl_wait_then_resume(tmp_path):
+    session, runtime, store = make_hitl_runtime(tmp_path)
+    ctx = session.context
+
+    ctx.create(Project(name="office", budget=50_000))
+    asyncio.run(runtime.arun())
+
+    assert ctx.has_pending_question()
+    question = ctx.latest_pending_question()
+    assert question.data.question == "Одобрить бюджет office на 50000?"
+    assert question.data.kind == "approval"
+    assert ctx.list_artifacts(Estimate) == []  # estimate not built yet
+
+    # Restart: the pending question survives a session reload
+    session2 = store.open("hitl")
+    assert session2.context.has_pending_question()
+
+    # A human answer is a regular patch; work can continue with a new runtime
+    restored = session2.context.latest_pending_question()
+    session2.context.resume(restored.id, "approved")
+    runtime2 = make_runtime(session2)
+    asyncio.run(runtime2.arun())
+
+    estimates = session2.context.list_artifacts(Estimate)
+    assert len(estimates) == 1
+    assert estimates[0].data.total == 50_000
+    assert not session2.context.has_pending_question()
+
+
+def test_resume_persists_answer(tmp_path):
+    session, runtime, store = make_hitl_runtime(tmp_path)
+    ctx = session.context
+
+    ctx.create(Project(name="kitchen", budget=20_000))
+    asyncio.run(runtime.arun())
+    question = ctx.latest_pending_question()
+    ctx.resume(question.id, "reject")
+
+    # auto-persist happens on the estimate commit; here the answer is working code.
+    # But after arun (estimate), the answered state is already saved.
+    asyncio.run(runtime.arun())
+    session.save()
+
+    restored = store.load_session("hitl")
+    q = restored.list_artifacts(PendingQuestion)[0]
+    assert q.data.answered is True
+    assert q.data.resolution == "reject"
+
+
+def test_resume_wrong_id_returns_none(tmp_path):
+    session, runtime, store = make_hitl_runtime(tmp_path)
+    ctx = session.context
+    ctx.create(Project(name="x", budget=1))
+    asyncio.run(runtime.arun())
+    assert ctx.resume("nonexistent", "yes") is None
+    assert ctx.has_pending_question()
+
+
+def test_multiple_questions_isolated(tmp_path):
+    session, runtime, store = make_hitl_runtime(tmp_path)
+    ctx = session.context
+
+    first = ctx.interrupt("Q1")
+    second = ctx.interrupt("Q2")
+    assert len(ctx.pending_questions()) == 2
+
+    ctx.resume(first.id, "a1")
+    remaining = ctx.pending_questions()
+    assert [q.id for q in remaining] == [second.id]
+    assert ctx.has_pending_question()  # Q2 is still pending
+
+    ctx.resume(second.id, "a2")
+    assert not ctx.has_pending_question()

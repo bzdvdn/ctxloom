@@ -1,0 +1,5 @@
+service,month,cost_usd,gpu_cost_usd
+inference,2024-04,1200,850
+inference,2024-05,2150,1700
+training,2024-04,980,420
+training,2024-05,1150,610

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ремонт AI (ctxspace)</title>
+<style>
+  :root { --bg:#10151a; --panel:#182129; --line:#26313c; --fg:#e6edf3; --muted:#8b98a5; --acc:#4cc2ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 system-ui, sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+  header b { color:var(--acc); }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  #messages { display:flex; flex-direction:column; gap:10px; min-height:50vh; }
+  .msg { max-width:80%; padding:10px 14px; border-radius:12px; white-space:pre-wrap; }
+  .user { align-self:flex-end; background:#1f6feb22; border:1px solid #1f6feb66; }
+  .assistant { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
+  .preview { max-width:170px; max-height:160px; object-fit:cover; border-radius:8px; cursor:zoom-in; }
+  #lightbox { position:fixed; inset:0; background:rgba(8,10,12,.88); display:none;
+    align-items:center; justify-content:center; z-index:60; }
+  #lightbox.open { display:flex; }
+  #lightbox img { max-width:92vw; max-height:92vh; border-radius:8px; }
+  .status { color:var(--muted); font-style:italic; }
+  .waiting { color:#ffd479; }
+  .controls { margin-top:16px; display:flex; gap:10px; }
+  #input { flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--fg); }
+  button { padding:10px 18px; border-radius:10px; border:1px solid var(--acc); background:transparent; color:var(--acc); cursor:pointer; }
+  button:hover { background:#4cc2ff22; }
+</style>
+</head>
+<body>
+<header><b>Ремонт AI</b><span class="muted" id="sid"></span><button id="new-session" style="margin-left:auto">Новая сессия</button></header>
+<main>
+  <div id="messages"></div>
+  <div class="controls">
+    <input id="input" placeholder="Напишите о комнате: тип, площадь, бюджет…" autofocus />
+    <button id="send">Отправить</button>
+  </div>
+</main>
+<script>
+let sid = localStorage["repair-session"] || (localStorage["repair-session"] = crypto.randomUUID().replace(/-/g,"").slice(0,24));
+function renderSid() { document.getElementById("sid").textContent = "сессия: " + sid; }
+renderSid();
+
+function add(kind, text) {
+  const el = document.createElement("div");
+  el.className = "msg " + kind;
+  el.textContent = text;
+  document.getElementById("messages").appendChild(el);
+  el.scrollIntoView();
+}
+
+function addImages(paths) {
+  const box = document.createElement("div");
+  box.className = "msg assistant";
+  box.style.display = "flex";
+  box.style.flexWrap = "wrap";
+  box.style.gap = "8px";
+  for (const src of paths) {
+    const img = document.createElement("img");
+    img.src = src;
+    img.className = "preview";
+    img.addEventListener("click", (e) => { e.stopPropagation(); openLightbox(src); });
+    box.appendChild(img);
+  }
+  document.getElementById("messages").appendChild(box);
+}
+
+function openLightbox(src) {
+  let lb = document.getElementById("lightbox");
+  if (!lb) {
+    lb = document.createElement("div");
+    lb.id = "lightbox";
+    lb.addEventListener("click", () => lb.classList.remove("open"));
+    document.body.appendChild(lb);
+  }
+  lb.innerHTML = '<img src="' + src + '" alt="превью" />';
+  lb.classList.add("open");
+}
+
+async function send(text) {
+  add("user", text);
+  const resp = await fetch("/api/chat/stream", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({message: text, session_id: sid}),
+  });
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let currentEvent = null;
+  let statusEl = null;
+  let statusShownAt = 0;
+  const minStatusMs = 350;
+  async function removeStatus() {
+    if (!statusEl) return;
+    const held = performance.now() - statusShownAt;
+    if (held < minStatusMs) await new Promise((r) => setTimeout(r, minStatusMs - held));
+    statusEl.remove();
+    statusEl = null;
+  }
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, {stream: true});
+    let idx;
+    while ((idx = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, idx); buffer = buffer.slice(idx + 2);
+      let event = currentEvent; let data = "";
+      for (const line of frame.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data = line.slice(5).trim();
+      }
+      if (!data) continue;
+      const payload = JSON.parse(data);
+      if (event === "status") {
+        if (!statusEl) { statusEl = addTo("status", ""); }
+        statusEl.textContent = "… " + payload.message;
+        statusShownAt = performance.now();
+      } else if (event === "message") {
+        await removeStatus();
+        if ((payload.images || []).length) addImages(payload.images);
+        add("assistant", payload.reply);
+        if (payload.waiting) {
+          const w = addTo("status", "");
+          w.className = "status waiting";
+          w.textContent = payload.reply.length ? "Жду: утвердить (да) или изменить?" : "";
+        }
+      }
+    }
+  }
+}
+
+function addTo(kind, text) {
+  const el = document.createElement("div");
+  el.className = "msg " + kind;
+  el.textContent = text;
+  document.getElementById("messages").appendChild(el);
+  return el;
+}
+
+async function loadHistory() {
+  const r = await fetch("/api/runs/" + sid);
+  const state = await r.json();
+  for (const m of state.messages || []) add(m.role === "user" ? "user" : "assistant", m.text);
+}
+
+document.getElementById("send").addEventListener("click", () => {
+  const el = document.getElementById("input");
+  const text = el.value.trim();
+  if (!text) return;
+  el.value = "";
+  send(text);
+});
+document.getElementById("input").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("send").click(); });
+document.getElementById("new-session").addEventListener("click", async () => {
+  await fetch("/api/runs/" + sid, { method: "DELETE" });
+  sid = (localStorage["repair-session"] = crypto.randomUUID().replace(/-/g,"").slice(0,24));
+  renderSid();
+  document.getElementById("messages").innerHTML = "";
+});
+loadHistory();
+</script>
+</body>
+</html>

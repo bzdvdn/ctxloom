@@ -1,0 +1,90 @@
+"""Console devops assistant (k8s / GitLab / Ansible via LLM + tools).
+
+Run:  .venv/bin/python examples/devops/chat.py
+Without OPENROUTER_API_KEY there is no LLM — agents honestly say «Could not reach a decision».
+"""
+
+import asyncio
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):  # running as a script — add src to sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from ctxloom import (
+    Budget,
+    FileKVBackend,
+    Runtime,
+    RuntimeResources,
+    SessionStore,
+)
+from ctxloom.providers import llm_from_env, openrouter_llm
+from dotenv import load_dotenv
+from examples.devops.agents import (
+    AnsibleAgent,
+    GitlabAgent,
+    K8sAgent,
+    RenderAgent,
+    RouteAgent,
+)
+from examples.devops.models import ChatReply, UserMsg
+
+ROOT = Path(__file__).resolve().parent
+load_dotenv(ROOT / ".env")
+
+
+async def main() -> None:
+    llm = llm_from_env() or openrouter_llm()
+    if llm is None:
+        print(
+            "LLM is not configured — agents won't be able to answer. Set OPENROUTER_API_KEY."
+        )
+
+    resources = RuntimeResources(llm=llm)
+    store = SessionStore(FileKVBackend(str(ROOT / "sessions")))
+    session = store.open("devops", resources=resources)
+    print("New session" if not session.loaded else "Session restored")
+    print(
+        "I'll help with k8s, GitLab, Ansible. For example: «why is the pod crashing?»\n"
+    )
+
+    runtime = Runtime(
+        session.context,
+        agents=[RouteAgent(), K8sAgent(), GitlabAgent(), AnsibleAgent(), RenderAgent()],
+        session=session,
+        budget=Budget(max_runs=200, max_tool_calls=12),
+    )
+
+    while True:
+        text = input("You: ").strip()
+        if text.lower() in {"exit", "quit"}:
+            break
+        if text.lower() == "new":
+            session.delete()
+            print("New session.\n")
+            continue
+        if not text:
+            continue
+
+        msg = session.context.create(UserMsg(text=text, session_id="devops"))
+
+        async for event in runtime.astream():
+            if event.kind in ("status", "agent"):
+                print(f"   {event.message}")
+
+        replies = [
+            r
+            for r in session.context.list_artifacts(ChatReply)
+            if r.data.query_id == msg.id
+        ]
+        if replies:
+            latest = max(replies, key=lambda r: r.created_at)
+            print(f"\n{latest.data.text}\n")
+        else:
+            print("\n(failed to assemble the answer)\n")
+
+        session.save()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
