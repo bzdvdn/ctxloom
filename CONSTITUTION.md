@@ -1,7 +1,7 @@
 # Constitution of the Artifact-Driven Agent Runtime
 
-> **Status:** Foundational design document  
-> **Version:** 0.1  
+> **Status:** Foundational design document, aligned with the public `ctxloom` release
+> **Version:** 0.2
 > **Purpose:** Define the architectural philosophy, invariants, terminology, design rules, examples, and decision criteria for a new agent framework based on evolving typed artifacts and context rather than explicit execution graphs.
 
 ---
@@ -481,6 +481,13 @@ gitlab = GitLabSource(...)
 confluence = ConfluenceSource(...)
 filesystem = FileSystemSource(...)
 ```
+
+The core ships *reference sources* demonstrating three retrieval strategies
+(§8-§9): `FileSystemSource` (keyword/full-text), `CSVSource` (structured tables,
+§29) and `EmbeddingSource` (optional vector). GitLab / Confluence / S3 and other
+enterprise systems are **domain-specific connectors**: application code on top
+of the `Source` API (typically under `examples/`), not core — the framework must
+not become a catalog of integrations (§61).
 
 ---
 
@@ -1192,6 +1199,12 @@ Researcher.capabilities = {
 ```
 
 Capabilities can later be used by an LLM planner or deterministic scheduler.
+
+In the shipped runtime the capability contract is declarative and explicit:
+`consumes`/`produces` artifact types (§10-§11, `Consume`/`Produce`). The
+scheduler and the LLM router derive work from these declarations, and the
+runtime validates that an agent only creates artifacts it declared in
+`produces`.
 
 ---
 
@@ -2281,9 +2294,7 @@ graph.add_edge(
 prefer:
 
 ```python
-Verifier(
-    consumes=UnverifiedClaim
-)
+Verifier(consumes=[Consume(UnverifiedClaim)])
 ```
 
 The runtime derives execution.
@@ -2466,96 +2477,114 @@ The UI may still render a concise answer.
 
 # 71. Initial Python API
 
-A minimal target API:
+The primary programming model, as shipped:
 
 ```python
-from runtime import Context, Agent, Patch
-from sources import GitLab, Confluence, Filesystem
+from pydantic import BaseModel
 
-
-ctx = Context()
-
-ctx.add_source(
-    GitLab(...)
+from ctxloom import (
+    Agent,
+    Budget,
+    Consume,
+    Context,
+    Patch,
+    Produce,
+    Runtime,
+    RuntimeResources,
 )
+from ctxloom.sources import FileSystemSource, SourceRef
 
-ctx.add_source(
-    Confluence(...)
-)
 
-ctx.add_source(
-    Filesystem("./docs")
-)
+class Question(BaseModel):
+    text: str
 
-ctx.add(
-    Question(
-        "How is authentication implemented?"
+
+ctx = Context(
+    resources=RuntimeResources(
+        sources={"docs": FileSystemSource("./docs")},
     )
 )
-
-runtime.run(ctx)
+ctx.create(Question(text="How is authentication implemented?"))
 ```
 
-Agents:
+Agents are thin containers (§48): all logic lives in a `Produce` class that
+returns a `Patch`. `consumes`/`produces` are the artifact contracts that drive
+the scheduler:
 
 ```python
-class Researcher(Agent):
-    consumes = [Question, Reference]
-    produces = [Evidence, Claim]
+class Researcher(Produce[Evidence]):
+    artifact_type = Evidence
 
-    def run(self, ctx):
+    async def produce(self, context, inputs, event=None):
+        ...  # returns Patch (Create/Update/Delete/Link)
+
+
+class Verifier(Produce[VerifiedClaim]):
+    artifact_type = VerifiedClaim
+
+    async def produce(self, context, inputs, event=None):
         ...
+
+
+class Answerer(Produce[Answer]):
+    artifact_type = Answer
+
+    async def produce(self, context, inputs, event=None):
+        ...
+
+
+class ResearcherAgent(Agent):
+    name = "researcher"
+    consumes = [Consume(Question), Consume(SourceRef)]
+    produces = [Researcher()]
+
+
+runtime = Runtime(
+    ctx,
+    agents=[ResearcherAgent(), VerifierAgent(), AnswererAgent()],
+    budget=Budget(max_runs=80),
+)
+runtime.run()
 ```
 
-Verifier:
-
-```python
-class Verifier(Agent):
-    consumes = [Claim, Evidence]
-    produces = [VerifiedClaim, MissingEvidence]
-
-    def run(self, ctx):
-        ...
-```
-
-Answerer:
-
-```python
-class Answerer(Agent):
-    consumes = [VerifiedClaim, Evidence]
-    produces = [Answer]
-
-    def run(self, ctx):
-        ...
-```
+`Agent.run` in the framework's terminology is `Produce.produce`:
+interpret a relevant Context view, propose changes, let the runtime apply them.
 
 ---
 
 # 72. Target Knowledge Chat API
 
-Eventually:
+As built in `examples/knowledge` (imports elided — they mirror the demo):
 
 ```python
-runtime = Runtime()
-
-runtime.add_source(GitLab(...))
-runtime.add_source(Confluence(...))
-runtime.add_source(FileSystem(...))
-runtime.add_source(Web(...))
-
-runtime.register(Researcher(...))
-runtime.register(Verifier(...))
-runtime.register(DataAnalyst(...))
-runtime.register(Answerer(...))
-
-chat = runtime.chat()
-
-answer = chat.ask(
-    "Why did infrastructure costs increase in Q2?"
+resources = RuntimeResources(
+    llm=llm,
+    sources={
+        "guide": FileSystemSource("./docs/guide"),
+        "pricing": FileSystemSource("./docs/pricing"),
+        "costs": CSVSource("./docs/costs"),  # §29: structure, not text
+    },
 )
+session = SessionStore(FileKVBackend("./sessions")).open("knowledge", resources=resources)
+
+runtime = Runtime(
+    session.context,
+    agents=[
+        Planner(), SearchScout(), ResolverAgent(), TableResolver(),
+        EvidenceBuilder(), VerifierAgent(), CalculatorAgent(),
+        ProgressEvaluator(), AnswerBuilder(),
+    ],
+    budget=Budget(max_runs=80),
+)
+
+query = session.context.create(UserQuery(text="Why did infrastructure costs increase in Q2?"))
+runtime.run()
 ```
 
-The developer does not describe a graph.
+The developer does not describe a graph. Agents react to artifact types
+(`Consume`), and the runtime derives execution from state changes. The chat
+layer is thin (§52): a question enters the Context, agents produce evidence
+and verified claims, an answer emerges with provenance.
 
 ---
 
@@ -2624,14 +2653,15 @@ create → update → diff → rollback
 
 ---
 
-## Phase 2 — Sources
+## Phase 2 — Reference sources
 
-Implement:
+Reference sources shipped in the core, each demonstrating a retrieval strategy
+(§8-§9):
 
 ```text
-Filesystem
-GitLab
-Confluence
+Filesystem   keyword / full-text  (FileSystemSource)
+CSV          structured tables    (CSVSource → Spreadsheet/Calculation)
+Vector       optional embedding   (EmbeddingSource)
 ```
 
 Goal:
@@ -2642,6 +2672,10 @@ Reference → Artifact
 
 Support lazy resolution.
 
+GitLab, Confluence and similar enterprise systems are **domain-specific
+connectors**: application code on top of the `Source` API (typically under
+`examples/`), so the core does not accumulate a catalog of integrations.
+
 ---
 
 ## Phase 3 — Agent contract
@@ -2649,7 +2683,8 @@ Support lazy resolution.
 Implement:
 
 ```python
-Agent.run(Context) -> Patch
+Produce.produce(Context) -> Patch
+# plus the thin Agent container: consumes / produces declarations
 ```
 
 Add:
@@ -2790,23 +2825,13 @@ Everything else depends on this answer.
 The first prototype should be able to execute this:
 
 ```python
-ctx = Context()
+ctx = Context(resources=RuntimeResources(sources={...}))
 
-question = ctx.add(
-    Question("Why did costs increase?")
-)
+question = ctx.create(Question(text="Why did costs increase?"))
 
-ctx.add(
-    ConfluencePageRef(...)
-)
-
-ctx.add(
-    GitLabFileRef(...)
-)
-
-ctx.add(
-    SpreadsheetRef(...)
-)
+ctx.create(ConfluencePageRef(...))
+ctx.create(GitLabFileRef(...))
+ctx.create(SpreadsheetRef(...))
 
 runtime.run(ctx)
 ```
@@ -3043,3 +3068,49 @@ And the shortest mental model is:
 ```
 
 Everything else — tools, RAG, APIs, planners, schedulers, multi-agent execution, memory, verification, branching — is built around these primitives.
+
+---
+
+# Appendix — Implementation Status
+
+State of the public `ctxloom` codebase, aligned with this constitution (ver 0.2).
+Verification: 189 tests; mypy (strict) and ruff clean.
+
+| Area | Section(s) | Status |
+|---|---|---|
+| Context / Artifact / Patch / Revision (git-like) | §4, §12, §14 | implemented (create/update/delete/link, history, diff, checkout, snapshot) |
+| Relations & provenance edges | §15, §33-§34, §36 | implemented (`Link`, `derived_from`, `supported_by`, `contradicted_by`) |
+| Context views (token-budgeted projections) | §27, §28 | implemented (`context.view` + `tokens_estimate`) |
+| Reference sources (filesystem / CSV / vector) | §7-§9, §74 P2 | implemented in core |
+| GitLab / Confluence / S3 connectors | §74 P2 | domain examples, not core (planned as `examples/` connectors) |
+| Agent contract (Produce / Consume containers) | §10-§13, §63 | implemented |
+| Reactive runtime, events, budget | §21-§24, §58 | implemented (subscriptions, outcomes, replan) |
+| Tools / tool loop / HITL tool use | §46-§47, §60 | implemented (`tools`, `ToolUse`, `ToolUseHITL`) |
+| HITL (approvals, questions) | §60 | implemented (`PendingQuestion`, `InterruptPatch`) |
+| Knowledge chat: Evidence → Claim → Verification → Answer | §16-§19, §34-§36 | implemented (`examples/knowledge`, English) |
+| Structured-data calculation | §29, §33, §67 | implemented (`CSVSource → Spreadsheet → Calculation`) |
+| Confidence / contradictions as state | §35-§36 | implemented (deterministic, §67) |
+| Idempotency (stable ids, create-or-refresh) | §42 | implemented |
+| Staleness / invalidation from recorded reads | §43-§44 | implemented (`stale_artifacts`) |
+| Observability (run traces + dashboard + sinks) | §54 | implemented (SQLite store, web UI, Langfuse / Postgres sinks) |
+| Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
+| Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
+| Branching (`context.branch()`) | §39-§40 | planned (checkpoints + `merge_from` exist) |
+| Replay (§55) | §55 | planned — commits are deterministic, replay is lightweight |
+| Evaluation harness | §56 | planned |
+| Security / access control | §57 | planned |
+| Adaptive / uncertainty-driven scheduling | §26, §24 | partial — budget + LLM tool router (devops demo); uncertainty-driven selection planned |
+
+Demos shipped in the repo (not in the wheel):
+
+- `examples/knowledge` — English multi-source chat: search → evidence → claim
+  verification → answer, plus CSV calculation and a web dashboard.
+- `examples/devops` — English ops assistant: HITL tool agents, LLM tool router,
+  run-trace dashboard with auth.
+- `examples/repair` — budget-aware replanning demo. Its **chat and data are
+  intentionally Russian** (a deliberate product choice, §68-adjacent); code and
+  comments are English.
+
+Roadmap direction: domain connectors as examples, branching + replay, the
+evidence-graph browser in the trace UI, an evaluation harness, and stronger
+adaptive scheduling.

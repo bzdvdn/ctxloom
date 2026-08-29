@@ -13,8 +13,8 @@ AGENT
 CONTEXT ──► PATCH ──► CONTEXT'
 ```
 
-You describe *what data exists, what artifacts exist, what agents can do with
-them*. The runtime derives execution from state changes: an artifact is created,
+You describe _what data exists, what artifacts exist, what agents can do with
+them_. The runtime derives execution from state changes: an artifact is created,
 agents that consume it react, produce a patch, and the context moves to the next
 version. No explicit graphs, no node pipelines.
 
@@ -25,7 +25,7 @@ version. No explicit graphs, no node pipelines.
   not a string blob.
 - **Patch** — the only language agents use to change state (`create/update/delete/link`).
 - **Agent** — a thin container declaring `consumes`/`produces`; logic lives in `Produce`.
-- **Source** — a retrieval capability. Vector search is *one* strategy; direct API,
+- **Source** — a retrieval capability. Vector search is _one_ strategy; direct API,
   keyword, SQL, and filesystem are equally first-class. Embeddings optional.
 - **Provenance** — every derived artifact links back to what produced it
   (`Answer —supported_by→ Claim —derived_from→ Evidence —extracted_from→ Doc`).
