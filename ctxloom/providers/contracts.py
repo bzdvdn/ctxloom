@@ -55,3 +55,17 @@ class LLMProvider(ABC):
 class EmbeddingProvider(ABC):
     @abstractmethod
     async def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+
+#: Builds the value of an auth header.
+
+
+def auth_value(api_key: str, scheme: str | None) -> str:
+    """Builds the value of an auth header.
+
+    `scheme=None` sends the raw key (Anthropic's `x-api-key`, and other
+    `api-key`-style APIs); a custom scheme (Bearer/OAuth/api-key/Token) formats
+    it as `f"{scheme} {api_key}"`. The header *name* is provider's choice
+    (`Authorization`, `X-Api-Key`, ...) and is not decided here.
+    """
+    return api_key if scheme is None else f"{scheme} {api_key}"

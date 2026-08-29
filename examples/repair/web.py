@@ -103,7 +103,7 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
         FileKVBackend(str(Path(store_dir) if store_dir else ROOT / "sessions"))
     )
 
-    app = FastAPI(title="repair-ai (ctxspace)")
+    app = FastAPI(title="repair-ai (ctxloom)")
 
     @app.get("/api/health")
     async def health() -> dict:

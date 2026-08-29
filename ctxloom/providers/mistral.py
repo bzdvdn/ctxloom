@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .chat import OpenAICompatEmbedder, OpenAICompatProvider
+from .chat import OpenAICompatEmbedder, OpenAICompatProvider, _network_knobs
 
 
 def mistral_llm(
@@ -17,8 +17,9 @@ def mistral_llm(
         import os
 
         api_key = os.getenv("MISTRAL_API_KEY")
+    merged = {**_network_knobs("MISTRAL", kwargs), **kwargs}
     return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **kwargs
+        base_url=base_url, api_key=api_key, model=model, **merged
     )
 
 
@@ -32,6 +33,7 @@ def mistral_embedder(
         import os
 
         api_key = os.getenv("MISTRAL_API_KEY")
+    merged = {**_network_knobs("MISTRAL", kwargs), **kwargs}
     return OpenAICompatEmbedder(
-        base_url=base_url, api_key=api_key, model=model, **kwargs
+        base_url=base_url, api_key=api_key, model=model, **merged
     )

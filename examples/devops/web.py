@@ -82,7 +82,7 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
         str(Path(store_dir) / "traces.db") if store_dir else str(ROOT / "traces.db")
     )
 
-    app = FastAPI(title="devops-ai (ctxspace)")
+    app = FastAPI(title="devops-ai (ctxloom)")
     app.include_router(
         create_trace_router(
             trace_store,

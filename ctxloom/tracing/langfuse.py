@@ -49,7 +49,7 @@ class LangfuseTracer(Tracer):
             "/traces",
             {
                 "id": trace.id,
-                "name": "ctxspace run",
+                "name": "ctxloom run",
                 "timestamp": _iso(trace.started_at),
                 "sessionId": trace.session_id or None,
                 "metadata": {

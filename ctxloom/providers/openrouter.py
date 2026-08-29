@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .chat import OpenAICompatProvider
-from .image import OpenRouterImageProvider
+from .chat import OpenAICompatProvider, _network_knobs
+from .image import OpenAICompatImageProvider
 
 
 def openrouter_llm(
@@ -24,12 +24,13 @@ def openrouter_llm(
     extra_body: dict[str, Any] = dict(kwargs.pop("extra_body", None) or {})
     # hybrid models: disable reasoning by default (fast mode)
     extra_body.setdefault("reasoning", {"enabled": False})
+    merged = {**_network_knobs("OPENROUTER", kwargs), **kwargs}
     return OpenAICompatProvider(
         base_url=base_url,
         api_key=api_key,
         model=model,
         extra_body=extra_body,
-        **kwargs,
+        **merged,
     )
 
 
@@ -38,11 +39,12 @@ def openrouter_image(
     base_url: str = "https://openrouter.ai/api/v1",
     api_key: str | None = None,
     **kwargs: Any,
-) -> OpenRouterImageProvider:
+) -> OpenAICompatImageProvider:
     if api_key is None:
         import os
 
         api_key = os.getenv("OPENROUTER_API_KEY")
-    return OpenRouterImageProvider(
-        base_url=base_url, api_key=api_key, model=model, **kwargs
+    merged = {**_network_knobs("OPENROUTER", kwargs), **kwargs}
+    return OpenAICompatImageProvider(
+        base_url=base_url, api_key=api_key, model=model, **merged
     )

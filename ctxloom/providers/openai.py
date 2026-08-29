@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .chat import OpenAICompatEmbedder, OpenAICompatProvider
+from .chat import OpenAICompatEmbedder, OpenAICompatProvider, _network_knobs
 
 
 def openai_llm(
@@ -17,8 +17,9 @@ def openai_llm(
         import os
 
         api_key = os.getenv("OPENAI_API_KEY")
+    merged = {**_network_knobs("OPENAI", kwargs), **kwargs}
     return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **kwargs
+        base_url=base_url, api_key=api_key, model=model, **merged
     )
 
 
@@ -32,6 +33,7 @@ def openai_embedder(
         import os
 
         api_key = os.getenv("OPENAI_API_KEY")
+    merged = {**_network_knobs("OPENAI", kwargs), **kwargs}
     return OpenAICompatEmbedder(
-        base_url=base_url, api_key=api_key, model=model, **kwargs
+        base_url=base_url, api_key=api_key, model=model, **merged
     )

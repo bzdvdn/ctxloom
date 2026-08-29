@@ -8,12 +8,20 @@ from typing import Any
 
 import httpx
 
-from .contracts import LLMProvider, LLMRequest, LLMResponse, LLMResponseChunk
+from .contracts import (
+    LLMProvider,
+    LLMRequest,
+    LLMResponse,
+    LLMResponseChunk,
+    auth_value,
+)
 
 
 class AnthropicProvider(LLMProvider):
     """Provider for the Anthropic Messages API (/v1/messages, x-api-key).
 
+    Auth defaults to the Anthropic convention (`x-api-key` header, raw key) but
+    is configurable like the other providers (auth_header/auth_scheme/proxy).
     `response_format` does not exist in Anthropic — structured output is obtained
     via plain JSON in the text (the tolerant parse_structured covers this).
     """
@@ -27,6 +35,9 @@ class AnthropicProvider(LLMProvider):
         transport: Any | None = None,
         extra_headers: dict[str, str] | None = None,
         max_tokens_default: int = 4096,
+        proxy: str | None = None,
+        auth_header: str = "x-api-key",
+        auth_scheme: str | None = None,
     ):
         self.api_key = api_key
         self.model = model
@@ -34,12 +45,13 @@ class AnthropicProvider(LLMProvider):
         self._timeout = timeout
         self._max_tokens_default = max_tokens_default
         self._headers = {
-            "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
             **(extra_headers or {}),
         }
+        self._headers.setdefault(auth_header.lower(), auth_value(api_key, auth_scheme))
         self._transport = transport
+        self._proxy = proxy
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -48,6 +60,7 @@ class AnthropicProvider(LLMProvider):
                 timeout=self._timeout,
                 transport=self._transport,
                 headers=self._headers,
+                proxy=self._proxy,
             )
         return self._client
 
@@ -129,11 +142,23 @@ def anthropic_llm(
     model: str = "claude-3-5-sonnet-latest",
     **kwargs: Any,
 ) -> AnthropicProvider | None:
-    """Builds an Anthropic provider (key from ANTHROPIC_API_KEY)."""
-    if api_key is None:
-        import os
+    """Builds an Anthropic provider (key from ANTHROPIC_API_KEY).
 
-        api_key = os.getenv("ANTHROPIC_API_KEY")
+    Optional knobs in env or kwargs: ANTHROPIC_PROXY / proxy,
+    ANTHROPIC_AUTH_HEADER / auth_header (default x-api-key),
+    ANTHROPIC_AUTH_SCHEME / auth_scheme (default raw key).
+    """
+    import os
+
+    if api_key is None:
+        api_key = kwargs.get("api_key") or os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         return None
+    kwargs.setdefault("proxy", os.getenv("ANTHROPIC_PROXY") or None)
+    kwargs.setdefault(
+        "auth_header",
+        os.getenv("ANTHROPIC_AUTH_HEADER") or "x-api-key",
+    )
+    scheme = kwargs.get("auth_scheme") or os.getenv("ANTHROPIC_AUTH_SCHEME")
+    kwargs["auth_scheme"] = scheme if scheme else None
     return AnthropicProvider(api_key=api_key, model=model, **kwargs)

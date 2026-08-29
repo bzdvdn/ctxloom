@@ -15,14 +15,18 @@ from .contracts import (
     LLMRequest,
     LLMResponse,
     LLMResponseChunk,
+    auth_value,
 )
 
 
 class OpenAICompatProvider(LLMProvider):
     """OpenAI-compatible provider: OpenAI, Ollama, vLLM, LM Studio, OpenRouter.
 
-    `transport` can receive an httpx transport for tests (MockTransport)
-    or proxy/custom routing.
+    Auth is fully configurable because vendors disagree:
+      - header name:  `Authorization` (default), `X-Api-Key`, etc.
+      - key scheme:   `Bearer` (default), `OAuth`, `api-key`, or `None` (raw key).
+    `proxy` (a URL) is passed to the httpx client for corporate networks.
+    `transport` can receive an httpx transport for tests (MockTransport).
     """
 
     def __init__(
@@ -34,6 +38,9 @@ class OpenAICompatProvider(LLMProvider):
         transport: Any | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_body: dict[str, Any] | None = None,
+        proxy: str | None = None,
+        auth_header: str = "Authorization",
+        auth_scheme: str | None = "Bearer",
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -42,8 +49,9 @@ class OpenAICompatProvider(LLMProvider):
         self._extra_body = dict(extra_body or {})
         self._headers = dict(extra_headers or {})
         if api_key:
-            self._headers.setdefault("Authorization", f"Bearer {api_key}")
+            self._headers.setdefault(auth_header, auth_value(api_key, auth_scheme))
         self._transport = transport
+        self._proxy = proxy
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -52,6 +60,7 @@ class OpenAICompatProvider(LLMProvider):
                 timeout=self._timeout,
                 transport=self._transport,
                 headers=self._headers,
+                proxy=self._proxy,
             )
         return self._client
 
@@ -132,6 +141,9 @@ class OpenAICompatEmbedder(EmbeddingProvider):
         model: str = "text-embedding-3-small",
         timeout: float = 60.0,
         transport: Any | None = None,
+        proxy: str | None = None,
+        auth_header: str = "Authorization",
+        auth_scheme: str | None = "Bearer",
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -139,14 +151,18 @@ class OpenAICompatEmbedder(EmbeddingProvider):
         self._timeout = timeout
         self._headers = {"Content-Type": "application/json"}
         if api_key:
-            self._headers["Authorization"] = f"Bearer {api_key}"
+            self._headers[auth_header] = auth_value(api_key, auth_scheme)
         self._transport = transport
+        self._proxy = proxy
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
-                timeout=self._timeout, transport=self._transport, headers=self._headers
+                timeout=self._timeout,
+                transport=self._transport,
+                headers=self._headers,
+                proxy=self._proxy,
             )
         return self._client
 
@@ -169,11 +185,50 @@ class OpenAICompatEmbedder(EmbeddingProvider):
             self._client = None
 
 
+def _network_knobs(
+    prefix: str, overrides: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Provider kwargs for proxy/auth from env (`<PREFIX>_PROXY` /
+    `_AUTH_HEADER` / `_AUTH_SCHEME`) or explicit overrides.
+
+    Returns only the knobs that are actually configured, so a provider's own
+    default (e.g. Gemini's `x-goog-api-key`) is respected when nothing is set.
+    An empty `AUTH_SCHEME` means the raw key (no prefix).
+    """
+    import os
+
+    ov = overrides or {}
+    knobs: dict[str, Any] = {}
+
+    proxy = ov.get("proxy")
+    if proxy is None:
+        proxy = os.getenv(f"{prefix}_PROXY")
+    if proxy is not None:
+        knobs["proxy"] = proxy or None
+
+    header = ov.get("auth_header")
+    if header is None:
+        header = os.getenv(f"{prefix}_AUTH_HEADER")
+    if header is not None and header != "":
+        knobs["auth_header"] = header
+
+    scheme = ov.get("auth_scheme")
+    if scheme is None:
+        scheme = os.getenv(f"{prefix}_AUTH_SCHEME")
+    if scheme is not None:
+        knobs["auth_scheme"] = None if scheme == "" else scheme
+
+    return knobs
+
+
 def llm_from_env(**overrides: Any) -> OpenAICompatProvider | None:
     """Builds a provider from OPENAI_BASE_URL/OPENAI_API_KEY/OPENAI_MODEL.
 
     OPENAI_EXTRA_BODY (JSON) is added to every request — e.g., for
-    OpenRouter: '{"reasoning": {"enabled": false}}'. Returns None if
+    OpenRouter: '{"reasoning": {"enabled": false}}'. Optional network/auth
+    knobs: OPENAI_PROXY (URL), OPENAI_AUTH_HEADER (default Authorization),
+    OPENAI_AUTH_SCHEME (Bearer by default; set to "api-key", "OAuth" or an
+    empty value for providers that want the raw key). Returns None if
     BASE_URL is not set — the app runs on its fallbacks.
     """
     import os
@@ -190,11 +245,15 @@ def llm_from_env(**overrides: Any) -> OpenAICompatProvider | None:
         api_key=overrides.get("api_key") or os.getenv("OPENAI_API_KEY") or None,
         model=overrides.get("model") or os.getenv("OPENAI_MODEL") or None,
         extra_body=extra_body,
+        **_network_knobs("OPENAI", overrides),
     )
 
 
 def embedder_from_env(**overrides: Any) -> OpenAICompatEmbedder | None:
-    """Builds an embedder from EMBEDDER_BASE_URL/EMBEDDER_API_KEY/EMBEDDER_MODEL."""
+    """Builds an embedder from EMBEDDER_BASE_URL/EMBEDDER_API_KEY/EMBEDDER_MODEL.
+
+    Optional knobs: EMBEDDER_PROXY, EMBEDDER_AUTH_HEADER, EMBEDDER_AUTH_SCHEME.
+    """
     import os
 
     base_url = overrides.get("base_url") or os.getenv("EMBEDDER_BASE_URL")
@@ -206,4 +265,5 @@ def embedder_from_env(**overrides: Any) -> OpenAICompatEmbedder | None:
         base_url=base_url,
         api_key=api_key,
         model=model if isinstance(model, str) else "text-embedding-3-small",
+        **_network_knobs("EMBEDDER", overrides),
     )

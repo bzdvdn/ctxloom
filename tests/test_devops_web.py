@@ -142,7 +142,7 @@ def test_traces_ui_and_api(tmp_path):
 
     page = client.get("/traces")
     assert page.status_code == 200
-    assert "ctxspace" in page.text
+    assert "ctxloom" in page.text
 
     run_page = client.get("/traces/" + traces[0]["id"])
     assert run_page.status_code == 200
