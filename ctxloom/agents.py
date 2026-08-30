@@ -98,23 +98,21 @@ class Agent(ABC):  # noqa: B024 — interface without abstract methods, run() ha
         return inputs
 
     async def run(self, event: Event, context: Context) -> Patch | None:
-        return await self.execute(context, event)
+        await self.execute(context, event)
+        return None
 
-    async def execute(
-        self, context: Context, event: Event | None = None
-    ) -> Patch | None:
-        """Runs the agent (usually on an event), collecting patches from produces.
+    async def execute(self, context: Context, event: Event | None = None) -> None:
+        """Runs the agent's produces (usually on an event).
 
-        Produce factories receive the triggering event to know which artifact
-        woke them; the event is optional — execute can be called without it.
+        Effects-first (§24): produces write `self.effects.*` and return None;
+        the *runtime* compiles the effect slot into one atomic patch. This method
+        only *runs* the produces — it does not build a patch. (`run` remains the
+        agent-level escape hatch for custom Agent subclasses that assemble a
+        change-set by hand; the runtime merges its result after the effects.)
         """
         if not self.produces:
             return None
         inputs = self._collect_inputs(context)
-        combined_patch = Patch()
         for p in self.produces:
-            patch = await p.produce(context, inputs, event)
-            if patch is None:
-                continue  # produce returned "no work" (None — same as an empty Patch)
-            combined_patch.operations.extend(patch.operations)
-        return combined_patch if not combined_patch.is_empty() else None
+            await p.produce(context, inputs, event)
+        return None

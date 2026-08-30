@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from .artifacts import Artifact, ArtifactType
 from .context import Context
+from .effects import Effects
 from .events import Event
 from .patches import Patch
 
@@ -19,7 +20,17 @@ class Produce(Generic[TOut]):
     """Describes the produced artifact type and how it is created.
 
     You can subclass and override `produce`, or pass a factory.
-    The factory may return:
+
+    **Primary authoring surface — `self.effects`** (§24): a produce writes
+    `self.effects.create/update/link/ask(...)` and returns `None`; the runtime
+    compiles the slot into one atomic patch (commit + events + trace):
+
+        async def produce(self, context, inputs, event=None) -> None:
+            answer = self.effects.create(Answer(...), id="answer:q1")
+            answer.link("supported_by", evidence)
+            return None
+
+    The factory (legacy) may instead return:
     - a Patch (used as is)
     - a single Pydantic model (turned into a Create)
     - a list of Pydantic models (a Create is created for each)
@@ -59,19 +70,37 @@ class Produce(Generic[TOut]):
                 ]
                 self._accepts_event = len(positional) >= 3
 
+    @property
+    def effects(self) -> Effects:
+        """The produce-scoped effect slot (authoring surface, §24).
+
+        Only meaningful *inside* `produce()`: the runtime pushes a fresh slot
+        per execution. Returns an error outside a run.
+        """
+        from .effects import current_effects
+
+        slot = current_effects()
+        if slot is None:
+            raise RuntimeError(
+                "Produce.effects is only available while the runtime executes "
+                "this produce — write effects inside produce(), not before it."
+            )
+        return slot
+
     async def produce(
         self,
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
-        """Creates a Patch from the inputs (and, optionally, the trigger event).
+    ) -> None:
+        """Runs the factory and writes its effect into the slot (§24).
 
-        Overrides (subclass-style) must annotate `event: Event | None`
-        and return `Patch | None`; None — "no work".
+        Subclass-style overrides write `self.effects.*` and return None;
+        a `None` return means "no work". (The progress nest the old
+        `Patch | None` return — the runtime compiles the slot now.)
         """
         if self.factory is None:
-            return Patch()
+            return None
 
         if self._accepts_event:
             result = self.factory(context, inputs, event)
@@ -80,19 +109,25 @@ class Produce(Generic[TOut]):
         if asyncio.iscoroutine(result):
             result = await result
 
+        self._apply_result(result)
+
+    def _apply_result(self, result: Any) -> None:
+        """Writes a factory result into the effect slot (§24).
+
+        `None` — nothing; a model or a list of models — creates; a Patch — the
+        factory-level legacy escape (its operations are appended to the effects).
+        """
         if result is None:
-            return Patch()
-
+            return
         if isinstance(result, Patch):
-            return result
-
-        patch = Patch()
+            for op in result.operations:
+                self.effects.add(op)
+            return
         if isinstance(result, list):
             for item in result:
-                patch.create(item)
+                self.effects.create(item)
         else:
-            patch.create(result)
-        return patch
+            self.effects.create(result)
 
 
 def produce(
@@ -100,8 +135,9 @@ def produce(
 ) -> Callable[[Callable[..., Any]], Produce[Any]]:
     """Decorator to create a Produce from a function.
 
-    The function must accept (context, inputs, event) and return a Patch,
-    a list of models, a single model, or None.
+    The function must accept (context, inputs, event) and return a model,
+    a list of models, a Patch, or None; the produce writes its effects and its
+    `produce` returns None (the runtime compiles the slot).
     """
 
     def decorator(func: Callable[..., Any]) -> Produce[Any]:
@@ -120,21 +156,11 @@ def produce(
                 context: Context,
                 inputs: list[Artifact[Any]],
                 event: Event | None = None,
-            ) -> Patch:
+            ) -> None:
                 result = func(context, inputs, event)
                 if asyncio.iscoroutine(result):
                     result = await result
-                if result is None:
-                    return Patch()
-                if isinstance(result, Patch):
-                    return result
-                patch = Patch()
-                if isinstance(result, list):
-                    for item in result:
-                        patch.create(item)
-                else:
-                    patch.create(result)
-                return patch
+                self._apply_result(result)
 
         # Return an instance of the Produce class with the required artifact_type
         instance = _FunctionProduce(artifact_type=artifact_type)

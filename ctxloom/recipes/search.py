@@ -1,13 +1,33 @@
-"""recipes — ready-made search fan-out (§8, §24, §42)."""
+"""recipes — ready-made search fan-out (§8, §24, §42).
+
+Effects-based: fans out over every configured source and *writes* the ranked,
+idempotent `SourceRef`s into the current produce's `effects` slot instead of
+returning a patch to merge by hand. Returns the scoped refs so the caller can
+inspect/rank them and add its own marker effect (e.g. `SearchDone`).
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..context import Context
-from ..patches import Patch
 from ..sources import SourceRef
+
+if TYPE_CHECKING:
+    from ..effects import Effects
+
+
+def _active_effects(context: Context) -> Effects:
+    from ..effects import current_effects
+
+    effects = current_effects()
+    if effects is None:
+        raise RuntimeError(
+            "fan_out_sources/materialize_doc must run inside a produce "
+            "(the runtime provides `self.effects` for the turn)"
+        )
+    return effects
 
 
 async def fan_out_sources(
@@ -20,15 +40,17 @@ async def fan_out_sources(
     extra_metadata: dict[str, Any] | None = None,
     on_start: Callable[[str], None] | None = None,
     on_count: Callable[[str, int], None] | None = None,
-) -> tuple[Patch, list[SourceRef]]:
-    """Fans out over every configured source and builds idempotent refs.
+) -> list[SourceRef]:
+    """Fans out over every configured source and builds idempotent refs in `effects`.
 
-    Returns a patch with stable-id `SourceRef`s (scoped to `owner_id`, §42) and
-    the ranked refs, so the caller can also add its own "search done" marker.
-    A repeated fan-out for the same owner re-creates the same ids (create-or-
-    refresh), which the caller guards with an idempotency marker. `on_start` /
-    `on_count` receive each source's id and hit count for progress announces.
+    Each `SourceRef` becomes a `create(ref, id=f"ref:{ref.stable_id()}:{owner_id}")`
+    in the current produce's effect slot (§42), so a repeated fan-out for the same
+    owner re-creates the same ids (create-or-refresh). `on_start` / `on_count`
+    receive each source's id and hit count for progress announces. The returned
+    list is the scoped, ranked refs — the caller may inspect them and add its
+    own "search done" marker effect.
     """
+    effects = _active_effects(context)
     refs: list[SourceRef] = []
     for source in context.resources.sources.values():
         if on_start is not None:
@@ -39,7 +61,6 @@ async def fan_out_sources(
         refs.extend(found)
     refs.sort(key=lambda r: r.score or 0.0, reverse=True)
 
-    patch = Patch()
     scoped_refs: list[SourceRef] = []
     for ref in refs[:limit]:
         scoped = ref.model_copy(
@@ -53,5 +74,8 @@ async def fan_out_sources(
             }
         )
         scoped_refs.append(scoped)
-        patch.create(scoped, id=f"ref:{ref.stable_id()}:{owner_id}")
-    return patch, scoped_refs
+        effects.create(scoped, id=f"ref:{ref.stable_id()}:{owner_id}")
+    return scoped_refs
+
+
+__all__ = ["fan_out_sources"]

@@ -30,7 +30,7 @@ from .eval import (
     source_coverage,
 )
 from .events import Event, EventType
-from .interrupt import InterruptPatch, PendingQuestion
+from .interrupt import PendingQuestion
 from .llm_agent import HITLLMAgent, LLMAgent, StructuredGenerateAgent
 from .patches import Create, Delete, Link, Patch, Relation, Unlink, Update
 from .produce import Produce, produce
@@ -88,7 +88,6 @@ __all__ = [
     "FileKVBackend",
     "FunctionTool",
     "HITLLMAgent",
-    "InterruptPatch",
     "KVBackend",
     "LLMAgent",
     "LLMProvider",

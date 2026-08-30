@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from ..artifacts import Artifact
 from ..context import Context
 from ..events import Event
-from ..patches import Patch
 from ..produce import Produce
 
 StatusT = TypeVar("StatusT", bound=BaseModel)
@@ -54,7 +53,7 @@ class StatusMachine(Produce[StatusT], Generic[StatusT]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         artifact = context.get(event.artifact_id) if event is not None else None
         if artifact is None:
             return None
@@ -76,4 +75,5 @@ class StatusMachine(Produce[StatusT], Generic[StatusT]):
         if expected is None or expected == current:
             return None
         self.on_transition(context, key, str(current), expected)
-        return Patch().update_fields(target, **{self.status_field: expected})
+        self.effects.update(target, **{self.status_field: expected})
+        return None

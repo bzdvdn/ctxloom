@@ -10,6 +10,7 @@ from .agents import Agent
 from .budget import Budget, RunOutcome, RunStats
 from .commit import Commit, Read, Write
 from .context import Context
+from .effects import Effects, current_effects, reset_effects, set_effects
 from .events import Event
 from .patches import Create, Delete, Link, Patch, Unlink, Update
 from .session import Session
@@ -382,15 +383,28 @@ class Runtime:
         task = asyncio.current_task()
         if task is not None:
             self._agent_by_task[task] = agent.name
+        effects_token = set_effects(Effects(self.context))
+        slot: Effects | None = None
         try:
             if semaphore is not None:
                 async with semaphore:
                     patch = await agent.run(event, self.context)
             else:
                 patch = await agent.run(event, self.context)
+            slot = current_effects()
         finally:
+            reset_effects(effects_token)
             if task is not None and task in self._agent_by_task:
                 del self._agent_by_task[task]
+        # Effects authored in produce() compile to the patch. A produce's own
+        # effects happen *after* its returned patch (produce order), so an
+        # update that captured the pre-effect state cannot regress later effects.
+        if slot is not None and not slot.is_empty():
+            combined = Patch()
+            if patch is not None:
+                combined.merge(patch)
+            combined.merge(slot.to_patch())
+            patch = combined
         return patch, agent, event, reads, (time.monotonic() - started) * 1000
 
     async def arun(

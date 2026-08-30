@@ -7,7 +7,6 @@ from ctxloom import (
     Context,
     HITLLMAgent,
     LLMAgent,
-    Patch,
     PendingQuestion,
     Produce,
     Runtime,
@@ -97,7 +96,7 @@ def test_single_agent_loop_and_report():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class K8sAgent(Agent):
         consumes = [Consume(K8sProblems), Consume(ToolAnswer)]
@@ -142,7 +141,7 @@ def test_two_agents_do_not_crossfire():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class BuildGitlabReport(Produce[GitlabReport]):
         artifact_type = GitlabReport
@@ -152,7 +151,7 @@ def test_two_agents_do_not_crossfire():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(GitlabReport(text=a.data.text))
+            self.effects.create(GitlabReport(text=a.data.text))
 
     class K8sAgent(Agent):
         consumes = [
@@ -223,7 +222,7 @@ def test_tool_failure_is_returned_to_llm():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class Agent1(Agent):
         consumes = [Consume(K8sProblems), Consume(ToolAnswer)]
@@ -254,7 +253,7 @@ def test_budget_max_tool_calls_stops_loop():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class Agent1(Agent):
         consumes = [Consume(K8sProblems), Consume(ToolAnswer)]
@@ -284,7 +283,7 @@ def test_unknown_tool_reported_to_llm():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class Agent1(Agent):
         consumes = [Consume(K8sProblems), Consume(ToolAnswer)]
@@ -343,7 +342,7 @@ def test_llm_agent_tools_only_no_produces():
                 or a.data.agent != "helperagent"
             ):
                 return None
-            return Patch().create(ChatReply(text=a.data.text))
+            self.effects.create(ChatReply(text=a.data.text))
 
     class BaseChat(Agent):
         consumes = [Consume.by_field(ToolAnswer, "agent", "helperagent")]
@@ -377,7 +376,7 @@ def test_forced_answer_when_loop_hits_step_limit():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class Agent1(Agent):
         consumes = [Consume(K8sProblems), Consume(ToolAnswer)]
@@ -408,7 +407,7 @@ def test_hitl_agent_asks_clarifying_question_and_resumes():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class K8sAgent(HITLLMAgent):
         system = "Ты эксперт по k8s. Используй tool kubectl."
@@ -464,7 +463,7 @@ def test_max_asks_caps_rephrased_clarifications():
             a = context.get(event.artifact_id) if event is not None else None
             if a is None or not isinstance(a.data, ToolAnswer):
                 return None
-            return Patch().create(K8sReport(text=a.data.text))
+            self.effects.create(K8sReport(text=a.data.text))
 
     class K8sAgent(HITLLMAgent):
         system = "агент"

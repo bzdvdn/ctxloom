@@ -7,7 +7,6 @@ from ctxloom import (
     Budget,
     Consume,
     Context,
-    Patch,
     Produce,
     ReplayLLM,
     ReplayMiss,
@@ -39,12 +38,10 @@ class Pass(Produce[Note]):
     artifact_type = Note
 
     async def produce(self, context, inputs, event=None):
-        return (
-            Patch()
-            .create(Note(text="v1"), id="note:1")
-            .create(Note(text="v2"), id="note:2")
-            .link("note:1", "supported_by", "note:2")
-        )
+        note1 = self.effects.create(Note(text="v1"), id="note:1")
+        self.effects.create(Note(text="v2"), id="note:2")
+        note1.link("supported_by", "note:2")
+        return None
 
 
 class PassAgent(Agent):

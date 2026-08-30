@@ -4,7 +4,6 @@ from ctxloom import (
     Agent,
     Consume,
     Context,
-    Patch,
     Produce,
     Runtime,
     produce,
@@ -26,11 +25,12 @@ class Marker(BaseModel):
 class MarkerProduce(Produce):
     artifact_type = Marker
 
-    async def produce(self, context, inputs, event=None):
+    async def produce(self, context, inputs, event=None) -> None:
         artifact = context.get(event.artifact_id) if event is not None else None
         if artifact is None or not isinstance(artifact.data, Input):
             return None
-        return Patch().create(Marker(value=artifact.data.text.upper()))
+        self.effects.create(Marker(value=artifact.data.text.upper()))
+        return None
 
 
 class SubclassAgent(Agent):
@@ -108,7 +108,8 @@ class RecordProduce(Produce):
 
     async def produce(self, context, inputs, event=None):
         received["id"] = event.artifact_id if event is not None else None
-        return Patch().create(Marker(value="recorded"))
+        self.effects.create(Marker(value="recorded"))
+        return None
 
 
 class RecordAgent(Agent):

@@ -23,7 +23,6 @@ from .artifacts import Artifact
 from .context import Context
 from .events import Event
 from .interrupt import PendingQuestion
-from .patches import Patch
 from .produce import Produce
 from .structured import structured_llm
 from .tools import Tool
@@ -101,15 +100,16 @@ class ToolUse(Produce[ToolAnswer]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         artifact = context.get(event.artifact_id) if event is not None else None
         if artifact is None or isinstance(artifact.data, ToolAnswer):
             return None  # final answer is handled by user produces
         goal = getattr(artifact.data, "text", "") or ""
         text = await self._loop(context, goal)
-        return Patch().create(
+        self.effects.create(
             ToolAnswer(agent=self.name, query_id=artifact.id, text=text)
         )
+        return None
 
     async def _loop(self, context: Context, goal: str) -> str:
         history: list[str] = []
@@ -239,7 +239,7 @@ class ToolUseHITL(Produce[ToolAnswer]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         resolved = self._resolve(context, event)
         if resolved is None:
             return None
@@ -254,7 +254,7 @@ class ToolUseHITL(Produce[ToolAnswer]):
                 context.announce(
                     self.resume_announce(extra), kind="status", agent=self.name
                 )
-            return Patch().create(
+            self.effects.create(
                 Observation(
                     query_id=qid,
                     step=len(history) + 1,
@@ -263,9 +263,11 @@ class ToolUseHITL(Produce[ToolAnswer]):
                     agent=self.name,
                 )
             )
+            return None
 
         if len(history) >= self.max_steps:
-            return await self._forced_answer(context, qid, goal, history)
+            await self._forced_answer(context, qid, goal, history)
+            return None
 
         decision = await structured_llm(
             context,
@@ -274,12 +276,15 @@ class ToolUseHITL(Produce[ToolAnswer]):
             user=self._user_prompt(goal, history),
         )
         if decision is None:
-            return self._answer(qid, "Could not reach a decision.")
+            self._answer(qid, "Could not reach a decision.")
+            return None
         if decision.type == "answer":
-            return self._answer(qid, decision.text)
+            self._answer(qid, decision.text)
+            return None
         if decision.type == "ask":
             if not decision.text:
-                return self._answer(qid, "Question not specified.")
+                self._answer(qid, "Question not specified.")
+                return None
             asked = [
                 q
                 for q in context.list_artifacts(PendingQuestion)
@@ -289,11 +294,10 @@ class ToolUseHITL(Produce[ToolAnswer]):
             if asked:
                 answers = [q.data.resolution for q in asked if q.data.answered]
                 if not answers:
-                    return (
-                        None  # the same question was already asked and awaits an answer
-                    )
+                    # the same question was already asked and awaits an answer
+                    return None
                 # LLM asks the same thing again — nudge it to continue
-                return Patch().create(
+                self.effects.create(
                     Observation(
                         query_id=qid,
                         step=len(history) + 1,
@@ -306,6 +310,7 @@ class ToolUseHITL(Produce[ToolAnswer]):
                         agent=self.name,
                     )
                 )
+                return None
             asked_count = len(
                 [
                     q
@@ -315,7 +320,7 @@ class ToolUseHITL(Produce[ToolAnswer]):
             )
             if asked_count >= self.max_asks:
                 # no more questions — continue with what we have
-                return Patch().create(
+                self.effects.create(
                     Observation(
                         query_id=qid,
                         step=len(history) + 1,
@@ -329,22 +334,22 @@ class ToolUseHITL(Produce[ToolAnswer]):
                         agent=self.name,
                     )
                 )
-            return Patch().create(
-                PendingQuestion(
-                    question=decision.text,
-                    kind="clarify",
-                    notes={"query_id": qid, "agent": self.name},
-                ),
-                id=f"ask:{qid}:{len(history)}",
+                return None
+            self.effects.ask(
+                decision.text,
+                kind="clarify",
+                notes={"query_id": qid, "agent": self.name},
             )
+            return None
         if not decision.tool:
-            return self._answer(qid, "Tool not specified.")
+            self._answer(qid, "Tool not specified.")
+            return None
 
         tool_history = [o for o in history if o.source == "tool"]
         budget = context.resources.get("budget")
         max_tool_calls = budget.max_tool_calls if budget is not None else None
         if max_tool_calls is not None and len(tool_history) >= max_tool_calls:
-            return Patch().create(
+            self.effects.create(
                 Observation(
                     query_id=qid,
                     step=len(history) + 1,
@@ -356,11 +361,12 @@ class ToolUseHITL(Produce[ToolAnswer]):
                     agent=self.name,
                 )
             )
+            return None
         context.announce(
             f"Calling tool '{decision.tool}'…", kind="agent", tool=decision.tool
         )
         result = await self._run_tool(context, decision.tool, decision.args)
-        return Patch().create(
+        self.effects.create(
             Observation(
                 query_id=qid,
                 step=len(history) + 1,
@@ -369,9 +375,10 @@ class ToolUseHITL(Produce[ToolAnswer]):
                 agent=self.name,
             )
         )
+        return None
 
-    def _answer(self, qid: str, text: str) -> Patch:
-        return Patch().create(ToolAnswer(agent=self.name, query_id=qid, text=text))
+    def _answer(self, qid: str, text: str) -> None:
+        self.effects.create(ToolAnswer(agent=self.name, query_id=qid, text=text))
 
     def _resolve(
         self, context: Context, event: Event | None
@@ -411,7 +418,7 @@ class ToolUseHITL(Produce[ToolAnswer]):
 
     async def _forced_answer(
         self, context: Context, qid: str, goal: str, history: list[Observation]
-    ) -> Patch:
+    ) -> None:
         forced = await structured_llm(
             context,
             schema=_FinalAnswer,
@@ -424,7 +431,7 @@ class ToolUseHITL(Produce[ToolAnswer]):
             if forced is not None and forced.text
             else "Step limit reached; answer based on the available data."
         )
-        return self._answer(qid, text)
+        self._answer(qid, text)
 
     def _system_prompt(self) -> str:
         usable = [t for t in self.tools.values() if not t.destructive]

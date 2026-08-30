@@ -23,7 +23,6 @@ from .consume import Consume
 from .context import Context
 from .events import Event
 from .interrupt import PendingQuestion
-from .patches import Patch
 from .produce import Produce
 from .structured import SYSTEM_STRUCTURED, structured_llm
 from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
@@ -56,7 +55,7 @@ class StructuredGenerateAgent(Agent):
     def fallback(self, inputs: list[Artifact[Any]]) -> BaseModel | None:
         return None
 
-    async def run(self, event: Event, context: Context) -> Patch | None:
+    async def run(self, event: Event, context: Context) -> None:
         inputs = self.collect_inputs(context)
         if not inputs or self.schema is None:
             return None
@@ -72,7 +71,13 @@ class StructuredGenerateAgent(Agent):
             result = self.fallback(inputs)
         if result is None:
             return None
-        return Patch().create(result)
+        from .effects import current_effects
+
+        effects = current_effects()
+        if effects is None:  # running outside the runtime — nothing to commit to
+            return None
+        effects.create(result)
+        return None
 
 
 class LLMAgent(Agent):

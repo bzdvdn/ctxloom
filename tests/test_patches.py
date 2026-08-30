@@ -1,5 +1,4 @@
 from ctxloom.artifacts import Artifact
-from ctxloom.interrupt import InterruptPatch, PendingQuestion
 from ctxloom.patches import Create, Patch, Update
 from pydantic import BaseModel
 
@@ -30,21 +29,6 @@ def test_merge_skips_none():
     assert len(patch.operations) == 1
 
 
-def test_merge_existing_patch_combines_and_skips_none():
-    one = Patch().create(Item(name="a", qty=1), id="a")
-    two = Patch().update("a", Item(name="a", qty=2))
-    merged = Patch.merge_existing_patch(one, None, two)
-    assert merged is not one
-    assert merged is not two
-    assert [type(op) for op in merged.operations] == [Create, Update]
-    assert one.operations  # the original patches are not mutated
-
-
-def test_merge_existing_patch_empty():
-    merged = Patch.merge_existing_patch()
-    assert merged.is_empty()
-
-
 def test_update_fields_builds_full_update():
     item = Artifact(data=Item(name="a", qty=1))
     patch = Patch().update_fields(item, qty=2)
@@ -59,16 +43,3 @@ def test_update_fields_returns_self_for_chaining():
     item = Artifact(data=Item(name="a", qty=1))
     patch = Patch()
     assert patch.update_fields(item, qty=2) is patch
-
-
-def test_interrupt_patch_answer():
-    question = Artifact(data=PendingQuestion(question="Утвердить?", kind="approval"))
-    patch = InterruptPatch().answer(question, "да")
-    assert isinstance(patch, InterruptPatch)
-    op = patch.operations[0]
-    assert isinstance(op, Update)
-    answered = op.new_data
-    assert answered.answered is True
-    assert answered.resolution == "да"
-    assert answered.resolved_at is not None
-    assert answered.question == "Утвердить?"  # other fields preserved

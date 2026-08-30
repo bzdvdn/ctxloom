@@ -3,7 +3,7 @@
 import asyncio
 from pathlib import Path
 
-from ctxloom import Agent, Consume, Context, Patch, Produce, Runtime, RuntimeResources
+from ctxloom import Agent, Consume, Context, Produce, Runtime, RuntimeResources
 from ctxloom.artifacts import Artifact
 from ctxloom.recipes import StatusMachine, fan_out_sources, materialize_doc
 from ctxloom.sources import FileSystemSource, SourceRef
@@ -33,41 +33,81 @@ def build_pages(tmp_path) -> FileSystemSource:
 
 
 def test_fan_out_sources_builds_owner_tagged_refs(tmp_path):
+    """fan_out_sources writes idempotent refs into the produce's effects slot."""
+
+    class Scout(Produce[SourceRef]):
+        artifact_type = SourceRef
+
+        async def produce(self, context, inputs, event=None):
+            await fan_out_sources(
+                context,
+                "vitamin D nutritional supplementation",
+                owner_id="job1",
+                limit=2,
+            )
+            self.effects.create(Job(query_id="job1", text="scouted"), id="marker:job1")
+            return None
+
+    class Engine(Agent):
+        consumes = [Consume(Job)]
+        produces = [Scout(), Produce(Job)]
+
     ctx = Context(resources=RuntimeResources(sources={"papers": build_pages(tmp_path)}))
-    patch, refs = asyncio.run(
-        fan_out_sources(
-            ctx, "vitamin D nutritional supplementation", owner_id="job1", limit=2
-        )
-    )
+    runtime = Runtime(ctx, agents=[Engine()])
+    ctx.create(Job(query_id="job1", status="pending"))
+    asyncio.run(runtime.arun())
+
+    refs = ctx.list_artifacts(SourceRef)
     assert refs
-    assert all(r.metadata.get("owner_id") == "job1" for r in refs)
-    assert all(r.query_id == "job1" for r in refs)
-    # stable ids scoped to the owner (Create.id, not artifact_id — set on apply)
-    ids = {op.id for op in patch.operations if op.id}
-    assert ids and all(i.startswith("ref:") for i in ids)
+    assert all(r.data.metadata.get("owner_id") == "job1" for r in refs)
+    assert all(r.data.query_id == "job1" for r in refs)
+    assert all(r.id.startswith("ref:") for r in refs)
+    # the effects slot compiled and committed both the refs and the marker
+    assert ctx.get("marker:job1") is not None
 
 
 def test_materialize_doc_builds_doc_with_provenance(tmp_path):
+    """materialize_doc creates the doc + link in effects (resolved_from, §34)."""
+
+    class Scout(Produce[SourceRef]):
+        artifact_type = SourceRef
+
+        async def produce(self, context, inputs, event=None):
+            await fan_out_sources(context, "prevents colds", owner_id="q1", limit=1)
+            return None
+
+    class Resolver(Produce[Doc]):
+        artifact_type = Doc
+
+        async def produce(self, context, inputs, event=None):
+            ref_art = context.get(event.artifact_id) if event is not None else None
+            if ref_art is None or not isinstance(ref_art.data, SourceRef):
+                return None
+
+            def factory(_ctx: Context, _ref: Artifact[SourceRef], content: str) -> Doc:
+                return Doc(
+                    query_id=_ref.data.query_id,
+                    path=_ref.data.locator,
+                    content=content,
+                )
+
+            await materialize_doc(context, ref_art, factory, relation="resolved_from")
+            return None
+
+    class Engine(Agent):
+        consumes = [Consume(Job), Consume(SourceRef)]
+        produces = [Scout(), Resolver()]
+
     ctx = Context(resources=RuntimeResources(sources={"papers": build_pages(tmp_path)}))
-    refs = asyncio.run(fan_out_sources(ctx, "prevents colds", owner_id="q1", limit=1))[
-        1
-    ]
-    assert refs
+    runtime = Runtime(ctx, agents=[Engine()])
+    ctx.create(Job(query_id="q1", status="pending"))
+    asyncio.run(runtime.arun())
 
-    def factory(_ctx: Context, _ref: Artifact[SourceRef], content: str) -> Doc:
-        return Doc(query_id=_ref.data.query_id, path=_ref.data.locator, content=content)
-
-    patch = asyncio.run(
-        materialize_doc(ctx, Artifact(data=refs[0]), factory, relation="resolved_from")
-    )
-    assert patch is not None
-    creates = [op for op in patch.operations if op.__class__.__name__ == "Create"]
-    assert creates and creates[0].data.query_id == "q1"
-    assert any(
-        op.relation == "resolved_from"
-        for op in patch.operations
-        if hasattr(op, "relation")
-    )
+    docs = ctx.list_artifacts(Doc)
+    assert docs
+    doc = docs[0]
+    assert doc.data.query_id == "q1"
+    assert len(ctx.related(doc.id, relation="resolved_from")) == 1
 
 
 class Fill(Produce[Job]):
@@ -77,7 +117,8 @@ class Fill(Produce[Job]):
         target = context.get(event.artifact_id)
         if target is None:
             return None
-        return Patch().update_fields(target, text="filled")
+        self.effects.update(target, text="filled")
+        return None
 
 
 class Survey(StatusMachine[Job]):
