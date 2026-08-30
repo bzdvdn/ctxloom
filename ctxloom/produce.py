@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -19,28 +19,21 @@ TOut = TypeVar("TOut", bound=BaseModel)
 class Produce(Generic[TOut]):
     """Describes the produced artifact type and how it is created.
 
-    You can subclass and override `produce`, or pass a factory.
-
-    **Primary authoring surface — `self.effects`** (§24): a produce writes
-    `self.effects.create/update/link/ask(...)` and returns `None`; the runtime
-    compiles the slot into one atomic patch (commit + events + trace):
-
-        async def produce(self, context, inputs, event=None) -> None:
-            answer = self.effects.create(Answer(...), id="answer:q1")
-            answer.link("supported_by", evidence)
-            return None
-
-    The factory (legacy) may instead return:
-    - a Patch (used as is)
-    - a single Pydantic model (turned into a Create)
-    - a list of Pydantic models (a Create is created for each)
-    - None or an empty list (empty Patch)
-
-    The factory accepts (context, inputs) or (context, inputs, event) if it
-    needs to know which event woke it up (for example, which of the input
-    artifacts became the trigger). Whether it accepts event is determined from
-    its signature once at creation.
+    `artifact_type` is auto-derived from the generic when a subclass is written
+    as `class X(Produce[Foo])` — write it explicitly only to override or when
+    the class has no generic (e.g. programmatic `Produce(Foo)`).
     """
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if "artifact_type" in cls.__dict__ or cls.artifact_type is not None:
+            return
+        for base in getattr(cls, "__orig_bases__", ()):
+            if get_origin(base) is Produce:
+                args = get_args(base)
+                if args and isinstance(args[0], type):
+                    cls.artifact_type = args[0]
+                    return
 
     artifact_type: ArtifactType | None = None
     factory: Callable[..., Any] | None = None

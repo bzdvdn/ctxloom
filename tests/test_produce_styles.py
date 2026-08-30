@@ -125,3 +125,13 @@ def test_event_reaches_produce():
 
     assert received["id"] == artifact.id
     assert len(ctx.list_artifacts(Marker)) == 1
+
+
+def test_artifact_type_auto_derived_from_generic():
+    class Auto(Produce[Marker]):
+        async def produce(self, context, inputs, event=None):
+            return None
+
+    assert Auto.artifact_type is Marker
+    instance = Auto()
+    assert instance.artifact_type is Marker
