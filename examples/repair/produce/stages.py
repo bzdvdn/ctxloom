@@ -21,18 +21,14 @@ from ctxloom import (
 )
 from ctxloom.artifacts import Artifact
 from ctxloom.events import Event
+from ctxloom.recipes import changed_fields
 
 from ..models import AssistantReply, Project, ProjectInfo, UserMsg
-from ..services import (
-    FACT_LABELS,
-    REQUIRED_FACTS,
-    build_estimate,
-    changed_fields,
-    ensure_geometry,
-    fast_reply,
-    qa_budget_warning,
-    rollback_target,
-)
+from ..services.estimate import build_estimate, qa_budget_warning
+from ..services.facts import FACT_LABELS, REQUIRED_FACTS
+from ..services.fast import fast_reply
+from ..services.geometry import ensure_geometry
+from ..services.rollback import rollback_target
 from .common import (
     _APPROVE_RE,
     _BUDGET_COMPLAINT,

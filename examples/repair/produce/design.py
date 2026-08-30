@@ -19,7 +19,7 @@ from ctxloom.context import Context
 from ..fallbacks import fallback_options
 from ..image_prompt import build_image_prompt
 from ..models import DesignOption, DesignOptions, ProjectInfo
-from ..services import geometry_text
+from ..services.geometry import geometry_text
 from .common import (
     _IMAGE_RENDER_RETRIES,
     _IMAGE_RENDER_TIMEOUT,

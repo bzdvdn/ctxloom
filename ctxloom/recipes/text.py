@@ -1,9 +1,9 @@
-"""App-domain text utilities: the Russian stemmer (repair) + English scorer.
+"""recipes.text — deterministic text scoring without embeddings (§8, §67).
 
-These are not framework core, but application-level utilities: the price catalog
-and the lexical user search rely on language morphology. The Russian stemmer
-serves the Russian `repair` demo; `english_kw_score` serves the English
-`knowledge` chat.
+Keyword coverage is the neutral fallback where vectors are optional: the English
+`knowledge` chat and the Russian `repair` demo rank documents/catalog rows by
+how much of the query is present in the text. Everything here is pure and
+LLM-free; `keyword_score` is stop-word- and (optionally) stem-aware.
 """
 
 from __future__ import annotations
@@ -12,9 +12,7 @@ import re
 
 _WORD = re.compile(r"[\wа-яё]{2,}")
 
-_EN_WORD = re.compile(r"[a-z]{2,}")
-
-_EN_STOPWORDS = frozenset(
+EN_STOPWORDS = frozenset(
     {
         "a",
         "an",
@@ -113,7 +111,8 @@ _EN_STOPWORDS = frozenset(
     }
 )
 
-_STEM_SUFFIXES = (
+#: Russian inflectional suffixes (used when `use_stems=True`).
+_RU_SUFFIXES = (
     "аться",
     "иться",
     "ами",
@@ -151,14 +150,14 @@ _STEM_SUFFIXES = (
 def stem(word: str) -> str:
     """Truncates common inflectional suffixes of a Russian word.
 
-    «аутентификацию» and «аутентификация» must match where
-    embedders are not needed.
+    «аутентификацию» and «аутентификация» must match where embedders are not
+    needed. English words pass through unchanged (the suffix list is Cyrillic).
     """
     w = word.lower()
     changed = True
     while changed:
         changed = False
-        for suffix in _STEM_SUFFIXES:
+        for suffix in _RU_SUFFIXES:
             if len(w) - len(suffix) >= 3 and w.endswith(suffix):
                 w = w[: -len(suffix)]
                 changed = True
@@ -166,30 +165,38 @@ def stem(word: str) -> str:
     return w
 
 
-def stem_words(text: str) -> set[str]:
-    """Set of word stems in the text (Latin and Cyrillic)."""
-    return {stem(t) for t in _WORD.findall(text.lower())}
+def _tokens(text: str) -> list[str]:
+    """Lowercased word tokens; digit-only tokens never match a query term."""
+    lower = text.lower()
+    return [t for t in _WORD.findall(lower) if not t.isdigit()]
 
 
-def stem_score(text: str, query: str) -> float:
-    """Coverage of query stems by text stems (0..1), without embedders."""
-    query_stems = {stem(t) for t in _WORD.findall(query.lower()) if not t.isdigit()}
-    if not query_stems:
-        return 0.0
-    text_stems = stem_words(text)
-    hits = sum(1 for s in query_stems if s in text_stems)
-    return hits / len(query_stems)
+def stem_words(text: str) -> frozenset[str]:
+    """Frozenset of word stems in the text (Latin and Cyrillic)."""
+    return frozenset(stem(t) for t in _tokens(text))
 
 
-def english_kw_score(text: str, query: str) -> float:
-    """Coverage of the (stop-word-free) English query terms by the text (0..1).
+def keyword_score(
+    text: str,
+    query: str,
+    *,
+    stopwords: frozenset[str] = EN_STOPWORDS,
+    use_stems: bool = False,
+) -> float:
+    """Coverage of the query terms by the text (0..1), without embedders.
 
-    Neutral keyword matching for the English `knowledge` demo (§8, §67): no
-    stemmer, just exact terms minus the common function words, so «how to set
-    up authentication?» resolves only to the authentication page.
+    `stopwords` are removed from both sides (English function words by default);
+    with `use_stems=True` both sides are stemmed (Russian morphology), so
+    «аутентификация» matches «аутентификацию». Returns 0.0 for an empty query.
     """
-    words = {w for w in _EN_WORD.findall(text.casefold()) if w not in _EN_STOPWORDS}
-    terms = {t for t in _EN_WORD.findall(query.casefold()) if t not in _EN_STOPWORDS}
-    if not terms:
+    text_terms = set(_tokens(text)) - set(stopwords)
+    query_terms = set(_tokens(query)) - set(stopwords)
+    if not query_terms:
         return 0.0
-    return sum(1 for t in terms if t in words) / len(terms)
+    if use_stems:
+        text_terms = {stem(t) for t in text_terms}
+        query_terms = {stem(t) for t in query_terms}
+    return sum(1 for term in query_terms if term in text_terms) / len(query_terms)
+
+
+__all__ = ["EN_STOPWORDS", "keyword_score", "stem", "stem_words"]

@@ -21,6 +21,7 @@ from ctxloom import (
     SessionStore,
 )
 from ctxloom.providers import llm_from_env
+from ctxloom.recipes import keyword_score
 from ctxloom.sources import CSVSource, FileSystemSource
 from dotenv import load_dotenv
 from examples.knowledge.agents import (
@@ -35,7 +36,6 @@ from examples.knowledge.agents import (
     VerifierAgent,
 )
 from examples.knowledge.models import Answer, ChatReply, ResearchTurn, UserQuery
-from examples.textutil import english_kw_score
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -57,12 +57,12 @@ def build_resources(llm: Any = _UNSET) -> RuntimeResources:
             "guide": FileSystemSource(
                 str(KNOWLEDGE_DOCS / "guide"),
                 source_id="guide",
-                scorer=english_kw_score,
+                scorer=keyword_score,
             ),
             "pricing": FileSystemSource(
                 str(KNOWLEDGE_DOCS / "pricing"),
                 source_id="pricing",
-                scorer=english_kw_score,
+                scorer=keyword_score,
             ),
             "costs": CSVSource(str(KNOWLEDGE_DOCS / "costs"), source_id="costs"),
         },

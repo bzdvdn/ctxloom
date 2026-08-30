@@ -33,3 +33,23 @@ from the local price catalog, and — when you say the plan is over budget —
 `data/price.csv` is a real-weight construction catalog (bricks, plywood,
 drywall, blocks) in ₽; `data/materials.csv` is a small curated list for the
 fast catalog demo. Both are Russian by design (see the note above).
+
+## Structure
+
+```
+examples/repair/
+  models.py            Project/ProjectInfo/PlanStep/Estimate/ChatReply/…
+  prompts.py           role prompts (PromptTemplate)
+  produce/             the staged pipeline
+    common.py          shared helpers + the reset map (change → rebuild)
+    design.py          LLM design options + preview rendering
+    plan.py            the plan prompt and driver
+    stages.py          six stages (collect → … → assistant)
+  services/            deterministic logic (no LLM, §67)
+    facts.py · fast.py · geometry.py · catalog.py · estimate.py · rollback.py
+  fallbacks.py         demo-mode fallbacks (no model)
+  image_prompt.py      photo-preview prompt builder
+  agents.py            RepairFlow (thin container over the stages)
+  chat.py · web.py     entrypoints (console · FastAPI/SSE)
+  data/ · web/ · sessions/
+```

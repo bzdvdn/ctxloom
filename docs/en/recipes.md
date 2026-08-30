@@ -105,3 +105,43 @@ Put your *verify* logic into another `produce` that react on status changes —
 the machine and the verifier are separate, deterministic, and unit-testable.
 The knowledge/research demos' `EvaluateTurn` are the canonical instance of
 this recipe.
+
+## `keyword_score` / `stem_words` — deterministic text scoring (§67)
+
+Where embeddings are optional, keyword coverage is the neutral fallback (the
+English `knowledge` chat and the Russian `repair` catalog use it):
+
+```python
+from ctxloom.recipes import EN_STOPWORDS, keyword_score, stem_words
+
+keyword_score("How to set up authentication", "authentication")          # 1.0
+keyword_score("Установка аутентификации", "аутентификацию", use_stems=True)  # 1.0
+stem_words("Ремонт комнаты и kitchen")  # {"ремонт", "комнат", "kitchen"}
+```
+
+- English stop words are removed from both sides by default (`EN_STOPWORDS`).
+- `use_stems=True` applies a small Russian inflectional stemmer, so
+  «аутентификацию» matches «аутентификация» without a model.
+
+## `changed_fields` / `earliest_stage` / `downstream_fields` — change → rebuild
+
+Long multi-stage flows occasionally have to *go back*: the user edits a fact,
+the pipeline rebuilds from the earliest affected stage and clears everything
+downstream. The helpers are generic; the workflow is your `field_stages` map and
+stage order (the `repair` approval is the canonical usage):
+
+```python
+from ctxloom.recipes import changed_fields, downstream_fields, earliest_stage
+
+field_stages = {"room": "collect", "style": "design_choice",
+                "area": "plan", "budget": "estimate"}
+order = ("collect", "design_choice", "plan", "estimate")
+
+changed = changed_fields(old_info, new_info)          # {"style", "budget"}
+target = earliest_stage(changed, field_stages=field_stages, order=order)
+reset = downstream_fields(target, field_stages=field_stages, order=order)
+```
+
+`changed_fields` ignores fields the new state left `None` (the model didn't
+know); `earliest_stage` returns `None` when nothing changed; `downstream_fields`
+is target-inclusive (everything at that stage or later is reset, upstream kept).

@@ -14,10 +14,14 @@ from typing import Any
 from ctxloom import Patch, structured_llm
 from ctxloom.artifacts import Artifact
 from ctxloom.context import Context
-from examples.textutil import stem_words
+from ctxloom.recipes import (
+    changed_fields,
+    downstream_fields,
+    stem_words,
+)
 
 from ..models import ChatReply, DesignOption, Project, ProjectInfo, UserMsg
-from ..services import changed_fields, ensure_geometry, geometry_text
+from ..services.geometry import ensure_geometry, geometry_text
 
 logger = logging.getLogger(__name__)
 
@@ -166,18 +170,30 @@ def _approval_text(project: Project) -> str:
     )
 
 
+#: Reset mapping built on the generic change → rebuild recipe (recipes.rollback).
+_RESET_STAGE_FIELDS: dict[str, str] = {
+    "design_options": "design_choice",
+    "design_choice": "design_choice",
+    "palette": "design_choice",
+    "plan": "plan",
+    "estimate": "estimate",
+}
+_RESET_EMPTY: dict[str, Any] = {
+    "design_options": [],
+    "design_choice": "",
+    "palette": {},
+    "plan": [],
+    "estimate": None,
+}
+_RESET_STAGE_ORDER = ("collect", "design_choice", "plan", "estimate")
+
+
 def _downstream_resets(target: str) -> dict[str, Any]:
     """What to reset when rolling back to `target` (the change model from services)."""
-    resets: dict[str, Any] = {}
-    if target in ("collect", "design_choice"):
-        resets["design_options"] = []
-        resets["design_choice"] = ""
-        resets["palette"] = {}
-    if target in ("collect", "design_choice", "plan"):
-        resets["plan"] = []
-    if target in ("collect", "design_choice", "plan", "estimate"):
-        resets["estimate"] = None
-    return resets
+    fields = downstream_fields(
+        target, field_stages=_RESET_STAGE_FIELDS, order=_RESET_STAGE_ORDER
+    )
+    return {field: _RESET_EMPTY[field] for field in fields}
 
 
 __all__ = [

@@ -106,3 +106,44 @@ class EvaluateTurn(StatusMachine[ResearchTurn]):
 машина и верификатор разделены, детерминированы и тестируются по отдельности.
 `EvaluateTurn` в примерах knowledge/research — канонический образец этого
 рецепта.
+
+## `keyword_score` / `stem_words` — детерминированный скоринг текста (§67)
+
+Там, где эмбеддинги опциональны, покрытие по ключевым словам — нейтральный
+фолбэк (английский чат `knowledge` и каталог `repair` используют именно его):
+
+```python
+from ctxloom.recipes import EN_STOPWORDS, keyword_score, stem_words
+
+keyword_score("How to set up authentication", "authentication")          # 1.0
+keyword_score("Установка аутентификации", "аутентификацию", use_stems=True)  # 1.0
+stem_words("Ремонт комнаты и kitchen")  # {"ремонт", "комнат", "kitchen"}
+```
+
+- Английские стоп-слова убираются с обеих сторон по умолчанию (`EN_STOPWORDS`).
+- `use_stems=True` включает небольшой русский стеммер окончаний, поэтому
+  «аутентификацию» совпадает с «аутентификация» без модели.
+
+## `changed_fields` / `earliest_stage` / `downstream_fields` — «изменить → пересобрать»
+
+Длинные многоэтапные потоки иногда должны *откатываться*: пользователь правит
+факт, пайплайн пересобирается с самой ранней затронутой стадии и очищает всё
+ниже по потоку. Хелперы общие; ваш — это карта `field_stages` и порядок стадий
+(одобрение в `repair` — канонический пример):
+
+```python
+from ctxloom.recipes import changed_fields, downstream_fields, earliest_stage
+
+field_stages = {"room": "collect", "style": "design_choice",
+                "area": "plan", "budget": "estimate"}
+order = ("collect", "design_choice", "plan", "estimate")
+
+changed = changed_fields(old_info, new_info)          # {"style", "budget"}
+target = earliest_stage(changed, field_stages=field_stages, order=order)
+reset = downstream_fields(target, field_stages=field_stages, order=order)
+```
+
+`changed_fields` игнорирует поля, которые в новом состоянии остались `None`
+(модель не знала); `earliest_stage` возвращает `None`, если ничего не изменилось;
+`downstream_fields` включает саму цель (всё на этой стадии и позже сбрасывается,
+выше по потоку — сохраняется).

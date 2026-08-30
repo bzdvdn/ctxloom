@@ -7,6 +7,7 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
+from ctxloom.recipes import keyword_score
 from ctxloom.sources import CSVSource, FileSystemSource
 from examples.knowledge.agents import (
     AnswerBuilder,
@@ -29,7 +30,6 @@ from examples.knowledge.models import (
     Spreadsheet,
     UserQuery,
 )
-from examples.textutil import english_kw_score
 
 DOCS = Path(__file__).resolve().parents[1] / "examples" / "knowledge" / "docs"
 
@@ -37,10 +37,10 @@ DOCS = Path(__file__).resolve().parents[1] / "examples" / "knowledge" / "docs"
 def build_runtime(extra_sources=None, replace=False):
     default = {
         "guide": FileSystemSource(
-            str(DOCS / "guide"), source_id="guide", scorer=english_kw_score
+            str(DOCS / "guide"), source_id="guide", scorer=keyword_score
         ),
         "pricing": FileSystemSource(
-            str(DOCS / "pricing"), source_id="pricing", scorer=english_kw_score
+            str(DOCS / "pricing"), source_id="pricing", scorer=keyword_score
         ),
     }
     if extra_sources is not None and not replace:
