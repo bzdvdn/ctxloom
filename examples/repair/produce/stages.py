@@ -14,12 +14,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Context, Produce, structured_llm
+from ctxloom import Context, Produce, llm_reply
 from ctxloom.artifacts import Artifact
 from ctxloom.events import Event
 from ctxloom.recipes import changed_fields
 
-from ..models import AssistantReply, ChatReply, Project, ProjectInfo, UserMsg
+from ..models import ChatReply, Project, ProjectInfo, UserMsg
 from ..services.estimate import build_estimate, qa_budget_warning
 from ..services.facts import FACT_LABELS, REQUIRED_FACTS
 from ..services.fast import fast_reply
@@ -339,16 +339,39 @@ class AssistantStage(Produce[Project]):
             if context_text
             else msg.data.text
         )
-        result = await structured_llm(context, schema=AssistantReply, user=user)
-        text = (
-            result.text
-            if result
-            else "План и смета утверждены. Спросите про "
-            "этапы работ, материалы или цены из сметы."
+        text = await llm_reply(
+            context,
+            system=(
+                "You are the repair assistant. The project is approved. Answer "
+                "briefly and actionably in Russian, based strictly on the plan "
+                "and the estimate; do not invent prices that are not in the "
+                "estimate."
+            ),
+            user=user,
+            attempts=3,
         )
+        if not text:
+            # Honest fallback (§59): the model was unavailable or its reply did
+            # not parse — still answer from the plan, not a canned placeholder.
+            text = _assistant_fallback(project)
         self.effects.create(_reply(context, msg.id, text), id=f"reply:{msg.id}")
         self.effects.update(project_art, handled_msg=msg.id)
         return None
+
+
+def _assistant_fallback(project: Project) -> str:
+    """Deterministic answer from the approved plan (no model needed)."""
+    if project.plan:
+        first = project.plan[0]
+        return (
+            f"Комната: {project.info.room_type or '—'}. Начните с этапа "
+            f"«{first.name}»: {first.description}. Могу отвечать по этапам, "
+            f"материалам и ценам из утверждённой сметы."
+        )
+    return (
+        "План и смета утверждены. Спросите про этапы работ, материалы или "
+        "цены из сметы — отвечу по плану."
+    )
 
 
 async def _handle_style_change(

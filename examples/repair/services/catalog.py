@@ -32,21 +32,29 @@ class Catalog:
                 self._items.append(CatalogItem(name=name, price=price, unit=unit))
 
     def search(self, query: str, top_k: int = 5) -> list[CatalogItem]:
-        scored = sorted(
-            (
-                (keyword_score(item.name, query, use_stems=True), item)
-                for item in self._items
-            ),
-            key=lambda pair: pair[0],
-            reverse=True,
-        )
-        return [item for score, item in scored if score > 0][:top_k]
-
-    def find(self, query: str) -> CatalogItem | None:
-        best, best_score = None, 0.3
+        candidate = []
         for item in self._items:
             score = keyword_score(item.name, query, use_stems=True)
-            if score > best_score:
+            if score > 0:
+                candidate.append((score, item))
+        # ties (equal lexical score) prefer the cheaper item — the catalog names
+        # often collide (many "Розетка …"), and the expensive industrial variant
+        # must not win over a household socket on the same stem (§67)
+        candidate.sort(key=lambda pair: (-pair[0], pair[1].price))
+        return [item for _, item in candidate[:top_k]]
+
+    def find(self, query: str, *, min_score: float = 0.3) -> CatalogItem | None:
+        best: CatalogItem | None = None
+        best_score = min_score
+        for item in self._items:
+            score = keyword_score(item.name, query, use_stems=True)
+            if score < best_score - 1e-9:
+                continue
+            if (
+                best is None
+                or score > best_score
+                or (abs(score - best_score) <= 1e-9 and item.price < best.price)
+            ):
                 best, best_score = item, score
         return best
 

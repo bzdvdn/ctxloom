@@ -534,3 +534,22 @@ def test_assistant_remembers_conversation(tmp_path):
     assert "Разговор:" in prompt2
     assert "какой ламинат" in prompt2
     assert "Ламинат Дуб, 6 упаковок" in prompt2
+
+
+def test_catalog_find_prefers_cheaper_among_same_stem(tmp_path):
+    """The industrial socket must not win over a household one on the same stem (§67)."""
+    csv_file = tmp_path / "mini.csv"
+    csv_file.write_text(
+        "Мешок мусорный,10,₽/шт\n"
+        "Розетка стационарная ССИ-145 MAGNUM 125А 3Р+РЕ+N 380В IP67,15958,₽/шт\n"
+        "Розетка наружная разборная для плиты с заземлением 32А белая,68.29,₽/шт\n",
+        encoding="utf-8",
+    )
+    from examples.repair.services.catalog import Catalog
+
+    catalog = Catalog(str(csv_file))
+    picked = catalog.find("розетки")
+    assert picked is not None
+    assert picked.price < 15958  # not the industrial one
+    top = catalog.search("розетка", top_k=5)
+    assert top and top[0].price < 15958
