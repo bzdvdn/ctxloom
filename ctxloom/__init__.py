@@ -1,5 +1,6 @@
 from .agents import Agent
 from .artifacts import Artifact
+from .branching import BranchStore
 from .budget import Budget, RunOutcome, RunStats
 from .checkpoints import (
     CheckpointBackend,
@@ -11,7 +12,7 @@ from .checkpoints import (
 )
 from .commit import Commit, Read, Write
 from .consume import Consume, consume
-from .context import Context, View
+from .context import Context, MergeConflict, View
 from .events import Event, EventType
 from .interrupt import InterruptPatch, PendingQuestion
 from .llm_agent import HITLLMAgent, LLMAgent, StructuredGenerateAgent
@@ -47,6 +48,7 @@ __all__ = [
     "Agent",
     "Artifact",
     "Budget",
+    "BranchStore",
     "CheckpointBackend",
     "Commit",
     "Consume",
@@ -72,6 +74,8 @@ __all__ = [
     "LLMResponseChunk",
     "Link",
     "Message",
+    "MessagesPrompt",
+    "MergeConflict",
     "Observation",
     "Patch",
     "PendingQuestion",

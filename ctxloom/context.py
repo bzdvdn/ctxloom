@@ -30,6 +30,17 @@ TData = TypeVar("TData", bound=BaseModel)
 TArtifact = TypeVar("TArtifact", bound=BaseModel)
 
 
+class MergeConflict(Exception):
+    """Two branches changed the same artifact differently since their fork (§40).
+
+    The framework never chooses silently; a verifier or merge policy resolves.
+    """
+
+    def __init__(self, message: str, conflicts: list[str] | None = None):
+        super().__init__(message)
+        self.conflicts = conflicts or []
+
+
 @dataclass
 class View:
     """Context projection for an agent: artifact references + serialization (§27).
@@ -78,6 +89,8 @@ class Context:
         self.resources = resources or RuntimeResources()
         self._hub = EventHub()
         self._relations: dict[tuple[str, str, str], Relation] = {}
+        self._base: Context | None = None
+        self._fork_name: str = ""
 
     # ---- announce: agent progress events streamed out ----
 
@@ -371,6 +384,116 @@ class Context:
                 Commit(author="merge", message="Merged Context", operations=operations)
             )
 
+    def branch(self, *, name: str = "") -> Context:
+        """Forks an isolated copy for alternative state exploration (§39).
+
+        The fork records a snapshot of its base, so a later `merge` of two
+        fork-mates can detect diverged artifacts three-way (§40). The branch
+        shares `resources` with the parent but is otherwise fully independent:
+        subsequent changes on either side do not affect the other.
+        """
+        fork = self.clone()
+        fork.resources = self.resources
+        fork._base = self.clone()
+        fork._fork_name = name
+        return fork
+
+    @staticmethod
+    def _data_sig(artifact: Artifact[Any] | None) -> Any:
+        """Canonical signature of an artifact's current data (None = absent)."""
+        if artifact is None:
+            return None
+        return artifact.data.model_dump(mode="json")
+
+    def merge(self, other: Context, *, message: str = "Merged branch") -> None:
+        """Merges `other` into `self` with explicit conflicts, atomically (§40).
+
+        Three-way merge against the shared fork base (the fork snapshot of
+        `other`, or of `self` when `other` has none). For every artifact that
+        exists anywhere among base/self/other:
+
+            equal(self, other)  → no-op
+            equal(self, base)   → adopt `other` (only it moved the artifact)
+            equal(other, base)  → keep `self` (only it moved the artifact)
+            otherwise           → MergeConflict, nothing is applied
+
+        So a change adopted from `other` never silently overwrites a change made
+        on `self` since the fork (§40: the framework must not choose silently).
+        """
+        base = other._base if other._base is not None else self._base
+        if base is None:
+            base = Context()
+
+        ids = set(base._artifacts) | set(self._artifacts) | set(other._artifacts)
+        operations: list[Operation] = []
+        pending: dict[str, BaseModel] = {}
+        conflicts: list[str] = []
+
+        for artifact_id in sorted(ids):
+            base_art = base._artifacts.get(artifact_id)
+            self_art = self._artifacts.get(artifact_id)
+            other_art = other._artifacts.get(artifact_id)
+            sb = self._data_sig(base_art)
+            ss = self._data_sig(self_art)
+            so = self._data_sig(other_art)
+            if ss == so:
+                continue
+            if ss == sb or so == sb:
+                if so == sb:
+                    continue  # only self moved it — keep as is
+                # only other moved it — adopt
+                if other_art is None:
+                    operations.append(Delete(artifact_id))
+                else:
+                    pending[artifact_id] = other_art.data.model_copy(deep=True)
+                    operations.append(
+                        Create(other_art.data)
+                        if self_art is None
+                        else Update(artifact_id, other_art.data)
+                    )
+            else:
+                conflicts.append(
+                    f"{artifact_id} diverged since the fork "
+                    f"(self={self._kind_short(ss)}, other={self._kind_short(so)})"
+                )
+
+        if conflicts:
+            raise MergeConflict(
+                "merge would overwrite diverged state — resolve first (§40):\n"
+                + "\n".join(conflicts),
+                conflicts=conflicts,
+            )
+
+        removed: set[str] = set()
+        for op in operations:
+            if isinstance(op, Delete):
+                self._artifacts.pop(op.artifact_id, None)
+                removed.add(op.artifact_id)
+        for artifact_id, data in pending.items():
+            existing = self._artifacts.get(artifact_id)
+            if existing is None:
+                self._artifacts[artifact_id] = Artifact(data=data, id=artifact_id)
+            else:
+                existing.update(data)
+
+        for rel in other.relations():
+            if rel.source_id in removed or rel.target_id in removed:
+                continue
+            if (rel.source_id, rel.relation, rel.target_id) not in self._relations:
+                self.link(rel.source_id, rel.relation, rel.target_id)
+                operations.append(Link(rel.source_id, rel.relation, rel.target_id))
+
+        if operations:
+            self.log_commit(
+                Commit(author="merge", message=message, operations=operations)
+            )
+
+    @staticmethod
+    def _kind_short(signature: Any) -> str:
+        if signature is None:
+            return "absent"
+        return "changed"
+
     def log_commit(self, commit: Commit) -> None:
         """Applies the commit to the repository: fills in parent/version, moves head."""
         commit.parent_id = self._head_id
@@ -542,6 +665,8 @@ class Context:
             "artifacts": {aid: art.to_dict() for aid, art in self._artifacts.items()},
             "relations": [rel.to_dict() for rel in self._relations.values()],
             "commits": [c.to_dict() for c in self._commits],
+            "fork_name": self._fork_name,
+            "base": self._base.to_dict() if self._base is not None else None,
         }
 
     @classmethod
@@ -560,6 +685,8 @@ class Context:
         ws._head_id = d.get("head_id")
         if ws._head_id is None and ws._commits:
             ws._head_id = ws._commits[-1].id
+        ws._fork_name = d.get("fork_name", "")
+        ws._base = Context.from_dict(d["base"]) if d.get("base") is not None else None
         return ws
 
     def save_checkpoint(self, backend_or_path: str | CheckpointBackend) -> None:

@@ -3095,7 +3095,7 @@ Verification: 189 tests; mypy (strict) and ruff clean.
 | Observability (run traces + dashboard + sinks) | §54 | implemented (SQLite store, web UI, Langfuse / Postgres sinks) |
 | Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
 | Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
-| Branching (`context.branch()`) | §39-§40 | planned (checkpoints + `merge_from` exist) |
+| Branching (`context.branch()`) | §39-§40 | implemented — three-way `merge()` with `MergeConflict`, `BranchStore` over KV, CLI |
 | Replay (§55) | §55 | implemented — `ReplayLLM` record/replay, state replay + `python -m ctxloom replay` |
 | Evaluation harness | §56 | planned |
 | Security / access control | §57 | planned |
@@ -3120,6 +3120,5 @@ Demos shipped in the repo (not in the wheel):
   intentionally Russian** (a deliberate product choice, §68-adjacent); code and
   comments are English.
 
-Roadmap direction: domain connectors as examples, branching (§39-§40), the
-evidence-graph browser in the trace UI, an evaluation harness (§56), and
-stronger adaptive scheduling.
+Roadmap direction: domain connectors as examples, the evidence-graph browser in
+the trace UI, an evaluation harness (§56), and stronger adaptive scheduling.

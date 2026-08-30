@@ -63,13 +63,31 @@
 | `replay_context(store, session_id, version=None)` | восстанавливает состояние сохранённой сессии на коммите |
 | `replay_summary(context)` | компактная сводка состояния для CLI `replay` |
 
+## Ветвление (ctxloom.context + ctxloom.branching, §39-§40)
+
+| Символ | Роль |
+| --- | --- |
+| `Context.branch(name="")` | форкает изолированную копию; фиксирует снимок базы для трёхстороннего слияния |
+| `Context.merge(other, message=…)` | атомарное трёхстороннее слияние; `MergeConflict` при разошедшихся артефактах |
+| `MergeConflict` | бросается, когда обе стороны изменили артефакт по-разному после форка |
+| `BranchStore(KVBackend)` | хранит ветки как `branch:<session>:<name>` поверх KV-бэкенда |
+| `python -m ctxloom branch …` | CLI: `list` / `save` / `merge` |
+
 ## Структурный вывод
 
 | Символ | Роль |
 | --- | --- |
 | `structured_llm(context, schema, *, system, user, attempts=…)` | один структурный вызов; `None` при честном сбое |
 | `StructuredLLM(schema, *, system=…, attempts=…)` | переиспользуемый экземпляр; `.call(context, user)` |
+| `llm_reply(context, *, system, user, attempts=…)` | обычный (неструктурный) вызов → `str` или `None` (под капотом схема с одним полем) |
 | `parse_structured` | допускающий JSON→модель парсер, используемый внутри |
+
+## Промпты (ctxloom.prompts, §68)
+
+| Символ | Роль |
+| --- | --- |
+| `PromptTemplate(template, *, defaults=…)` | строгий рендер `{var}`: объявленные `variables`, `KeyError` при нехватке, поля атрибутов модели (`{question.text}`), литералы `{{`/`}}` |
+| `MessagesPrompt([(role, template), …])` | рендерит чат-последовательность в `list[Message]` |
 
 ## Источники (ctxloom.sources)
 
@@ -89,6 +107,7 @@
 | `LLMProvider`, `EmbeddingProvider` | два контракта, с которыми говорит ядро |
 | `ImageProvider`, `SpeechProvider`, `TranscriberProvider`, `VideoProvider` | медиа-контракты |
 | `OpenAICompatProvider`, `OpenAICompatEmbedder` + вендорные фабрики (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ чат/эмбеддинг-бэкендов |
+| `Message`, `Role` | одно сообщение чата; `role` — закрытый `Literal` + фабрики `Message.system/user/assistant/tool` |
 | `*_from_env(**overrides)` | подключение из `.env`; возвращает `None`, если не настроено |
 | `FakeLLM`, `FakeEmbedder` | детерминированные заглушки для тестов/демо |
 
@@ -99,6 +118,17 @@
 | `fan_out_sources(context, query, owner_id, …)` | идемпотентный поиск fan-out → рефы + патч |
 | `materialize_doc(context, ref_artifact, doc_factory, relation=…)` | ленивый реф → документ с провенансом |
 | `StatusMachine` | детерминированный жизненный цикл артефакта (`next_status`, `terminal`, `on_transition`, `query_id_field`/`status_field`) |
+
+## Хелперы текста и отката (ctxloom.recipes)
+
+| Символ | Роль |
+| --- | --- |
+| `keyword_score(text, query, *, stopwords=EN_STOPWORDS, use_stems=False)` | детерминированный скоринг покрытия запроса (EN/RU) |
+| `stem_words(text)` / `stem(word)` | стемминг русско-английских токенов без эмбеддингов |
+| `EN_STOPWORDS` | набор английских стоп-слов по умолчанию |
+| `changed_fields(old, new, *, ignore=())` | какие поля реально изменились (новый `None` — не изменение) |
+| `earliest_stage(changed, *, field_stages, order)` | первая затронутая изменение стадия (change → rebuild) |
+| `downstream_fields(target, *, field_stages, order)` | поля, которые сбрасывать при пересборке со стадии |
 
 ## Сессии, чекпоинты, трейсинг
 

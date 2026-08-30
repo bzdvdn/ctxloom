@@ -64,13 +64,31 @@ modules.
 | `replay_context(store, session_id, version=None)` | reconstructs a saved session's state at a commit |
 | `replay_summary(context)` | compact state summary for the `replay` CLI |
 
+## Branching (ctxloom.context + ctxloom.branching, §39-§40)
+
+| Symbol | Role |
+| --- | --- |
+| `Context.branch(name="")` | forks an isolated copy; records the base snapshot for three-way merge |
+| `Context.merge(other, message=…)` | atomic three-way merge; `MergeConflict` on diverged artifacts |
+| `MergeConflict` | raised when both sides changed an artifact differently since the fork |
+| `BranchStore(KVBackend)` | persists branches as `branch:<session>:<name>` over a KV backend |
+| `python -m ctxloom branch …` | CLI: `list` / `save` / `merge` |
+
 ## Structured output
 
 | Symbol | Role |
 | --- | --- |
 | `structured_llm(context, schema, *, system, user, attempts=…)` | one structured call; `None` on honest failure |
 | `StructuredLLM(schema, *, system=…, attempts=…)` | reusable instance; `.call(context, user)` |
+| `llm_reply(context, *, system, user, attempts=…)` | plain-text completion → `str` or `None` (single-text schema under the hood) |
 | `parse_structured` | lenient JSON→model parser used internally |
+
+## Prompts (ctxloom.prompts, §68)
+
+| Symbol | Role |
+| --- | --- |
+| `PromptTemplate(template, *, defaults=…)` | strict `{var}` rendering: declared `variables`, `KeyError` on missing vars, model-attribute fields (`{question.text}`), `{{`/`}}` literals |
+| `MessagesPrompt([(role, template), …])` | renders a chat sequence to `list[Message]` |
 
 ## Sources (ctxloom.sources)
 
@@ -90,6 +108,7 @@ modules.
 | `LLMProvider`, `EmbeddingProvider` | the two contracts the core talks to |
 | `ImageProvider`, `SpeechProvider`, `TranscriberProvider`, `VideoProvider` | media contracts |
 | `OpenAICompatProvider`, `OpenAICompatEmbedder` + vendor factories (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ chat/embedder backends |
+| `Message`, `Role` | one chat message; `role` is a closed `Literal` + `Message.system/user/assistant/tool` factories |
 | `*_from_env(**overrides)` | `.env`-driven wiring that returns `None` when unconfigured |
 | `FakeLLM`, `FakeEmbedder` | deterministic stand-ins for tests/demos |
 
@@ -100,6 +119,17 @@ modules.
 | `fan_out_sources(context, query, owner_id, …)` | idempotent fan-out search → refs + patch |
 | `materialize_doc(context, ref_artifact, doc_factory, relation=…)` | lazy ref → document with provenance |
 | `StatusMachine` | deterministic artifact lifecycle (`next_status`, `terminal`, `on_transition`, `query_id_field`/`status_field`) |
+
+## Text & rollback helpers (ctxloom.recipes)
+
+| Symbol | Role |
+| --- | --- |
+| `keyword_score(text, query, *, stopwords=EN_STOPWORDS, use_stems=False)` | deterministic query-coverage scoring (English / Russian) |
+| `stem_words(text)` / `stem(word)` | Russian-English token stemming without embedders |
+| `EN_STOPWORDS` | the default English stop-word set |
+| `changed_fields(old, new, *, ignore=())` | which fields actually changed (new `None` = not a change) |
+| `earliest_stage(changed, *, field_stages, order)` | the first stage a change affects (change → rebuild) |
+| `downstream_fields(target, *, field_stages, order)` | fields to reset when rebuilding from a stage |
 
 ## Sessions, checkpoints, tracing
 

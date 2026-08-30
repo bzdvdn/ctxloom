@@ -22,6 +22,7 @@ reference.
 | [observability](en/observability.md) | Traces, SQLite store, dashboard, Langfuse, Postgres |
 | [viz](en/viz.md) | Mermaid rendering: blueprint, context, trace + `python -m ctxloom` CLI |
 | [replay](en/replay.md) | Record & replay (§55): ReplayLLM, state replay, `replay` CLI |
+| [branching](en/branching.md) | Fork & merge (§39-§40): `branch()`, three-way `merge()`, `BranchStore` |
 | [examples](en/examples.md) | knowledge, research, medic-lab, devops, repair |
 | [api](en/api.md) | Public API reference (top-level symbols) |
 
@@ -38,5 +39,6 @@ reference.
 | [observability](ru/observability.md) | Трейсы, SQLite-хранилище, дашборд, Langfuse, Postgres |
 | [viz](ru/viz.md) | Рендер в Mermaid: blueprint, context, trace + CLI `python -m ctxloom` |
 | [replay](ru/replay.md) | Запись и воспроизведение (§55): ReplayLLM, реплей состояния, CLI `replay` |
+| [branching](ru/branching.md) | Форк и слияние (§39-§40): `branch()`, трёхсторонний `merge()`, `BranchStore` |
 | [examples](ru/examples.md) | knowledge, research, medic-lab, devops, repair |
 | [api](ru/api.md) | Справочник публичного API (символы верхнего уровня) |

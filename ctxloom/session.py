@@ -56,7 +56,9 @@ class SessionStore:
         return self.backend.get(session_id) is not None
 
     def list_sessions(self) -> list[str]:
-        return self.backend.keys()
+        # Branch keys are the BranchStore's namespace — keep them out of sessions.
+        keys = self.backend.keys()
+        return [key for key in keys if not key.startswith("branch:")]
 
     def delete_session(self, session_id: str) -> None:
         self.backend.delete(session_id)
