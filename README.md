@@ -120,7 +120,7 @@ in two languages (English & Русский); the design and invariants are in
 
 - `examples/knowledge` — multi-source chat: search → evidence → claim verification → answer,
   with CSV calculation (CLI + FastAPI/SSE web).
-- `examples/research` — research agent that *goes to the web* (`WebSource`):
+- `examples/research` — research agent that _goes to the web_ (`WebSource`):
   lazy page fetch → evidence → verified claims → answer with URL provenance.
 - `examples/medic-lab` — hypothesis laboratory: a question spawns competing
   hypotheses, each is investigated over an evidence pool, scored by
@@ -150,7 +150,6 @@ uv run python ./examples/devops/web.py           # HITL ops assistant + trace da
   eval, ветвление, replay, viz/CLI, примеры, справочник API.
 - [Tutorial · llm-ladder](docs/en/index.md#llm-ladder) — learn the workflow
   from a single LLM call to linked and lifecycle patches.
-- [CONSTITUTION.md](CONSTITUTION.md) — обоснование дизайна и инварианты.
 
 ## Development
 
