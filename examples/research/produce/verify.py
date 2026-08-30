@@ -12,8 +12,6 @@ class VerifyClaims(Produce[Claim]):
     """Deterministic verification (§67): a sentence becomes a claim with
     confidence = how much of it the source page supports (§35, §68)."""
 
-    artifact_type = Claim
-
     async def produce(
         self,
         context: Context,

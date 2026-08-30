@@ -132,7 +132,7 @@ def run(
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m examples.summarize.main")
-    args = parser.parse_args()
+    parser.parse_args()
 
     seed = [
         "We need to finish the room by Friday.",

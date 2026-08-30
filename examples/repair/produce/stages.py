@@ -57,8 +57,6 @@ def _reply(
 class CollectStage(Produce[Project]):
     """Extracts facts; once all the required ones are present — designs and design_choice."""
 
-    artifact_type = Project
-
     async def produce(
         self,
         context: Context,
@@ -137,8 +135,6 @@ class CollectStage(Produce[Project]):
 class PickStage(Produce[Project]):
     """Parses the user's choice → plan."""
 
-    artifact_type = Project
-
     async def produce(
         self,
         context: Context,
@@ -180,8 +176,6 @@ class PickStage(Produce[Project]):
 class PlanStage(Produce[Project]):
     """Plan (LLM + geometry) → estimate."""
 
-    artifact_type = Project
-
     async def produce(
         self,
         context: Context,
@@ -203,8 +197,6 @@ class PlanStage(Produce[Project]):
 
 class EstimateStage(Produce[Project]):
     """Estimate — deterministically, via the catalog (no LLM) → final_approval."""
-
-    artifact_type = Project
 
     async def produce(
         self,
@@ -230,8 +222,6 @@ class EstimateStage(Produce[Project]):
 
 class ApprovalStage(Produce[Project]):
     """HITL gate (§60): immediately asks the approval question; the answer → assistant or a rebuild."""
-
-    artifact_type = Project
 
     async def produce(
         self,

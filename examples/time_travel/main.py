@@ -205,7 +205,7 @@ def run(
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m examples.time_travel.main")
-    args = parser.parse_args()
+    parser.parse_args()
 
     merged = run(llm=llm_from_env())
     candidates = sorted(

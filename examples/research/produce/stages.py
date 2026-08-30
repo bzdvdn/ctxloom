@@ -21,8 +21,6 @@ from .common import SCOUT_LIMIT, turn_of, user_query
 class Router(Produce[ResearchTurn]):
     """Every non-empty question becomes a research turn."""
 
-    artifact_type = ResearchTurn
-
     async def produce(
         self,
         context: Context,
@@ -44,8 +42,6 @@ class Router(Produce[ResearchTurn]):
 
 class WebScout(Produce[SourceRef]):
     """Fans out to `WebSource.asearch`; stable refs + SearchDone (idempotent)."""
-
-    artifact_type = SourceRef
 
     async def produce(
         self,
@@ -87,8 +83,6 @@ class WebScout(Produce[SourceRef]):
 
 class ResolveRef(Produce[TypedDoc]):
     """Lazy materialization: a URL → page text (Reference → Artifact, §6)."""
-
-    artifact_type = TypedDoc
 
     async def produce(
         self,
@@ -136,8 +130,6 @@ _extract_prompt = StructuredLLM(_Digest)
 
 class ExtractEvidence(Produce[Evidence]):
     """Key facts from a page; provenance: Evidence —extracted_from→ Doc."""
-
-    artifact_type = Evidence
 
     async def produce(
         self,

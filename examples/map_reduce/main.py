@@ -180,14 +180,14 @@ def run(
     llm: LLMProvider | None = None,
 ) -> Context:
     ctx = Context(resources=RuntimeResources(llm=llm))
-    doc = ctx.create(Doc(text=source))
+    ctx.create(Doc(text=source))
     asyncio.run(Runtime(ctx, agents=[Flow()]).arun())
     return ctx
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m examples.map_reduce.main")
-    args = parser.parse_args()
+    parser.parse_args()
 
     ctx = run(llm=llm_from_env())
     finals = ctx.list_artifacts(FinalSummary)
