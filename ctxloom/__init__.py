@@ -40,6 +40,7 @@ from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
 from .tools import FunctionTool, Tool, ToolOutput, tool
 from .tracing import AgentSpan, CompositeTracer, RunTrace, Tracer, TraceStore
 from .triggers import Trigger
+from .viz import blueprint, context_to_mermaid, trace_to_mermaid
 
 __all__ = [
     "Agent",
@@ -102,9 +103,12 @@ __all__ = [
     "AgentSpan",
     "CompositeTracer",
     "RunTrace",
+    "blueprint",
     "consume",
+    "context_to_mermaid",
     "parse_structured",
     "produce",
     "structured_llm",
     "tool",
+    "trace_to_mermaid",
 ]

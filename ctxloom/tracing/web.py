@@ -94,10 +94,15 @@ def create_trace_router(
 
     @router.get("/traces/{trace_id}", response_class=HTMLResponse)
     async def traces_run_page(trace_id: str) -> str:
+        from ..viz import trace_to_mermaid
+
+        trace = store.get(trace_id)
+        mermaid = trace_to_mermaid(trace) if trace is not None else ""
         return (
             (_TEMPLATES / "ui_run.html")
             .read_text(encoding="utf-8")
             .replace("__RUN_ID__", json.dumps(trace_id))
+            .replace("__MERMAID__", json.dumps(mermaid))
         )
 
     return router

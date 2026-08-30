@@ -46,6 +46,15 @@ modules.
 | `Event`, `EventType` | the wire format of "something changed" |
 | `EventHub`, `ProgressEvent` | progress/announce channel consumed by web UIs |
 
+## Visualization (ctxloom.viz + python -m ctxloom)
+
+| Symbol | Role |
+| --- | --- |
+| `blueprint(agents)` | static map of consumes/produces as Mermaid `flowchart` |
+| `context_to_mermaid(context)` | live provenance graph of a context (artifacts + relations) |
+| `trace_to_mermaid(trace)` | one run as a Mermaid `sequenceDiagram` |
+| `python -m ctxloom graph\|context\|trace` | CLI printing the diagrams to stdout |
+
 ## Structured output
 
 | Symbol | Role |

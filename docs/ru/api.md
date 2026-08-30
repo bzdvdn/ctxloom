@@ -45,6 +45,15 @@
 | `Event`, `EventType` | проводной формат «что-то изменилось» |
 | `EventHub`, `ProgressEvent` | канал прогресса/announce, который потребляют web-UI |
 
+## Визуализация (ctxloom.viz + python -m ctxloom)
+
+| Символ | Роль |
+| --- | --- |
+| `blueprint(agents)` | статическая карта consumes/produces как Mermaid `flowchart` |
+| `context_to_mermaid(context)` | живой граф провенанса контекста (артефакты + связи) |
+| `trace_to_mermaid(trace)` | один запуск как Mermaid `sequenceDiagram` |
+| `python -m ctxloom graph\|context\|trace` | CLI, печатающий диаграммы в stdout |
+
 ## Структурный вывод
 
 | Символ | Роль |

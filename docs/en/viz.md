@@ -1,0 +1,36 @@
+# Visualization & CLI
+
+`ctxloom.viz` renders the system as **Mermaid** strings. There is no execution
+graph to draw — the runtime derives execution from state changes — so the two
+honest diagrams are the *static map* and the *dynamic state*:
+
+| Function | What it draws |
+| --- | --- |
+| `blueprint(agents)` | static map: artifact types = nodes, agents = edges (`Consume` / `creates` / `lifecycle`) |
+| `context_to_mermaid(context)` | live provenance graph: artifacts grouped by type, `patch.link` relations |
+| `trace_to_mermaid(trace)` | one run as a `sequenceDiagram`: spans over time, writes/reads, LLM calls |
+
+All three are pure string functions — no dependencies, paste the output into
+GitHub, Notion, or [mermaid.live](https://mermaid.live).
+
+## CLI
+
+```bash
+python -m ctxloom graph examples.knowledge.agents        # all agents of a module
+python -m ctxloom graph examples.knowledge.agents:Planner # one agent
+python -m ctxloom context examples/knowledge/sessions/sessions.sqlite3
+python -m ctxloom trace traces.db [run_id]
+```
+
+- `graph` instantiates every `Agent` subclass defined in the module (or a
+  single one via `module:Attr`) and prints the blueprint.
+- `context` reads a saved session from a KV backend (file directory or
+  SQLite) and prints its provenance graph; `--session` picks a session,
+  `--limit` caps the number of artifacts.
+- `trace` reads a run from a `TraceStore` db (default: the latest run).
+
+## In the dashboard
+
+The run page (`/traces/<run_id>`) renders the trace diagram live via Mermaid,
+with a `copy` button and the source in a collapsible `<pre>`; if the browser is
+offline (no Mermaid JS), it degrades to showing the source text.

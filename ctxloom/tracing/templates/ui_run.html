@@ -90,6 +90,17 @@
   .role-label{font-size:10.5px;font-weight:650;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:2px;}
   .err-box{margin-top:12px;background:var(--err-soft);border:1px solid var(--err);color:var(--err);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;}
   .empty{padding:32px;text-align:center;color:var(--muted);}
+  .diag-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  #copy-mermaid{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;padding:5px 11px;font-size:12.5px;cursor:pointer;}
+  #copy-mermaid:hover{border-color:var(--accent);color:var(--accent);}
+  .diag-hint{color:var(--muted);font-size:12px;}
+  #mermaid{background:var(--panel-alt);border:1px solid var(--border);border-radius:10px;padding:14px;overflow:auto;}
+  #mermaid:empty{display:none;}
+  .diag-fallback{color:var(--muted);font-size:12.5px;}
+  .diag-error{color:var(--err);font-size:12.5px;}
+  #mermaid-src{margin-top:10px;}
+  #mermaid-src summary{cursor:pointer;font-size:11.5px;color:var(--muted);font-family:var(--mono);}
+  #mermaid-pre{background:var(--pre-bg);border:1px solid var(--pre-border);color:var(--text);border-radius:6px;padding:10px;font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;word-break:break-word;margin:8px 0 0;max-height:360px;overflow:auto;}
 </style>
 </head>
 <body>
@@ -114,9 +125,11 @@
   <div class="head-row" id="head"></div>
   <section class="card"><h2>Run</h2><div class="meta-grid" id="meta"></div></section>
   <section class="card"><h2>Work by agent</h2><div class="agents" id="agents"></div></section>
+  <section class="card"><h2>Diagram</h2><div class="diag-head"><button id="copy-mermaid">copy</button><span class="diag-hint">mermaid — rendered live; paste the source into mermaid.live / GitHub</span></div><div id="mermaid" class="mermaid"></div><details id="mermaid-src"><summary>show source</summary><pre id="mermaid-pre"></pre></details></section>
 </main>
 <script>
 const RUN_ID=__RUN_ID__;
+const MERMAID_SRC=__MERMAID__;
 function applyTheme(dark){document.documentElement.classList.toggle('dark',dark);document.getElementById('theme').textContent=dark?'light':'dark';try{localStorage.setItem('ctxloom-theme',dark?'dark':'light');}catch(_){}}
 function initTheme(){let s=null;try{s=localStorage.getItem('ctxloom-theme');}catch(_){}applyTheme(s?s==='dark':true);}
 document.getElementById('theme').addEventListener('click',()=>applyTheme(!document.documentElement.classList.contains('dark')));
@@ -211,7 +224,38 @@ function llmHtml(c){
     '<div class="node-body">'+(c.error?'<div class="err-box">'+escapeHtml(c.error)+'</div>':'')+detail+(c.response?'<div class="role assistant"><span class="role-label">response</span>'+escapeHtml(c.response)+'</div>':'')+'</div></details>';
 }
 
-initTheme(); load();
+function renderDiagram(){
+  const pre=document.getElementById('mermaid-pre');
+  pre.textContent=MERMAID_SRC||'no spans to draw';
+  if(!MERMAID_SRC) return;
+  const el=document.getElementById('mermaid');
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+  s.onload=()=>{
+    const dark=document.documentElement.classList.contains('dark');
+    window.mermaid.initialize({startOnLoad:false,theme:dark?'dark':'default'});
+    el.textContent=MERMAID_SRC;
+    try{window.mermaid.run({nodes:[el]});}
+    catch(err){el.innerHTML='<div class="diag-error">Mermaid could not render: '+escapeHtml(err&&err.message?err.message:String(err))+'</div>';}
+  };
+  s.onerror=()=>{el.innerHTML='<div class="diag-fallback">Mermaid JS unavailable (offline) — the diagram source is shown below.</div>';};
+  document.head.appendChild(s);
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');}catch(_){}document.body.removeChild(ta);
+}
+function initCopy(){
+  const btn=document.getElementById('copy-mermaid');
+  btn.addEventListener('click',()=>{
+    const done=()=>{btn.textContent='copied';setTimeout(()=>btn.textContent='copy',900);};
+    const text=MERMAID_SRC||'';
+    if(navigator.clipboard){navigator.clipboard.writeText(text).then(done).catch(()=>{fallbackCopy(text);done();});}
+    else{fallbackCopy(text);done();}
+  });
+}
+
+initTheme(); load(); renderDiagram(); initCopy();
 </script>
 </body>
 </html>

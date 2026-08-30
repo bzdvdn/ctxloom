@@ -373,3 +373,27 @@ def test_trace_router_open_without_auth(tmp_path):
     app.include_router(create_trace_router(store))
     client = TestClient(app)
     assert client.get("/api/traces").status_code == 200
+
+
+def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
+    from ctxloom.tracing.web import create_trace_router
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    store = TraceStore(str(tmp_path / "diag.db"))
+    store.export(
+        RunTrace(
+            id="r1",
+            outcome="completed",
+            duration_ms=12.0,
+            spans=[AgentSpan(agent="planner", event_type="ResearchTurn", writes=[])],
+        )
+    )
+    app = FastAPI()
+    app.include_router(create_trace_router(store))
+    client = TestClient(app)
+    html = client.get("/traces/r1").text
+    assert "__MERMAID__" not in html  # the placeholder was replaced
+    assert "__RUN_ID__" not in html
+    assert "sequenceDiagram" in html
+    assert "MERMAID_SRC" in html
