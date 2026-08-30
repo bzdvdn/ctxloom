@@ -72,7 +72,8 @@ class Echo(Produce[Answer]):
 
     async def produce(self, context, inputs, event=None):
         question = next(a for a in inputs if isinstance(a.data, Question))
-        return Patch().create(Answer(text=f"echo: {question.data.text}"))
+        self.effects.create(Answer(text=f"echo: {question.data.text}"))
+        return None
 
 
 class EchoAgent(Agent):

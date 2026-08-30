@@ -17,9 +17,9 @@
 | Символ | Роль |
 | --- | --- |
 | `Artifact` | пара `(id, data)`; `data` — модель pydantic |
-| `Patch` | единственный язык мутаций: `create/update/update_fields/delete/link/unlink` |
+| `Patch` | скомпилированный набор изменений рантайма (транспорт); produces пишут `self.effects`, `Patch` собирает рантайм |
+| `ctxloom.operations` (`Create`/`Update`/`Delete`/`Link`/`Unlink`/`Relation`) | скомпилированные операции, которые несёт патч (§12) |
 | `Create`, `Update`, `Delete`, `Link`, `Unlink`, `Relation` | записи операций, из которых строятся патчи |
-| `InterruptPatch` | HITL-патч: создать `PendingQuestion`, возобновиться с ответом человека |
 
 ## Агенты и produce
 

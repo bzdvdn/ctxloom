@@ -18,9 +18,9 @@ modules.
 | Symbol | Role |
 | --- | --- |
 | `Artifact` | the `(id, data)` pair; `data` is a pydantic model |
-| `Patch` | the only mutation language: `create/update/update_fields/delete/link/unlink` |
+| `Patch` | the runtime's compiled change-set (transport); produces write `self.effects`, `Patch` is assembled by the runtime |
+| `ctxloom.operations` (`Create`/`Update`/`Delete`/`Link`/`Unlink`/`Relation`) | the compiled operations a patch carries (§12) |
 | `Create`, `Update`, `Delete`, `Link`, `Unlink`, `Relation` | op records from which patches are built |
-| `InterruptPatch` | HITL patch: create a `PendingQuestion`, resume with the human answer |
 
 ## Agents & produces
 

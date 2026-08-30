@@ -1,0 +1,61 @@
+# The produce contract & mental model (§24)
+
+One paragraph to keep in your head while reading any example or writing a
+produce:
+
+> **A produce describes what should change by writing `self.effects`; the
+> runtime compiles those effects into one atomic patch and commits it. You
+> almost never build a `Patch` yourself — it is the runtime's transport.**
+
+```python
+async def produce(self, context, inputs, event=None) -> None:
+    if <guard>:                     # eligibility is a decision of the state
+        return None
+    # effects: the produce's "diff, expressed"
+    evidence = self.effects.create(Evidence(...), id="evidence:q1")
+    answer = self.effects.create(Answer(...), id="answer:q1")
+    evidence.link("extracted_from", doc)     # doc: Artifact
+    answer.link("supported_by", evidence)    # evidence: an effect handle
+    self.effects.update(turn, status="answered")
+    self.effects.ask("Approve the estimate?", kind="approval")   # HITL (§60)
+    return None
+```
+
+## The three-layer picture
+
+| Layer | What it is | Who writes it |
+| --- | --- | --- |
+| **Produce** | the reaction: guard → LLM/calc → `self.effects.*` → `None` | the application (you) |
+| **Effects** | the stated change-set (creates/updates/links/questions), scoped to the turn | you, via `self.effects` |
+| **Patch** | the *compiled* operations the runtime applies as one commit | the runtime (and legacy/advanced assemblies) |
+
+Nothing is applied until the produce returns — **atomicity is structural** (§41),
+no rollback machinery. Events, validation against `produces`, and trace
+reads/writes/relations are all derived from the same compiled ops.
+
+## Why `self.effects` is ambient
+
+`self.effects` lives in a produce-scoped slot that the runtime pushes before
+each execution and pops after (a contextvar) — safe under parallel produces, and
+**invisible** to you: you never construct it, never name it, never pass it. You
+can build handles across statements (`evidence` created above is linked below),
+which is why the call sites read "about artifacts", not "about ids".
+
+## Where `Patch` still shows up
+
+- **`Agent.run`** — the escape hatch for custom (non-Produce) agents that
+  assemble a change-set by hand; the runtime merges it after the effects.
+- **Recipes** (`fan_out_sources`, `materialize_doc`) and `StatusMachine` write
+  into the slot; the tool loop (`ToolUse`/`ToolUseHITL`) and HITL
+  (`effects.ask`) are effects too.
+- **Tests and advanced assembly** may still build a `Patch`; in ordinary
+  produces you should not need it.
+
+## The rule of thumb
+
+```text
+guard → decide → describe (self.effects) → return None
+```
+
+If you find yourself writing `Patch()` inside a produce — stop and use
+`self.effects`; the runtime does the compiling.

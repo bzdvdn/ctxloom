@@ -9,7 +9,7 @@
 ```python
 from ctxloom.recipes import fan_out_sources
 
-patch, refs = await fan_out_sources(
+refs = await fan_out_sources(
     context,
     query=question,
     owner_id=query_id,           # скоуп рефов на владеющий ход
@@ -29,7 +29,7 @@ patch, refs = await fan_out_sources(
 1. Рассылает запрос **по всем настроенным источникам** из
    `context.resources.sources`.
 2. Ранжирует объединённые `SourceRef` по скорам (сначала лучшие).
-3. Строит патч **идемпотентных, скоупированных на владельца рефов**:
+3. Создаёт **идемпотентные, скоупированные на владельца рефы** (эффект `Create`):
    `id=f"ref:{ref.stable_id()}:{owner_id}"`.
 
 Идемпотентность важна: поиск выполняется один раз за ход (свой маркер), но может
@@ -45,7 +45,7 @@ async def doc_from_ref(context, ref_artifact, content) -> TypedDoc:
     # постройте доменный документ из полученного содержимого
     return TypedDoc(query_id=ref_artifact.data.query_id, path=..., text=content)
 
-patch = await materialize_doc(
+doc = await materialize_doc(
     context,
     ref_artifact,
     doc_from_ref,
@@ -100,7 +100,7 @@ class EvaluateTurn(StatusMachine[ResearchTurn]):
   происходит.
 - Непосредственно перед применением вызывается `on_transition` — ваш хук для
   прогресс-аннонсов.
-- Итоговый патч — `update_fields(target, **{status_field: new})`.
+- Переход — это эффект: `self.effects.update(target, **{status_field: new})`.
 
 Логику *проверки* кладите в отдельный `produce`, реагирующий на смену статуса, —
 машина и верификатор разделены, детерминированы и тестируются по отдельности.

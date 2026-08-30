@@ -15,14 +15,18 @@ class PendingQuestion(BaseModel):
     notes: dict[str, Any] = {}     # routing info ("which agent asked")
 ```
 
-A `Produce` creates one with `InterruptPatch()`:
+A produce creates one with `self.effects.ask(...)`, and the human's answer
+comes back through `self.effects.resume(...)` (an effect that marks the
+`PendingQuestion` answered, §60):
 
 ```python
-return InterruptPatch().answer(question_artifact, "да")
+self.effects.ask("Approve the estimate?", kind="approval")
+# ... the web/UI sees a pending question and shows a waiting state ...
+self.effects.resume(question_artifact, "да")
+return None
 ```
 
-`InterruptPatch` stops the run, records the question, and takes the answer back
-in — the producing agent sees the answer as a new event (the corresponding
+The producing agent sees the answer as a new event (the corresponding
 `PendingQuestion` artifact is updated). Web demos query
 `context.pending_questions()` to know whether to render a "waiting" state.
 
@@ -161,6 +165,9 @@ See [recipes](recipes.md). The rule of thumb for choosing between patterns:
 
 ## Determinism as a habit
 
+- The **produce contract**: write `self.effects.create/update/link/ask(...)` and
+  return `None`; the runtime compiles the slot into one atomic patch (§24).
+  `Patch` is the transport — you rarely type it in an ordinary produce.
 - Make eligibility a guard, not a lucky scheduling accident (`return None` early).
 - Prefer stable ids (`answer:{qid}`, `ref:{sid}:{owner}`) → idempotent re-runs.
 - Pure decision functions (`next_status`) are unit-testable without a runtime.

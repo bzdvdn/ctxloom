@@ -23,6 +23,7 @@ reference.
 | [viz](en/viz.md) | Mermaid rendering: blueprint, context, trace + `python -m ctxloom` CLI |
 | [replay](en/replay.md) | Record & replay (§55): ReplayLLM, state replay, `replay` CLI |
 | [branching](en/branching.md) | Fork & merge (§39-§40): `branch()`, three-way `merge()`, `BranchStore` |
+| [effects](en/effects.md) | The produce contract & mental model (§24): `self.effects`, Patch = runtime transport |
 | [eval](en/eval.md) | Multi-level evaluation (§56): evidence/claim/provenance/calc/answer metrics |
 | [examples](en/examples.md) | knowledge, research, medic-lab, devops, repair |
 | [api](en/api.md) | Public API reference (top-level symbols) |
@@ -41,6 +42,7 @@ reference.
 | [viz](ru/viz.md) | Рендер в Mermaid: blueprint, context, trace + CLI `python -m ctxloom` |
 | [replay](ru/replay.md) | Запись и воспроизведение (§55): ReplayLLM, реплей состояния, CLI `replay` |
 | [branching](ru/branching.md) | Форк и слияние (§39-§40): `branch()`, трёхсторонний `merge()`, `BranchStore` |
+| [effects](ru/effects.md) | Контракт produce и ментальная модель (§24): `self.effects`, Patch = транспорт рантайма |
 | [eval](ru/eval.md) | Многоуровневая оценка (§56): метрики evidence/claim/provenance/calc/answer |
 | [examples](ru/examples.md) | knowledge, research, medic-lab, devops, repair |
 | [api](ru/api.md) | Справочник публичного API (символы верхнего уровня) |

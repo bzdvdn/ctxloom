@@ -161,7 +161,10 @@ The framework therefore should not make the developer encode the exact execution
 The canonical model is:
 
 ```text
-Agent(Context) → Patch
+Agent(Context) → Effects      # self.effects.create/update/link/ask
+                   │
+                   ▼  runtime compiles (§24)
+               Patch (atomic) → Context v+1
 ```
 
 not:
@@ -181,32 +184,22 @@ An agent reads a relevant view of the current Context and proposes changes.
 Example:
 
 ```python
-class Researcher(Agent):
-    def run(self, ctx: Context) -> Patch:
-        ...
+class Researcher(Produce[Evidence]):
+    async def produce(self, context, inputs, event=None):
+        self.effects.create(Evidence(...))
+        self.effects.update(task_id, status="researching")
+        return None   # nothing applied until the runtime compiles the effects
 ```
 
-The result may be:
-
-```python
-Patch(
-    AddArtifact(Evidence(...)),
-    AddArtifact(Claim(...)),
-    UpdateArtifact(task_id, status="researching"),
-)
-```
-
-The runtime applies the patch:
+The produce describes what should change (effects); the runtime compiles the
+effect set into one atomic `Patch`:
 
 ```text
 Context v12
    │
-   │ Researcher
+   │ Researcher (effects)
    ▼
-Patch
-   │
-   ▼
-Context v13
+Effects ──compile──▶ Patch ──apply──▶ Context v13
 ```
 
 This distinction is foundational.
@@ -578,13 +571,15 @@ This is one of the project's deliberate departures from embedding-first RAG.
 
 # 10. Agent
 
-An Agent is a component capable of interpreting Context and producing a Patch.
+An Agent is a component capable of interpreting Context and describing a
+change-set: produces write `self.effects` (§24); the runtime compiles them into
+a `Patch`.
 
 Minimal conceptual interface:
 
 ```python
 class Agent:
-    def run(self, context: Context) -> Patch:
+    async def produce(self, context, inputs, event=None):
         ...
 ```
 
@@ -641,9 +636,14 @@ They are not necessarily a rigid execution graph.
 
 # 12. Patch
 
-A Patch is the language by which an Agent proposes changes to Context.
+A Patch is the *compiled* change-set the runtime applies. The authoring
+surface is `self.effects` (§24): a produce writes `create/update/link/ask` and
+returns `None`; the runtime compiles the effect set into one atomic `Patch`
+(commit, events, validation, trace). `Patch` is transport — applications rarely
+build one directly (exceptions: the `Agent.run` escape hatch and advanced
+assembly).
 
-Minimal operations:
+The compiled operations:
 
 ```text
 ADD
@@ -679,7 +679,7 @@ The runtime validates and applies the patch.
 
 ---
 
-# 13. Why Agents Return Patches
+# 13. Why Changes Are Patches (effects → Patch)
 
 Returning arbitrary objects creates weak composition:
 
@@ -1111,7 +1111,7 @@ Conceptually:
                   Scheduler
                      │
                      ▼
-                   Patch
+            Effects → Patch
                      │
                      ▼
                Context v+1
@@ -2508,15 +2508,16 @@ ctx.create(Question(text="How is authentication implemented?"))
 ```
 
 Agents are thin containers (§48): all logic lives in a `Produce` class that
-returns a `Patch`. `consumes`/`produces` are the artifact contracts that drive
-the scheduler:
+writes `self.effects.create/update/link/ask` and returns `None`; the runtime
+compiles the effects into one `Patch`. `consumes`/`produces` are the artifact
+contracts that drive the scheduler:
 
 ```python
 class Researcher(Produce[Evidence]):
     artifact_type = Evidence
 
     async def produce(self, context, inputs, event=None):
-        ...  # returns Patch (Create/Update/Delete/Link)
+        ...  # writes self.effects.create/update/link/ask, returns None
 
 
 class Verifier(Produce[VerifiedClaim]):
@@ -2548,7 +2549,8 @@ runtime.run()
 ```
 
 `Agent.run` in the framework's terminology is `Produce.produce`:
-interpret a relevant Context view, propose changes, let the runtime apply them.
+interpret a relevant Context view, describe changes via `self.effects`, and let
+the runtime compile + apply them.
 
 ---
 
@@ -2683,7 +2685,8 @@ connectors**: application code on top of the `Source` API (typically under
 Implement:
 
 ```python
-Produce.produce(Context) -> Patch
+Produce.produce(Context) -> None          # writes self.effects.*; runtime compiles
+# Effects(create/update/link/ask) -▶ Patch: the atomic, validated change
 # plus the thin Agent container: consumes / produces declarations
 ```
 
@@ -3092,7 +3095,14 @@ Verification: 300 tests; mypy (strict) and ruff clean.
 | Confidence / contradictions as state | §35-§36 | implemented (deterministic, §67) |
 | Idempotency (stable ids, create-or-refresh) | §42 | implemented |
 | Staleness / invalidation from recorded reads | §43-§44 | implemented (`stale_artifacts`) |
-| Observability (run traces + dashboard + sinks) | §54 | implemented (SQLite store, web UI, Langfuse / Postgres sinks) — the run page renders both the sequence diagram and the **evidence graph** (`patch.link` provenance, §34) |
+                  Scheduler
+                     │
+                     ▼
+            Effects → Patch
+                     │
+                     ▼
+               Context v+1
+| Produce authoring — Effects (§24) | §12, §24 | implemented — `self.effects.create/update/link/ask`, the runtime compiles the slot into one atomic `Patch` (transport) |
 | Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
 | Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
 | Branching (`context.branch()`) | §39-§40 | implemented — three-way `merge()` with `MergeConflict`, `BranchStore` over KV, CLI |

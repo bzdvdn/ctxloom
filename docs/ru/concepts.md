@@ -59,35 +59,37 @@ class Evidence(BaseModel):
 - Артефакты иммутабельны как *данные*; изменения выражаются патчами, которые
   создают новые версии.
 
-## 3. Patch
+## 3. Effects и Patch
 
-`Patch` — единственный язык, которым агенты выражают изменение:
+Авторская поверхность — **`self.effects`** (см. [Контракт produce](effects.md),
+§24): produce пишет `create/update/link/ask` и возвращает `None`. Рантайm
+компилирует набор эффектов в один атомарный **`Patch`** — скомпилированный
+транспорт.
 
 ```python
-patch = Patch()
-patch.create(Answer(query_id=qid, text=text), id="answer:q1")
-patch.link("answer:q1", "supported_by", evidence_id)
-patch.update_fields(some_artifact, status="answered")
-patch.delete(old_artifact)
-return patch
+async def produce(self, context, inputs, event=None):
+    answer = self.effects.create(Answer(query_id=qid, text=text), id="answer:q1")
+    answer.link("supported_by", evidence_id)
+    self.effects.update(some_artifact, status="answered")
+    return None
 ```
 
-Операции:
+**Скомпилированные операции** (`ctxloom.operations`):
 
 | Операция | Смысл |
 | --- | --- |
-| `create` | добавить артефакт (опционально с выбранным `id`) |
-| `update` / `update_fields` | зафиксировать правку артефакта |
-| `delete` | удалить артефакт |
-| `link` | соединить `id → rel → other_id` (провенанс) |
-| `unlink` | убрать связь |
+| `Create` | добавить артефакт (опционально со стабильным `id`) |
+| `Update` / `update_fields` | новая ревизия артефакта |
+| `Delete` | удалить артефакт |
+| `Link` | соединить `source →rel→ target` (провенанс) |
+| `Unlink` | убрать связь |
 
-`Patch.merge_existing_patch(a, b)` объединяет несколько изменений в один патч —
-в примерах возвращается, например, *обновить проект* + *создать ответ* единым
-патчем.
+`Patch` (контейнер) собирает рантайm и escape-хук `Agent.run`; эффекты
+сочетаются *внутри* одного produce, поэтому ничего не применяется до компиляции
+рантаймом — атомарность структурная (§41).
 
-`InterruptPatch` — специальный HITL-патч: создаёт `PendingQuestion`, останавливает
-запуск и фиксирует ответ при возобновлении (см. [patterns](patterns.md)).
+HITL — это `effects.ask(...)` → `PendingQuestion`, ответ через
+`effects.resume(...)` (см. [patterns](patterns.md)).
 
 ## 4. Agent
 
@@ -112,17 +114,24 @@ class RepairFlow(Agent):
 
 ## 5. Produce
 
-`Produce[M]` — место, где происходит работа. Это **функция без состояния** от
-текущего контекста (плюс триггерное событие) к патчу.
+`Produce[M]` — место, где происходит работа. Его **авторская поверхность —
+`self.effects`** (§24): produce пишет, что должно измениться
+(`effects.create/update/link/ask`), и возвращает `None`. Рантайm компилирует
+слот эффектов в один атомарный патч — коммит, события, трейс, валидация те же,
+но сам produce никогда не собирает `Patch` (этот тип теперь транспорт рантайма).
 
 ```python
 class EstimateStage(Produce[Project]):
     artifact_type = Project
 
-    async def produce(self, context, inputs, event=None) -> Patch | None:
+    async def produce(self, context, inputs, event=None) -> None:
         ...
-        return Patch().update_fields(project_art, {"stage": "estimate"})
+        self.effects.update(project_art, stage="estimate")
+        return None
 ```
+
+`fan_out_sources` / `materialize_doc` (рецепты) тоже пишут в текущий слот
+эффектов, а HITL — это `effects.ask(...)` (артефакт `PendingQuestion`, §60).
 
 Соглашение: **сначала детерминизм**. Право на запуск определяется гардом —
 `if project.stage != "estimate": return None`. Должна ли стадия измениться —

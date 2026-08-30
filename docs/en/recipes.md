@@ -9,7 +9,7 @@ dependencies — everything is built on the core.
 ```python
 from ctxloom.recipes import fan_out_sources
 
-patch, refs = await fan_out_sources(
+refs = await fan_out_sources(
     context,
     query=question,
     owner_id=query_id,           # scope refs to the owning turn
@@ -21,14 +21,14 @@ patch, refs = await fan_out_sources(
     on_count=lambda source, n: context.announce(
         f"{source}: {n} hits", kind="status"
     ),
-)
+)  # each SourceRef is created in the current produce's effects (self.effects)
 ```
 
 What it does:
 
 1. Fans out to **every configured source** in `context.resources.sources`.
 2. Ranks the combined `SourceRef`s by score (highest first).
-3. Builds a patch of **idempotent, owner-scoped refs** —
+3. Creates **idempotent, owner-scoped refs** (effect `Create`) —
    `id=f"ref:{ref.stable_id()}:{owner_id}"`.
 
 Idempotency matters: the caller runs a search once per turn (guarded by its own
@@ -44,7 +44,7 @@ async def doc_from_ref(context, ref_artifact, content) -> TypedDoc:
     # build your domain document from the fetched content
     return TypedDoc(query_id=ref_artifact.data.query_id, path=..., text=content)
 
-patch = await materialize_doc(
+doc = await materialize_doc(
     context,
     ref_artifact,
     doc_from_ref,
@@ -99,7 +99,7 @@ Mechanics (all inherited from `produce`):
 - `next_status` decides the new status; `None` or unchanged ⇒ nothing happens.
 - Right before applying the change, `on_transition` is called — your hook for
   progress announces.
-- The final patch is `update_fields(target, **{status_field: new})`.
+- The transition is an effect: `self.effects.update(target, **{status_field: new})`.
 
 Put your *verify* logic into another `produce` that react on status changes —
 the machine and the verifier are separate, deterministic, and unit-testable.

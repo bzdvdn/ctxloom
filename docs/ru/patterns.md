@@ -15,14 +15,18 @@ class PendingQuestion(BaseModel):
     notes: dict[str, Any] = {}     # маршрутизация ("какой агент спросил")
 ```
 
-`Produce` создаёт его с помощью `InterruptPatch()`:
+Produce создаёт его через `self.effects.ask(...)`, а ответ человека приходит
+через `self.effects.resume(...)` (эффект, помечающий `PendingQuestion` отвеченным,
+§60):
 
 ```python
-return InterruptPatch().answer(question_artifact, "да")
+self.effects.ask("Утвердить смету?", kind="approval")
+# ... web/UI видит ожидающий вопрос и показывает состояние «ожидание» ...
+self.effects.resume(question_artifact, "да")
+return None
 ```
 
-`InterruptPatch` останавливает запуск, фиксирует вопрос и забирает ответ обратно:
-производящий агент видит ответ как новое событие (артефакт `PendingQuestion`
+Производящий агент видит ответ как новое событие (артефакт `PendingQuestion`
 обновляется). Web-демо запрашивают `context.pending_questions()`, чтобы понять,
 показывать ли состояние «ожидание».
 
@@ -162,6 +166,9 @@ session = store.open(session_id, resources=resources)
 
 ## Детерминизм как привычка
 
+- **Контракт produce**: пишите `self.effects.create/update/link/ask(...)` и
+  возвращайте `None`; рантайm компилирует слот в один атомарный патч (§24).
+  `Patch` — транспорт, в обычном produce его почти не печатают.
 - Право на запуск — гард, а не удачный порядок планировщика (`return None` рано).
 - Предпочитайте стабильные id (`answer:{qid}`, `ref:{sid}:{owner}`) →
   идемпотентные повторы.
