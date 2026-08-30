@@ -72,6 +72,25 @@ uv run python ./examples/repair/web.py
 uv run python ./examples/repair/chat.py
 ```
 
+## `forklab` — branch & merge (§39-§40)
+
+**What it shows:** deterministic alternative-state exploration — one question,
+two research strategies on **their own forks** (`Context.branch()`); a
+three-way `merge()` that either unions cleanly or raises an explicit
+`MergeConflict` (§40, never a silent choice); an evaluator over the merged
+state whose `Answer` is linked `supported_by` to findings from **both**
+branches. Fully offline (§67) — the point is the state semantics, not a model.
+A `--conflict` flag demonstrates the conflict-and-policy-resolve loop.
+
+```bash
+uv run python -m examples.forklab.main            # happy path
+uv run python -m examples.forklab.main --mermaid  # merged provenance graph
+uv run python -m examples.forklab.main --conflict # explicit MergeConflict + policy
+```
+
+The same pattern is the natural base for rewriting `medic-lab`: hypotheses
+become real forks instead of tag-routed channels.
+
 ## Running tests
 
 ```bash

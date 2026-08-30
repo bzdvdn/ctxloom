@@ -18,6 +18,7 @@ from .interrupt import InterruptPatch, PendingQuestion
 from .llm_agent import HITLLMAgent, LLMAgent, StructuredGenerateAgent
 from .patches import Create, Delete, Link, Patch, Relation, Unlink, Update
 from .produce import Produce, produce
+from .prompts import MessagesPrompt, PromptTemplate
 from .providers import (
     EmbeddingProvider,
     FakeEmbedder,
@@ -35,6 +36,7 @@ from .session import Session, SessionStore
 from .streaming import EventHub, ProgressEvent
 from .structured import (
     StructuredLLM,
+    llm_reply,
     parse_structured,
     structured_llm,
 )
@@ -81,6 +83,7 @@ __all__ = [
     "PendingQuestion",
     "Produce",
     "ProgressEvent",
+    "PromptTemplate",
     "Read",
     "Relation",
     "RunOutcome",
@@ -113,6 +116,7 @@ __all__ = [
     "blueprint",
     "consume",
     "context_to_mermaid",
+    "llm_reply",
     "parse_structured",
     "produce",
     "structured_llm",

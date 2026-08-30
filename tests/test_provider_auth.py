@@ -45,11 +45,7 @@ def test_chat_auth_default_bearer():
         api_key="sk-123",
         transport=captured(captured_headers),
     )
-    run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0)
-        )
-    )
+    run(provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0)))
     assert captured_headers[0]["authorization"] == "Bearer sk-123"
 
 
@@ -62,11 +58,7 @@ def test_chat_auth_custom_header_and_raw_key():
         auth_scheme=None,
         transport=captured(captured_headers),
     )
-    run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0)
-        )
-    )
+    run(provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0)))
     assert captured_headers[0]["x-api-key"] == "rt-456"
     assert "authorization" not in captured_headers[0]
 
@@ -79,11 +71,7 @@ def test_chat_auth_custom_scheme():
         auth_scheme="OAuth",
         transport=captured(captured_headers),
     )
-    run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0)
-        )
-    )
+    run(provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0)))
     assert captured_headers[0]["authorization"] == "OAuth tok"
 
 
@@ -134,11 +122,7 @@ def test_anthropic_default_raw_x_api_key():
             )[1]
         ),
     )
-    run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0)
-        )
-    )
+    run(provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0)))
     assert captured_headers[0]["x-api-key"] == "sk-ant"
 
 

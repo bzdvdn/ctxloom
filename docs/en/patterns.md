@@ -81,6 +81,10 @@ facts = await _extractor.call(context, user=message_text)
 Both return `None` on a missing model or a parse failure after retries — and the
 caller is expected to handle `None` (see fallbacks).
 
+Build the `system`/`user` strings with `PromptTemplate` (core): declared
+variables, a `KeyError` on missing vars, and model-attribute fields
+(`template.render(topic=…, question=…)`) — no hand-rolled `.format` in app code.
+
 `StructuredGenerateAgent` is the declarative wrapper: override
 `build_prompt(inputs)`, optionally `fallback(inputs)`, declare `schema` — and
 the reading/writing provenance is recorded for you.
@@ -152,6 +156,7 @@ See [recipes](recipes.md). The rule of thumb for choosing between patterns:
 | --- | --- |
 | An artifact moves through phase states | `StatusMachine` + verify-produce |
 | A workflow needs to roll *back* on user edits | stage guard + `_downstream_resets` |
+| Explore & compare alternative states | `branch()` + `merge()` (§39-§40) |
 | "Which of these did the model pick?" | `PickStage`-style parse + guard |
 
 ## Determinism as a habit

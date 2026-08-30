@@ -111,7 +111,7 @@ def test_replay_misses_raise_not_silently_wrong(tmp_path):
     assert good is not None and good.text == "a"
 
     # provider level: an unrecorded call is a ReplayMiss, not a wrong answer
-    tainted = LLMRequest(messages=[Message(role="user", content="won't exist")])
+    tainted = LLMRequest(messages=[Message.user("won't exist")])
     try:
         asyncio.run(replay.complete(tainted))
     except ReplayMiss:

@@ -9,13 +9,43 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, TypeAlias
+
+Role: TypeAlias = Literal["system", "user", "assistant", "tool"]
 
 
 @dataclass
 class Message:
-    role: str
+    """One chat-completion message.
+
+    `role` is a closed set of known roles (a `Literal`) so a typo like
+    "assistan" is a `ValueError`, not a silent API failure. Use the factories
+    for a clearer call site: `Message.system(…)`, `Message.user(…)`,
+    `Message.assistant(…)`, `Message.tool(…)`.
+    """
+
+    role: Role
     content: str
+
+    def __post_init__(self) -> None:
+        if self.role not in ("system", "user", "assistant", "tool"):
+            raise ValueError(f"unknown message role: {self.role!r}")
+
+    @classmethod
+    def system(cls, content: str) -> Message:
+        return cls(role="system", content=content)
+
+    @classmethod
+    def user(cls, content: str) -> Message:
+        return cls(role="user", content=content)
+
+    @classmethod
+    def assistant(cls, content: str) -> Message:
+        return cls(role="assistant", content=content)
+
+    @classmethod
+    def tool(cls, content: str) -> Message:
+        return cls(role="tool", content=content)
 
 
 @dataclass

@@ -56,9 +56,7 @@ def build_provider():
 def test_complete_text_and_usage():
     provider = build_provider()
     resp = asyncio.run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0.2)
-        )
+        provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0.2))
     )
     assert resp.text == "hello from gemini"
     assert resp.finish_reason == "STOP"
@@ -79,9 +77,7 @@ def test_calls_generate_content_endpoint():
         transport=httpx.MockTransport(handler),
     )
     asyncio.run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0.1)
-        )
+        provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0.1))
     )
     assert "generateContent" in seen["url"]
     assert seen["auth"] == "gem-key"  # raw key in x-goog-api-key
@@ -101,8 +97,8 @@ def test_system_role_goes_to_system_instruction():
         provider.complete(
             LLMRequest(
                 messages=[
-                    Message(role="system", content="be brief"),
-                    Message(role="user", content="hi"),
+                    Message.system("be brief"),
+                    Message.user("hi"),
                 ],
                 temperature=0,
             )
@@ -124,9 +120,7 @@ def test_stream_yields_deltas():
 
     async def collect():
         chunks = []
-        async for c in provider.stream(
-            LLMRequest(messages=[Message(role="user", content="hi")])
-        ):
+        async for c in provider.stream(LLMRequest(messages=[Message.user("hi")])):
             chunks.append(c)
         return chunks
 

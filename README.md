@@ -103,6 +103,8 @@ in two languages (English & Русский); the design and invariants are in
   support/contradiction, and ended with an HITL steering + honest report.
 - `examples/devops` — ops assistant: HITL tool agents + LLM tool router + trace dashboard.
 - `examples/repair` — budget-aware replanning demo (chat and data are in Russian by design).
+- `examples/forklab` — deterministic branch & merge demo (§39-§40): two research
+  strategies on their own forks, explicit three-way merge, evaluate on the merged state.
 
 ## Documentation
 

@@ -22,6 +22,7 @@ from .contracts import (
     LLMResponse,
     LLMResponseChunk,
     Message,
+    Role,
 )
 from .deepseek import deepseek_llm
 from .fake import FakeEmbedder, FakeLLM
@@ -84,6 +85,7 @@ __all__ = [
     "OpenAICompatTranscriber",
     "OpenRouterImageProvider",
     "OpenRouterVideoProvider",
+    "Role",
     "RunwayVideoProvider",
     "SoraVideoProvider",
     "SpeechProvider",

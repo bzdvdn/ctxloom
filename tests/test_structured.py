@@ -118,6 +118,31 @@ def test_structured_llm_without_llm_returns_none():
     assert result is None
 
 
+def test_llm_reply_returns_plain_text():
+    from ctxloom import llm_reply
+
+    llm = ScriptedLLM(['{"text": "просто ответ"}'])
+    ctx = Context(resources=RuntimeResources(llm=llm))
+    text = asyncio.run(llm_reply(ctx, system="Будь краток", user="сколько будет 2+2?"))
+    assert text == "просто ответ"
+
+
+def test_llm_reply_is_none_on_honest_failure():
+    from ctxloom import llm_reply
+
+    llm = ScriptedLLM(["не json", "тоже не json"])
+    ctx = Context(resources=RuntimeResources(llm=llm))
+    text = asyncio.run(llm_reply(ctx, user="х"))
+    assert text is None
+
+
+def test_llm_reply_without_model_returns_none():
+    from ctxloom import llm_reply
+
+    ctx = Context()
+    assert asyncio.run(llm_reply(ctx, user="х")) is None
+
+
 class FlakyLLM(LLMProvider):
     def __init__(self):
         self.calls = 0

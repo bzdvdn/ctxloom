@@ -93,8 +93,8 @@ async def structured_llm(
     def _request(text: str) -> LLMRequest:
         return LLMRequest(
             messages=[
-                Message(role="system", content=system),
-                Message(role="user", content=text),
+                Message.system(system),
+                Message.user(text),
             ],
             temperature=0.0,
             response_format={"type": "json_object"},
@@ -129,6 +129,36 @@ async def structured_llm(
                 "Previous reply was not valid JSON. Return a single strict JSON object only."
             )
     return None
+
+
+async def llm_reply(
+    context: Context,
+    *,
+    system: str = "",
+    user: str,
+    attempts: int = 2,
+) -> str | None:
+    """A *plain-text* chat completion → `str`, or `None` on an honest failure.
+
+    Convenience over `structured_llm` with a single-text schema: same retries,
+    same tolerant parsing, same `None` fallback (no model / provider failure) —
+    but no need to declare a one-field body model for free-form replies (§67).
+
+    It sends exactly **one** system message (the wire format is not a place for
+    multiple system blocks — extra context belongs in artifacts/views, §28).
+    """
+    body = await structured_llm(
+        context,
+        schema=_ReplyBody,
+        system=system,
+        user=user,
+        attempts=attempts,
+    )
+    return body.text if body is not None else None
+
+
+class _ReplyBody(BaseModel):
+    text: str
 
 
 class StructuredLLM(Generic[TModel]):

@@ -47,9 +47,7 @@ def build_provider():
 def test_complete_non_stream():
     provider = build_provider()
     response = asyncio.run(
-        provider.complete(
-            LLMRequest(messages=[Message(role="user", content="hi")], temperature=0.1)
-        )
+        provider.complete(LLMRequest(messages=[Message.user("hi")], temperature=0.1))
     )
     assert isinstance(response, LLMResponse)
     assert response.text == "привет мир"
@@ -62,9 +60,7 @@ def test_stream_chunks_aggregate():
 
     async def collect():
         chunks = []
-        async for chunk in provider.stream(
-            LLMRequest(messages=[Message(role="user", content="hi")])
-        ):
+        async for chunk in provider.stream(LLMRequest(messages=[Message.user("hi")])):
             chunks.append(chunk)
         return chunks
 
@@ -76,7 +72,7 @@ def test_payload_includes_model_and_format():
     provider = build_provider()
     payload = provider._payload(
         LLMRequest(
-            messages=[Message(role="user", content="hi")],
+            messages=[Message.user("hi")],
             response_format={"type": "json_object"},
             max_tokens=10,
         ),

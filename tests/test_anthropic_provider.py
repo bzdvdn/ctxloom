@@ -45,8 +45,8 @@ def test_anthropic_complete_maps_contract():
         provider.complete(
             LLMRequest(
                 messages=[
-                    Message(role="system", content="будь краток"),
-                    Message(role="user", content="привет"),
+                    Message.system("будь краток"),
+                    Message.user("привет"),
                 ],
                 temperature=0.1,
             )
@@ -63,7 +63,7 @@ def test_anthropic_stream_text_deltas():
         return [
             chunk
             async for chunk in provider.stream(
-                LLMRequest(messages=[Message(role="user", content="hi")])
+                LLMRequest(messages=[Message.user("hi")])
             )
         ]
 
@@ -76,8 +76,8 @@ def test_anthropic_payload_shape():
     payload = provider._payload(
         LLMRequest(
             messages=[
-                Message(role="system", content="SYS"),
-                Message(role="user", content="U"),
+                Message.system("SYS"),
+                Message.user("U"),
             ],
             max_tokens=99,
         ),
