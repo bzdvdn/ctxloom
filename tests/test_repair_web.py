@@ -105,3 +105,48 @@ def test_llm_failure_not_empty_reply(tmp_path):
     # not an empty reply and not a broken stream: an honest fallback (§59)
     assert "event: message" in body
     assert '"reply": ""' not in body
+
+
+def test_estimate_csv_endpoint_exports_worksheet(tmp_path):
+    from examples.repair.models import PlanStep, Project, ProjectInfo
+    from examples.repair.services.catalog import Catalog
+    from examples.repair.services.estimate import build_estimate, estimate_to_csv
+    from examples.repair.web import create_app
+    from fastapi.testclient import TestClient
+
+    root = __import__("pathlib").Path(__file__).resolve().parents[1]
+    catalog = Catalog(str(root / "examples" / "repair" / "data" / "price.csv"))
+    project = Project(
+        info=ProjectInfo(room_type="детская", area=10.0, budget=300000.0),
+        plan=[
+            PlanStep(
+                name="Электромонтаж", description="розетки", materials=["розетки ~2 шт"]
+            ),
+        ],
+    )
+    project.estimate = build_estimate(project.plan, catalog)
+    assert project.estimate.total
+
+    db = str(tmp_path / "sessions")
+    from ctxloom.checkpoints import FileKVBackend
+    from ctxloom.session import SessionStore
+
+    SessionStore(FileKVBackend(db)).save_session("s1", __ctx(project))
+
+    client = TestClient(create_app(store_dir=db))
+    res = client.get("/api/runs/s1/estimate.csv")
+    assert res.status_code == 200
+    assert res.text.startswith("\ufeff")
+    assert "Итого" in res.text
+    assert "Смета" in res.text
+    assert "Описание" in res.text
+    # the pure builder matches the endpoint output
+    assert estimate_to_csv(project).startswith("\ufeff")
+
+
+def __ctx(project):
+    from ctxloom import Context, RuntimeResources
+
+    ctx = Context(resources=RuntimeResources())
+    ctx.create(project)
+    return ctx

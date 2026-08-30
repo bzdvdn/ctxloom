@@ -22,6 +22,23 @@
   #lightbox img { max-width:92vw; max-height:92vh; border-radius:8px; }
   .status { color:var(--muted); font-style:italic; }
   .waiting { color:#ffd479; }
+  .proposal { width:100%; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .proposal h3 { margin:0 0 8px; font-size:13px; color:var(--acc); text-transform:uppercase; letter-spacing:.5px; }
+  .proposal h3:not(:first-child) { margin-top:14px; }
+  .plan-steps { margin:0; padding-left:20px; }
+  .plan-steps li { margin:4px 0; }
+  .plan-steps .materials { color:var(--muted); font-size:12px; }
+  .est-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .est-table th, .est-table td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .est-table th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  .est-table .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .est-item { max-width:260px; }
+  .est-foot { display:flex; gap:18px; margin-top:8px; font-size:13px; }
+  .est-foot .total { margin-left:auto; font-weight:650; }
+  .est-note { margin-top:8px; color:#ffd479; font-size:12.5px; }
+  .est-over { color:#ff7b7b; }
+  .csv-btn { margin-top:10px; padding:6px 12px; border-radius:8px; border:1px solid var(--acc); background:transparent; color:var(--acc); cursor:pointer; font-size:12.5px; }
+  .csv-btn:hover { background:#4cc2ff22; }
   .controls { margin-top:16px; display:flex; gap:10px; }
   #input { flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--fg); }
   button { padding:10px 18px; border-radius:10px; border:1px solid var(--acc); background:transparent; color:var(--acc); cursor:pointer; }
@@ -39,6 +56,7 @@
 </main>
 <script>
 let sid = localStorage["repair-session"] || (localStorage["repair-session"] = crypto.randomUUID().replace(/-/g,"").slice(0,24));
+let lastProposalTotal = null;
 function renderSid() { document.getElementById("sid").textContent = "сессия: " + sid; }
 renderSid();
 
@@ -64,6 +82,76 @@ function addImages(paths) {
     box.appendChild(img);
   }
   document.getElementById("messages").appendChild(box);
+}
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+
+function planBlock(plan) {
+  if (!plan || !plan.length) return "";
+  const items = plan.map((s) =>
+    "<li><b>" + escapeHtml(s.name || "") + "</b> — " + escapeHtml(s.description || "") +
+    (s.materials && s.materials.length ? '<div class="materials">' + escapeHtml(s.materials.join(" · ")) + "</div>" : "") +
+    "</li>"
+  ).join("");
+  return '<h3>План</h3><ol class="plan-steps">' + items + "</ol>";
+}
+
+function estimateBlock(est) {
+  if (!est || !est.lines || !est.lines.length) return "";
+  const rows = est.lines.map((l) =>
+    "<tr><td class=\"est-item\">" + escapeHtml(l.name || "") + "</td>" +
+    '<td class="num">' + fmt(l.quantity) + "</td>" +
+    "<td>" + escapeHtml(l.unit || "") + "</td>" +
+    '<td class="num">' + fmt(l.unit_price) + " ₽</td>" +
+    '<td class="num">' + fmt(l.total) + " ₽</td></tr>"
+  ).join("");
+  const note = (est.warnings || []).length
+    ? '<div class="est-note">⚠ ' + escapeHtml(est.warnings.join(" · ")) + "</div>"
+    : "";
+  const over = est.total != null && est.budget != null && est.total > est.budget
+    ? ' <span class="est-over">(превышает бюджет)</span>'
+    : "";
+  return '<h3>Смета</h3><div style="overflow-x:auto"><table class="est-table">' +
+    "<thead><tr><th>Описание</th><th class=\"num\">Кол-во</th><th>Ед</th><th class=\"num\">Цена</th><th class=\"num\">Сумма</th></tr></thead><tbody>" +
+    rows + "</tbody></table></div>" +
+    '<div class="est-foot"><span>Подзаголовок: ' + fmt(est.subtotal) + " ₽</span>" +
+    '<span class="total">Итого: ' + fmt(est.total) + " ₽" + over + "</span></div>" +
+    note;
+}
+
+function renderProposal(state) {
+  if (!state || !(state.plan && state.plan.length) || !state.estimate) return;
+  const box = document.createElement("div");
+  box.className = "proposal";
+  box.innerHTML = planBlock(state.plan) + estimateBlock(state.estimate);
+  const btn = document.createElement("button");
+  btn.className = "csv-btn";
+  btn.textContent = "Смета CSV";
+  btn.addEventListener("click", downloadCsv);
+  box.appendChild(btn);
+  document.getElementById("messages").appendChild(box);
+  box.scrollIntoView();
+}
+
+async function downloadCsv() {
+  const r = await fetch("/api/runs/" + sid + "/estimate.csv");
+  if (!r.ok) return;
+  const blob = await r.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "smeta.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
 }
 
 function openLightbox(src) {
@@ -129,6 +217,11 @@ async function send(text) {
       }
     }
   }
+  const st = await (await fetch("/api/runs/" + sid)).json();
+  if (st.estimate && st.estimate.total !== lastProposalTotal) {
+    renderProposal(st);
+    lastProposalTotal = st.estimate.total;
+  }
 }
 
 function addTo(kind, text) {
@@ -143,6 +236,7 @@ async function loadHistory() {
   const r = await fetch("/api/runs/" + sid);
   const state = await r.json();
   for (const m of state.messages || []) add(m.role === "user" ? "user" : "assistant", m.text);
+  if (state.estimate) { renderProposal(state); lastProposalTotal = state.estimate.total; }
 }
 
 document.getElementById("send").addEventListener("click", () => {

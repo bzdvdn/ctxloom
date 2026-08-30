@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from ..models import Estimate, EstimateLine, PlanStep
+from ..models import Estimate, EstimateLine, PlanStep, Project
 from .catalog import Catalog, CatalogItem
 
 _QUANTITY = re.compile(
@@ -111,9 +111,52 @@ def qa_budget_warning(estimate: Estimate, budget: float | None) -> list[str]:
     return []
 
 
+def estimate_to_csv(project: Project) -> str:
+    """The approved proposal as a CSV worksheet (semicolons, BOM for Excel).
+
+    First a plan block, then the estimate table with totals and warnings.
+    Numbers use the Russian decimal comma; the UTF-8 BOM lets Excel open the
+    file with the Cyrillic labels intact.
+    """
+    import csv
+    import io
+
+    def ru(value: float | None) -> str:
+        return str(value).replace(".", ",") if value is not None else ""
+
+    out = io.StringIO()
+    out.write("\ufeff")
+    writer = csv.writer(out, delimiter=";", lineterminator="\n")
+
+    writer.writerow(["План · Комната:", project.info.room_type or ""])
+    for index, step in enumerate(project.plan, start=1):
+        writer.writerow([str(index), step.name, step.description])
+
+    est = project.estimate
+    if est is not None:
+        writer.writerow([])
+        writer.writerow(["Смета"])
+        writer.writerow(["Описание", "Кол-во", "Ед", "Цена за ед", "Сумма"])
+        for line in est.lines:
+            writer.writerow(
+                [
+                    line.name,
+                    ru(line.quantity),
+                    line.unit,
+                    ru(line.unit_price),
+                    ru(line.total),
+                ]
+            )
+        writer.writerow(["Итого", "", "", "", ru(est.total)])
+        for warning in est.warnings or []:
+            writer.writerow(["Примечание:", warning])
+    return out.getvalue()
+
+
 __all__ = [
     "_conversion_factor",
     "_parse_quantity",
     "build_estimate",
+    "estimate_to_csv",
     "qa_budget_warning",
 ]

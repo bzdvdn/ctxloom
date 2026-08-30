@@ -38,7 +38,7 @@ from examples.repair.agents import RepairFlow
 from examples.repair.models import ChatReply, Project, UserMsg
 from examples.repair.services import Catalog
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -90,7 +90,12 @@ def _session_state(ctx: Context) -> dict:
         "approved": project.approved if project else False,
         "plan": [s.model_dump() for s in project.plan] if project else [],
         "estimate": (
-            project.estimate.model_dump() if project and project.estimate else None
+            {
+                **project.estimate.model_dump(),
+                "budget": project.info.budget,
+            }
+            if project and project.estimate
+            else None
         ),
     }
 
@@ -171,6 +176,29 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
         if not session.loaded:
             return JSONResponse({"messages": [], "stage": ""})
         return JSONResponse(_session_state(session.context))
+
+    @app.get("/api/runs/{session_id}/estimate.csv")
+    async def estimate_csv(session_id: str) -> Response:
+        """The approved plan + estimate as a CSV worksheet (Excel-ready, §58)."""
+        from examples.repair.models import Project
+        from examples.repair.services.estimate import estimate_to_csv
+
+        session = store.open(session_id)
+        context = session.context if session.loaded else None
+        project = (
+            context.list_artifacts(Project)[0].data
+            if context is not None and context.list_artifacts(Project)
+            else None
+        )
+        if project is None or project.estimate is None:
+            return Response(status_code=404)
+        return Response(
+            content=estimate_to_csv(project),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": 'attachment; filename="smeta.csv"',
+            },
+        )
 
     @app.delete("/api/runs/{session_id}")
     async def run_delete(session_id: str) -> dict:
