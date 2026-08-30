@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.structured import structured_llm
 
 from ..models import AnswerBody, ChatReply, ResearchTurn, UserQuery
@@ -19,7 +19,7 @@ class PlannerReply(Produce[ChatReply]):
         context: Context,
         inputs: list[Artifact[UserQuery]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         user = user_query(context, event)
         if user is None or event is None:
             return None
@@ -28,11 +28,12 @@ class PlannerReply(Produce[ChatReply]):
 
         if GREETING_RE.match(text):
             context.announce("Replying to the greeting", kind="status")
-            return Patch().create(
+            self.effects.create(
                 ChatReply(
                     query_id=event.artifact_id, text=GREETING_TEXT, kind="greeting"
                 )
             )
+            return None
 
         if RESEARCH_RE.search(text):
             return None  # research branch
@@ -48,9 +49,10 @@ class PlannerReply(Produce[ChatReply]):
             if answer
             else "This question doesn't require consulting the documentation."
         )
-        return Patch().create(
+        self.effects.create(
             ChatReply(query_id=event.artifact_id, text=reply, kind="direct")
         )
+        return None
 
 
 class PlannerTurn(Produce[ResearchTurn]):
@@ -63,7 +65,7 @@ class PlannerTurn(Produce[ResearchTurn]):
         context: Context,
         inputs: list[Artifact[UserQuery]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         user = user_query(context, event)
         if user is None or event is None:
             return None
@@ -71,6 +73,7 @@ class PlannerTurn(Produce[ResearchTurn]):
         if not RESEARCH_RE.search(text):
             return None
         context.announce("Question requires a documentation search", kind="status")
-        return Patch().create(
+        self.effects.create(
             ResearchTurn(query_id=event.artifact_id, text=text, status="researching")
         )
+        return None

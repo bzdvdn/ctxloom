@@ -8,7 +8,7 @@ the top findings are printed verbatim (honest fallback, §59).
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce, structured_llm
+from ctxloom import Artifact, Context, Event, Produce, structured_llm
 
 from ..models import Answer, AnswerBody, Evidence, Question, Review
 from ..prompts import synthesis_system
@@ -26,7 +26,7 @@ class Evaluate(Produce[Answer]):
         context: Context,
         inputs: list[Artifact[Review]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         evidences = context.list_artifacts(Evidence)
         if not evidences:
             return None
@@ -34,8 +34,7 @@ class Evaluate(Produce[Answer]):
         top = ranked[:TOPN]
 
         answer_id = "answer:merged"
-        patch = Patch()
-        patch.create(
+        answer = self.effects.create(
             Answer(
                 text=await self._synthesize(context, top, ranked),
                 sources=[e.data.source for e in top],
@@ -43,8 +42,8 @@ class Evaluate(Produce[Answer]):
             id=answer_id,
         )
         for evidence in ranked:
-            patch.link(answer_id, "supported_by", evidence.id)
-        return patch
+            answer.link("supported_by", evidence)
+        return None
 
     async def _synthesize(
         self,

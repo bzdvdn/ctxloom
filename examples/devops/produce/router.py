@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 
 from ..models import (
     AnsibleProblem,
@@ -30,22 +30,21 @@ class RouteProblem(Produce[K8sProblem]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         msg = context.get(event.artifact_id) if event is not None else None
         if msg is None or not isinstance(msg.data, UserMsg):
             return None
         context.announce("Parsing the question…", kind="status")
         target = await route_target(context, msg.data.text)
-        patch = Patch()
         if target == "k8s":
-            patch.create(K8sProblem(text=msg.data.text, query_id=msg.id))
+            self.effects.create(K8sProblem(text=msg.data.text, query_id=msg.id))
         elif target == "gitlab":
-            patch.create(GitlabProblem(text=msg.data.text, query_id=msg.id))
+            self.effects.create(GitlabProblem(text=msg.data.text, query_id=msg.id))
         elif target == "ansible":
-            patch.create(AnsibleProblem(text=msg.data.text, query_id=msg.id))
+            self.effects.create(AnsibleProblem(text=msg.data.text, query_id=msg.id))
         else:
-            patch.create(
+            self.effects.create(
                 ChatReply(query_id=msg.id, text=HELP_TEXT),
                 id=f"reply:{msg.id}",
             )
-        return patch
+        return None

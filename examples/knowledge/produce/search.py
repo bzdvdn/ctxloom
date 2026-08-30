@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.recipes import fan_out_sources, materialize_doc
 from ctxloom.sources import SourceRef
 
@@ -11,7 +11,11 @@ from .common import SCOUT_LIMIT
 
 
 class ScoutSources(Produce[SourceRef]):
-    """Fan-out over all configured sources, with idempotency (§24, §42)."""
+    """Fan-out over all configured sources, with idempotency (§24, §42).
+
+    Effects-based: `fan_out_sources` writes the refs into `self.effects`, this
+    produce adds the idempotency marker, and the runtime commits the slot once.
+    """
 
     artifact_type = SourceRef
 
@@ -20,7 +24,7 @@ class ScoutSources(Produce[SourceRef]):
         context: Context,
         inputs: list[Artifact[ResearchTurn]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         turn_artifact = context.get(event.artifact_id) if event is not None else None
         if turn_artifact is None or not isinstance(turn_artifact.data, ResearchTurn):
             return None
@@ -30,8 +34,7 @@ class ScoutSources(Produce[SourceRef]):
             s.data.query_id == turn.query_id for s in context.list_artifacts(SearchDone)
         ):
             return None
-        patch = Patch()
-        fan_patch, _ = await fan_out_sources(
+        await fan_out_sources(
             context,
             turn.text,
             owner_id=turn.query_id,
@@ -48,9 +51,10 @@ class ScoutSources(Produce[SourceRef]):
                 source=sid,
             ),
         )
-        patch.merge(fan_patch)
-        patch.create(SearchDone(query_id=turn.query_id), id=f"scouted:{turn.query_id}")
-        return patch
+        self.effects.create(
+            SearchDone(query_id=turn.query_id), id=f"scouted:{turn.query_id}"
+        )
+        return None
 
 
 class ResolveRef(Produce[TypedDoc]):
@@ -63,7 +67,7 @@ class ResolveRef(Produce[TypedDoc]):
         context: Context,
         inputs: list[Artifact[SourceRef]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         ref_artifact = context.get(event.artifact_id) if event is not None else None
         if ref_artifact is None or not isinstance(ref_artifact.data, SourceRef):
             return None
@@ -90,9 +94,10 @@ class ResolveRef(Produce[TypedDoc]):
             )
 
         # provenance (§34): TypedDoc —resolved_from→ SourceRef
-        return await materialize_doc(
+        await materialize_doc(
             context, ref_artifact, doc_factory, relation="resolved_from"
         )
+        return None
 
 
 class ResolveTable(Produce[Spreadsheet]):
@@ -105,7 +110,7 @@ class ResolveTable(Produce[Spreadsheet]):
         context: Context,
         inputs: list[Artifact[SourceRef]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         ref_artifact = context.get(event.artifact_id) if event is not None else None
         if ref_artifact is None or not isinstance(ref_artifact.data, SourceRef):
             return None
@@ -128,17 +133,15 @@ class ResolveTable(Produce[Spreadsheet]):
         columns = list(payload.get("columns", []))
         rows = [list(r) for r in payload.get("rows", [])]
         sheet_id = f"sheet:{ref.stable_id()}"
-        return (
-            Patch()
-            .create(
-                Spreadsheet(
-                    source_id=ref.source_id,
-                    path=ref.locator,
-                    columns=columns,
-                    rows=rows,
-                    query_id=ref.query_id,
-                ),
-                id=sheet_id,
-            )
-            .link(sheet_id, "materialized_from", ref_artifact.id)
+        sheet = self.effects.create(
+            Spreadsheet(
+                source_id=ref.source_id,
+                path=ref.locator,
+                columns=columns,
+                rows=rows,
+                query_id=ref.query_id,
+            ),
+            id=sheet_id,
         )
+        sheet.link("materialized_from", ref_artifact)
+        return None

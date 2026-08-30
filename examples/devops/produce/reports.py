@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Patch, Produce, ToolAnswer
+from ctxloom import Artifact, Context, Event, Produce, ToolAnswer
 from pydantic import BaseModel
 
 from ..models import AnsibleReport, GitlabReport, K8sReport
@@ -26,13 +26,14 @@ class _ReportBuilder(Produce[BaseModel]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         a = context.get(event.artifact_id) if event is not None else None
         if a is None or not isinstance(a.data, ToolAnswer):
             return None
         problem = context.get(a.data.query_id)
         qid = getattr(problem.data, "query_id", "") if problem else ""
-        return Patch().create(self.report_type(query_id=qid, text=a.data.text))
+        self.effects.create(self.report_type(query_id=qid, text=a.data.text))
+        return None
 
 
 class K8sReportBuilder(_ReportBuilder):

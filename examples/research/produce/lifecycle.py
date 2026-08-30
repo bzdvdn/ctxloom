@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.recipes import StatusMachine
 from ctxloom.sources import SourceRef
 from ctxloom.structured import StructuredLLM
@@ -64,7 +64,7 @@ class BuildAnswer(Produce[Answer]):
         context: Context,
         inputs: list[Artifact[ResearchTurn]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         turn = turn_of(context, event)
         if turn is None or turn.status != "answerable":
             return None
@@ -111,9 +111,9 @@ class BuildAnswer(Produce[Answer]):
                 "Here are the most relevant verified facts:\n\n" + parts
             )
         answer_id = f"answer:{query_id}"
-        patch = Patch().create(
+        answer = self.effects.create(
             Answer(query_id=query_id, text=text, sources=sources), id=answer_id
         )
         for evidence_art in evidences:
-            patch.link(answer_id, "supported_by", evidence_art.id)
-        return patch
+            answer.link("supported_by", evidence_art)
+        return None

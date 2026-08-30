@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.recipes import fan_out_sources, materialize_doc
 from ctxloom.sources import SourceRef
 from ctxloom.structured import StructuredLLM
@@ -66,7 +66,7 @@ class Generator(Produce[Hypothesis]):
         context: Context,
         inputs: list[Artifact[Question]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         question_id = question_id_of(context, event)
         if question_id is None:
             return None
@@ -93,15 +93,14 @@ class Generator(Produce[Hypothesis]):
             if candidates:
                 statements = candidates[: self.MAX_HYPOTHESES]
 
-        patch = Patch()
         for i, statement in enumerate(statements):
             hyp_id = f"hyp:{question_id}:{i}"
-            patch.create(
+            hypothesis = self.effects.create(
                 Hypothesis(question_id=question_id, statement=statement, status="open"),
                 id=hyp_id,
             )
-            patch.link(hyp_id, "answers", question_id)
-        return patch
+            hypothesis.link("answers", question_id)
+        return None
 
 
 class Investigator(Produce[SourceRef]):
@@ -114,7 +113,7 @@ class Investigator(Produce[SourceRef]):
         context: Context,
         inputs: list[Artifact[Hypothesis]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         hyp_art = context.get(event.artifact_id) if event is not None else None
         if hyp_art is None or not isinstance(hyp_art.data, Hypothesis):
             return None
@@ -142,8 +141,7 @@ class Investigator(Produce[SourceRef]):
             if deep_queries
             else f"{hyp.statement}: {question.data.text}"
         )
-        patch = Patch()
-        fan_patch, _ = await fan_out_sources(
+        await fan_out_sources(
             context,
             query,
             owner_id=hyp_art.id,
@@ -157,16 +155,15 @@ class Investigator(Produce[SourceRef]):
                 f"  «{sid}» → {n} pages", kind="status", count=n, source=sid
             ),
         )
-        patch.merge(fan_patch)
-        patch.create(
+        self.effects.create(
             SearchDone(
                 hypothesis_id=hyp_art.id, round=depth, question_id=hyp.question_id
             ),
             id=marker,
         )
         if hyp.status == "open":
-            patch.update_fields(hyp_art, status="investigating")
-        return patch
+            self.effects.update(hyp_art, status="investigating")
+        return None
 
 
 class Resolver(Produce[TypedDoc]):
@@ -179,7 +176,7 @@ class Resolver(Produce[TypedDoc]):
         context: Context,
         inputs: list[Artifact[SourceRef]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         ref_art = context.get(event.artifact_id) if event is not None else None
         if ref_art is None or not isinstance(ref_art.data, SourceRef):
             return None
@@ -200,9 +197,8 @@ class Resolver(Produce[TypedDoc]):
                 score=data.score or 0.0,
             )
 
-        return await materialize_doc(
-            context, ref_art, doc_factory, relation="resolved_from"
-        )
+        await materialize_doc(context, ref_art, doc_factory, relation="resolved_from")
+        return None
 
 
 class ExtractEvidence(Produce[Evidence]):
@@ -220,7 +216,7 @@ class ExtractEvidence(Produce[Evidence]):
         context: Context,
         inputs: list[Artifact[TypedDoc]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         doc_art = context.get(event.artifact_id) if event is not None else None
         if doc_art is None or not isinstance(doc_art.data, TypedDoc):
             return None
@@ -237,17 +233,15 @@ class ExtractEvidence(Produce[Evidence]):
             source=doc.path,
             score=doc.score,
         )
-        patch = Patch().create(evidence, id=evidence_id)
-        patch.link(evidence_id, "extracted_from", doc_art.id)
+        evidence_handle = self.effects.create(evidence, id=evidence_id)
+        evidence_handle.link("extracted_from", doc_art)
         # deterministic support/contradiction per hypothesis (§67, §36)
         for hyp_art in hypotheses_of(context, doc.question_id):
             if token_support(doc.content, hyp_art.data.statement) < 0.05:
                 continue  # page does not address this hypothesis — coverage only
             same_stance = negatory(doc.content) == negatory(hyp_art.data.statement)
-            patch.link(
-                evidence_id, "supports" if same_stance else "contradicts", hyp_art.id
-            )
-        return patch
+            evidence_handle.link("supports" if same_stance else "contradicts", hyp_art)
+        return None
 
 
 class ClaimBuilder(Produce[Claim]):
@@ -260,14 +254,13 @@ class ClaimBuilder(Produce[Claim]):
         context: Context,
         inputs: list[Artifact[Evidence]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         ev_art = context.get(event.artifact_id) if event is not None else None
         if ev_art is None or not isinstance(ev_art.data, Evidence):
             return None
         evidence = ev_art.data
         docs = context.related(ev_art.id, relation="extracted_from")
         doc_text = docs[0].data.content if docs else ""
-        patch = Patch()
         for i, sentence in enumerate(split_sentences(evidence.text)):
             support = token_support(sentence, doc_text)
             confidence = round(min(1.0, 0.3 + 0.7 * support), 2)
@@ -277,7 +270,7 @@ class ClaimBuilder(Produce[Claim]):
                 else ("weak" if support >= 0.35 else "unverified")
             )
             claim_id = f"claim:{ev_art.id}:{i}"
-            patch.create(
+            claim = self.effects.create(
                 Claim(
                     question_id=evidence.question_id,
                     hypothesis_id=evidence.hypothesis_id,
@@ -287,8 +280,8 @@ class ClaimBuilder(Produce[Claim]):
                 ),
                 id=claim_id,
             )
-            patch.link(claim_id, "derived_from", ev_art.id)
-        return patch
+            claim.link("derived_from", ev_art)
+        return None
 
 
 class CrossChecker(Produce[Claim]):
@@ -301,12 +294,11 @@ class CrossChecker(Produce[Claim]):
         context: Context,
         inputs: list[Artifact[Claim]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         claim_art = context.get(event.artifact_id) if event is not None else None
         if claim_art is None or not isinstance(claim_art.data, Claim):
             return None
         claim = claim_art.data
-        patch = Patch()
         for other in context.list_artifacts(Claim):
             if (
                 other.id == claim_art.id
@@ -317,5 +309,5 @@ class CrossChecker(Produce[Claim]):
             if token_support(claim.text, other.data.text) >= 0.3 and negatory(
                 claim.text
             ) != negatory(other.data.text):
-                patch.link(claim_art.id, "contradicted_by", other.id)
-        return patch
+                self.effects.link(claim_art.id, "contradicted_by", other.id)
+        return None

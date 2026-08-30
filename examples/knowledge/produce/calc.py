@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 
 from ..models import Calculation, ResearchTurn, Spreadsheet
 from .common import interesting_column_re
@@ -83,7 +83,7 @@ class CalculateAggregate(Produce[Calculation]):
         context: Context,
         inputs: list[Artifact[Spreadsheet]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         sheet_art = context.get(event.artifact_id) if event is not None else None
         if sheet_art is None or not isinstance(sheet_art.data, Spreadsheet):
             return None
@@ -123,17 +123,15 @@ class CalculateAggregate(Produce[Calculation]):
             path=sheet.path,
         )
         calc_id = f"calc:{sheet.query_id}:{sheet_art.id}"
-        return (
-            Patch()
-            .create(
-                Calculation(
-                    query_id=sheet.query_id,
-                    description=description,
-                    value=value,
-                    column=column,
-                    rows=len(values),
-                ),
-                id=calc_id,
-            )
-            .link(calc_id, "derived_from", sheet_art.id)
+        calc = self.effects.create(
+            Calculation(
+                query_id=sheet.query_id,
+                description=description,
+                value=value,
+                column=column,
+                rows=len(values),
+            ),
+            id=calc_id,
         )
+        calc.link("derived_from", sheet_art)
+        return None

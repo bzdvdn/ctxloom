@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 
 from ..models import AnsibleReport, ChatReply, GitlabReport, K8sReport
 
@@ -19,13 +19,14 @@ class RenderReply(Produce[ChatReply]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         a = context.get(event.artifact_id) if event is not None else None
         if a is None or not isinstance(
             a.data, (K8sReport, GitlabReport, AnsibleReport)
         ):
             return None
-        return Patch().create(
+        self.effects.create(
             ChatReply(query_id=a.data.query_id, text=a.data.text),
             id=f"reply:{a.data.query_id}",
         )
+        return None

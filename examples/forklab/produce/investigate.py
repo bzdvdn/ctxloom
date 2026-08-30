@@ -9,7 +9,7 @@ fallback, §59) — the pipeline still runs fully offline.
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce, structured_llm
+from ctxloom import Artifact, Context, Event, Produce, structured_llm
 
 from ..models import Evidence, EvidenceBody, Question, Strategy
 from ..prompts import wording_system
@@ -69,13 +69,13 @@ class DepthInvestigate(Produce[Evidence]):
         context: Context,
         inputs: list[Artifact[Strategy]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         strategy = _strategy_of(context)
         if strategy is None or strategy.data.kind != "depth":
             return None
         context.announce("depth: wording 1 finding…", kind="status")
         doc_id, snippet, quality = _CATALOG[0]
-        return Patch().create(
+        self.effects.create(
             Evidence(
                 branch=strategy.data.branch,
                 source=doc_id,
@@ -84,6 +84,7 @@ class DepthInvestigate(Produce[Evidence]):
             ),
             id=f"evidence:{strategy.data.branch}:{doc_id}",
         )
+        return None
 
 
 class BreadthInvestigate(Produce[Evidence]):
@@ -96,18 +97,17 @@ class BreadthInvestigate(Produce[Evidence]):
         context: Context,
         inputs: list[Artifact[Strategy]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         strategy = _strategy_of(context)
         if strategy is None or strategy.data.kind != "breadth":
             return None
-        patch = Patch()
         for offset in range(1, min(4, len(_CATALOG))):
             context.announce(
                 f"breadth: wording finding {offset}/{min(3, len(_CATALOG) - 1)}…",
                 kind="status",
             )
             doc_id, snippet, quality = _CATALOG[offset]
-            patch.create(
+            self.effects.create(
                 Evidence(
                     branch=strategy.data.branch,
                     source=doc_id,
@@ -116,7 +116,7 @@ class BreadthInvestigate(Produce[Evidence]):
                 ),
                 id=f"evidence:{strategy.data.branch}:{doc_id}",
             )
-        return patch
+        return None
 
 
 __all__ = ["BreadthInvestigate", "DepthInvestigate"]

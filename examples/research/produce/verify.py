@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 
 from ..models import Claim, Evidence
 from .common import split_sentences, token_support
@@ -19,7 +19,7 @@ class VerifyClaims(Produce[Claim]):
         context: Context,
         inputs: list[Artifact[Evidence]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         evidence_art = context.get(event.artifact_id) if event is not None else None
         if evidence_art is None or not isinstance(evidence_art.data, Evidence):
             return None
@@ -32,7 +32,6 @@ class VerifyClaims(Produce[Claim]):
             kind="status",
             source=evidence.source,
         )
-        patch = Patch()
         for i, sentence in enumerate(split_sentences(evidence.text)):
             support = token_support(sentence, doc_text)
             confidence = round(
@@ -45,7 +44,7 @@ class VerifyClaims(Produce[Claim]):
                 else ("weak" if support >= 0.35 else "unverified")
             )
             claim_id = f"claim:{evidence_art.id}:{i}"
-            patch.create(
+            claim = self.effects.create(
                 Claim(
                     query_id=evidence.query_id,
                     text=sentence,
@@ -54,5 +53,5 @@ class VerifyClaims(Produce[Claim]):
                 ),
                 id=claim_id,
             )
-            patch.link(claim_id, "derived_from", evidence_art.id)
-        return patch
+            claim.link("derived_from", evidence_art)
+        return None

@@ -11,7 +11,7 @@ import logging
 import re
 from typing import Any
 
-from ctxloom import Patch, structured_llm
+from ctxloom import structured_llm
 from ctxloom.artifacts import Artifact
 from ctxloom.context import Context
 from ctxloom.recipes import (
@@ -46,23 +46,6 @@ def _latest_user_msg(context: Context) -> Artifact[UserMsg] | None:
 def _project_artifact(context: Context) -> Artifact[Project] | None:
     projects = context.list_artifacts(Project)
     return projects[0] if projects else None
-
-
-def _update_project(project_art: Artifact[Project], updates: dict[str, Any]) -> Patch:
-    return Patch().update_fields(project_art, **updates)
-
-
-def _reply(
-    context: Context,
-    msg_id: str,
-    text: str,
-    kind: str = "text",
-    images: list[str] | None = None,
-) -> Patch:
-    return Patch().create(
-        ChatReply(query_id=msg_id, text=text, kind=kind, images=images or []),
-        id=f"reply:{msg_id}",
-    )
 
 
 async def _extract_info(
@@ -212,8 +195,6 @@ __all__ = [
     "_palette_text",
     "_parse_pick",
     "_project_artifact",
-    "_reply",
-    "_update_project",
     "changed_fields",
     "ensure_geometry",
     "geometry_text",

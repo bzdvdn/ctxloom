@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.sources import SourceRef
 
 from ..models import (
@@ -66,7 +66,7 @@ def channel_done(context: Context, hyp_art: Artifact[Hypothesis], depth: int) ->
 
 def evaluate_hypothesis(
     context: Context, hyp_art: Artifact[Hypothesis]
-) -> Patch | None:
+) -> dict[str, object] | None:
     """One hypothesis: counts, score, verdict — or None if nothing changed."""
     supports = len(context.incoming(hyp_art.id, relation="supports"))
     contradicts = len(context.incoming(hyp_art.id, relation="contradicts"))
@@ -105,15 +105,14 @@ def evaluate_hypothesis(
         and current.coverage == coverage
     ):
         return None
-    return Patch().update_fields(
-        hyp_art,
-        status=verdict,
-        score=score,
-        supports=supports,
-        contradicts=contradicts,
-        coverage=coverage,
-        confidence=confidence,
-    )
+    return {
+        "status": verdict,
+        "score": score,
+        "supports": supports,
+        "contradicts": contradicts,
+        "coverage": coverage,
+        "confidence": confidence,
+    }
 
 
 class Evaluator(Produce[Hypothesis]):
@@ -126,7 +125,7 @@ class Evaluator(Produce[Hypothesis]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         question_id = question_id_of(context, event)
         if question_id is None:
             return None
@@ -134,10 +133,9 @@ class Evaluator(Produce[Hypothesis]):
         if question is None or not isinstance(question.data, Question):
             return None
         depth = question.data.depth
-        patch = Patch()
         for hyp_art in hypotheses_of(context, question_id):
             if channel_done(context, hyp_art, depth):
-                update = evaluate_hypothesis(context, hyp_art)
-                if update is not None:
-                    patch.merge(update)
-        return patch if not patch.is_empty() else None
+                fields = evaluate_hypothesis(context, hyp_art)
+                if fields is not None:
+                    self.effects.update(hyp_art, **fields)
+        return None

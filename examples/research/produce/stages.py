@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.recipes import fan_out_sources, materialize_doc
 from ctxloom.sources import SourceRef
 from ctxloom.structured import StructuredLLM
@@ -28,7 +28,7 @@ class Router(Produce[ResearchTurn]):
         context: Context,
         inputs: list[Artifact[UserQuery]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         user = user_query(context, event)
         if user is None or event is None:
             return None
@@ -36,9 +36,10 @@ class Router(Produce[ResearchTurn]):
         if not text:
             return None
         context.announce("Question requires web research", kind="status")
-        return Patch().create(
+        self.effects.create(
             ResearchTurn(query_id=event.artifact_id, text=text, status="researching")
         )
+        return None
 
 
 class WebScout(Produce[SourceRef]):
@@ -51,7 +52,7 @@ class WebScout(Produce[SourceRef]):
         context: Context,
         inputs: list[Artifact[ResearchTurn]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         turn = turn_of(context, event)
         if turn is None:
             return None
@@ -61,8 +62,7 @@ class WebScout(Produce[SourceRef]):
         ):
             return None
 
-        patch = Patch()
-        fan_patch, _ = await fan_out_sources(
+        await fan_out_sources(
             context,
             turn.text,
             owner_id=turn.query_id,
@@ -79,9 +79,10 @@ class WebScout(Produce[SourceRef]):
                 source=sid,
             ),
         )
-        patch.merge(fan_patch)
-        patch.create(SearchDone(query_id=turn.query_id), id=f"scouted:{turn.query_id}")
-        return patch
+        self.effects.create(
+            SearchDone(query_id=turn.query_id), id=f"scouted:{turn.query_id}"
+        )
+        return None
 
 
 class ResolveRef(Produce[TypedDoc]):
@@ -94,7 +95,7 @@ class ResolveRef(Produce[TypedDoc]):
         context: Context,
         inputs: list[Artifact[SourceRef]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         ref_artifact = context.get(event.artifact_id) if event is not None else None
         if ref_artifact is None or not isinstance(ref_artifact.data, SourceRef):
             return None
@@ -118,9 +119,10 @@ class ResolveRef(Produce[TypedDoc]):
                 score=data.score or 0.0,
             )
 
-        return await materialize_doc(
+        await materialize_doc(
             context, ref_artifact, doc_factory, relation="resolved_from"
         )
+        return None
 
 
 class _Digest(BaseModel):
@@ -142,7 +144,7 @@ class ExtractEvidence(Produce[Evidence]):
         context: Context,
         inputs: list[Artifact[TypedDoc]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         doc_artifact = context.get(event.artifact_id) if event is not None else None
         if doc_artifact is None or not isinstance(doc_artifact.data, TypedDoc):
             return None
@@ -158,16 +160,14 @@ class ExtractEvidence(Produce[Evidence]):
         )
         text = body.text.strip() if body else " ".join(doc.content.split())[:200]
         evidence_id = f"evidence:{doc.query_id}:{doc.path}"
-        return (
-            Patch()
-            .create(
-                Evidence(
-                    query_id=doc.query_id,
-                    text=text,
-                    source=doc.path,
-                    score=doc.score,
-                ),
-                id=evidence_id,
-            )
-            .link(evidence_id, "extracted_from", doc_artifact.id)
+        evidence = self.effects.create(
+            Evidence(
+                query_id=doc.query_id,
+                text=text,
+                source=doc.path,
+                score=doc.score,
+            ),
+            id=evidence_id,
         )
+        evidence.link("extracted_from", doc_artifact)
+        return None

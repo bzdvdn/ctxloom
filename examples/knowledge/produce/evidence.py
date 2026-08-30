@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.structured import structured_llm
 
 from ..models import AnswerBody, Claim, Evidence, TypedDoc
@@ -25,7 +25,7 @@ class ExtractEvidence(Produce[Evidence]):
         context: Context,
         inputs: list[Artifact[TypedDoc]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         doc_artifact = context.get(event.artifact_id) if event is not None else None
         if doc_artifact is None or not isinstance(doc_artifact.data, TypedDoc):
             return None
@@ -43,19 +43,17 @@ class ExtractEvidence(Produce[Evidence]):
         text = body.text.strip() if body else " ".join(doc.content.split())[:200]
         evidence_id = f"evidence:{doc.query_id}:{doc.path}"
         # provenance (§34): Evidence —extracted_from→ TypedDoc
-        return (
-            Patch()
-            .create(
-                Evidence(
-                    query_id=doc.query_id,
-                    text=text,
-                    source=f"{doc.source_id}:{doc.path}",
-                    score=doc.score,
-                ),
-                id=evidence_id,
-            )
-            .link(evidence_id, "extracted_from", doc_artifact.id)
+        evidence = self.effects.create(
+            Evidence(
+                query_id=doc.query_id,
+                text=text,
+                source=f"{doc.source_id}:{doc.path}",
+                score=doc.score,
+            ),
+            id=evidence_id,
         )
+        evidence.link("extracted_from", doc_artifact)
+        return None
 
 
 class VerifyClaims(Produce[Claim]):
@@ -81,7 +79,7 @@ class VerifyClaims(Produce[Claim]):
         context: Context,
         inputs: list[Artifact[Evidence]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         evidence_art = context.get(event.artifact_id) if event is not None else None
         if evidence_art is None or not isinstance(evidence_art.data, Evidence):
             return None
@@ -116,7 +114,6 @@ class VerifyClaims(Produce[Claim]):
                 ) != has_negation(other.data.text):
                     conflicting.update({aid, other.id})
 
-        patch = Patch()
         for aid, sentence in new_items:
             support = token_support(sentence, doc_text)
             confidence = round(
@@ -128,7 +125,7 @@ class VerifyClaims(Produce[Claim]):
                 if support >= 0.6
                 else ("weak" if support >= 0.35 else "unverified")
             )
-            patch.create(
+            claim = self.effects.create(
                 Claim(
                     query_id=evidence.query_id,
                     text=sentence,
@@ -138,20 +135,20 @@ class VerifyClaims(Produce[Claim]):
                 ),
                 id=aid,
             )
-            patch.link(aid, "derived_from", evidence_art.id)
+            claim.link("derived_from", evidence_art)
 
         for i, (aid, a_text) in enumerate(new_items):
             for bid, b_text in new_items[i + 1 :]:
                 if self._similarity(a_text, b_text) >= 0.5 and has_negation(
                     a_text
                 ) != has_negation(b_text):
-                    patch.link(aid, "contradicted_by", bid)
-                    patch.link(bid, "contradicted_by", aid)
+                    self.effects.link(aid, "contradicted_by", bid)
+                    self.effects.link(bid, "contradicted_by", aid)
         for other in context.list_artifacts(Claim):
             if (
                 other.id in conflicting
                 and other.data.query_id == evidence.query_id
                 and not other.data.conflict
             ):
-                patch.update_fields(other, conflict=True)
-        return patch
+                self.effects.update(other, conflict=True)
+        return None

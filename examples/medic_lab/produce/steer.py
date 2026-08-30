@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Patch, Produce
+from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.interrupt import PendingQuestion
 from ctxloom.structured import StructuredLLM
 from pydantic import BaseModel
@@ -77,7 +77,7 @@ class Steer(Produce[PendingQuestion]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         question_id = question_id_of(context, event)
         if question_id is None:
             return None
@@ -94,7 +94,7 @@ class Steer(Produce[PendingQuestion]):
         steer_id = f"steer:{question_id}:{question.data.depth}"
         if context.get(steer_id) is not None:
             return None  # same round already steering (idempotent, §42)
-        return Patch().create(
+        self.effects.create(
             PendingQuestion(
                 question=(
                     "All hypotheses have been evaluated. Deepen one, "
@@ -108,6 +108,7 @@ class Steer(Produce[PendingQuestion]):
             ),
             id=steer_id,
         )
+        return None
 
 
 class Deepen(Produce[PendingQuestion]):
@@ -120,20 +121,19 @@ class Deepen(Produce[PendingQuestion]):
         context: Context,
         inputs: list[Artifact[PendingQuestion]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         q_art = context.get(event.artifact_id) if event is not None else None
         if q_art is None or not isinstance(q_art.data, PendingQuestion):
             return None
         q = q_art.data
         if not q.answered or q.kind != "steer":
             return None
-        patch = Patch()
         question_id = q.notes.get("question_id")
         if not question_id:
-            return patch
+            return None
         answer = (q.resolution or "").strip().lower()
         if answer.startswith("stop") or answer in {"no", "done", "хватит", "стоп"}:
-            return patch  # Reporter builds the report
+            return None  # Reporter builds the report
         m = re.fullmatch(r"[h]?(\d)", answer)
         if m is not None:
             index = int(m.group(1))
@@ -146,7 +146,7 @@ class Deepen(Produce[PendingQuestion]):
                         kind="status",
                         hypothesis=hyp_art.id,
                     )
-                    patch.update_fields(hyp_art, status="open")
+                    self.effects.update(hyp_art, status="open")
                     question = context.get(question_id)
                     if question is not None and isinstance(question.data, Question):
                         if context.resources.llm is not None:
@@ -162,8 +162,8 @@ class Deepen(Produce[PendingQuestion]):
                             existing = dict(question.data.deepen_queries or {})
                             existing[hyp_art.id] = queries
                             updates["deepen_queries"] = existing
-                        patch.update_fields(question, **updates)
-        return patch
+                        self.effects.update(question, **updates)
+        return None
 
     async def _deepen_queries(
         self, context: Context, question: Question, hyp: Hypothesis
@@ -195,7 +195,7 @@ class Reporter(Produce[ResearchReport]):
         context: Context,
         inputs: list[Artifact[Any]],
         event: Event | None = None,
-    ) -> Patch | None:
+    ) -> None:
         question_id = question_id_of(context, event)
         if question_id is None:
             return None
@@ -268,7 +268,7 @@ class Reporter(Produce[ResearchReport]):
             uncertainty_ = "see the ranked hypotheses below."
         answer = synthesized
         uncertainty = uncertainty_
-        return Patch().create(
+        self.effects.create(
             ResearchReport(
                 question_id=question_id,
                 answer=answer,
@@ -277,6 +277,7 @@ class Reporter(Produce[ResearchReport]):
             ),
             id=f"report:{question_id}",
         )
+        return None
 
     async def _synthesize(
         self,
