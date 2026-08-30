@@ -54,6 +54,7 @@ modules.
 | `context_to_mermaid(context)` | live provenance graph of a context (artifacts + relations) |
 | `trace_to_mermaid(trace)` | one run as a Mermaid `sequenceDiagram` |
 | `python -m ctxloom graph\|context\|trace` | CLI printing the diagrams to stdout |
+| `trace_provenance_to_mermaid(trace)` | a run's evidence graph (written artifacts + `patch.link` edges) |
 
 ## Replay (ctxloom.replay, §55)
 
@@ -73,6 +74,15 @@ modules.
 | `MergeConflict` | raised when both sides changed an artifact differently since the fork |
 | `BranchStore(KVBackend)` | persists branches as `branch:<session>:<name>` over a KV backend |
 | `python -m ctxloom branch …` | CLI: `list` / `save` / `merge` |
+
+## Evaluation (ctxloom.eval, §56)
+
+| Symbol | Role |
+| --- | --- |
+| `run_suite(cases, metrics)` / `run_case(case, metrics)` | execute cases and score the final contexts |
+| `EvalCase` / `EvalResult` / `EvalReport` / `Metric` | case/score/report structures (`overall()`, `render()`, `to_dict()`) |
+| `core_metrics` | the four non-generative metrics (answer/provenance/evidence/claim) |
+| `answer_coverage()` · `calculation_correctness(values=…)` · `source_coverage()` | ground-truth factories (skip when `expected` is missing) |
 
 ## Structured output
 

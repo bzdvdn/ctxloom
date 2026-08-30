@@ -13,6 +13,22 @@ from .checkpoints import (
 from .commit import Commit, Read, Write
 from .consume import Consume, consume
 from .context import Context, MergeConflict, View
+from .eval import (
+    EvalCase,
+    EvalReport,
+    EvalResult,
+    Metric,
+    answer_coverage,
+    answer_present,
+    calculation_correctness,
+    claim_verification,
+    core_metrics,
+    evidence_quality,
+    provenance_grounded,
+    run_case,
+    run_suite,
+    source_coverage,
+)
 from .events import Event, EventType
 from .interrupt import InterruptPatch, PendingQuestion
 from .llm_agent import HITLLMAgent, LLMAgent, StructuredGenerateAgent

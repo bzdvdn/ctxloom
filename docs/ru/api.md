@@ -53,6 +53,7 @@
 | `context_to_mermaid(context)` | живой граф провенанса контекста (артефакты + связи) |
 | `trace_to_mermaid(trace)` | один запуск как Mermaid `sequenceDiagram` |
 | `python -m ctxloom graph\|context\|trace` | CLI, печатающий диаграммы в stdout |
+| `trace_provenance_to_mermaid(trace)` | граф доказательств запуска (записанные артефакты + рёбра `patch.link`) |
 
 ## Replay (ctxloom.replay, §55)
 
@@ -72,6 +73,15 @@
 | `MergeConflict` | бросается, когда обе стороны изменили артефакт по-разному после форка |
 | `BranchStore(KVBackend)` | хранит ветки как `branch:<session>:<name>` поверх KV-бэкенда |
 | `python -m ctxloom branch …` | CLI: `list` / `save` / `merge` |
+
+## Оценка (ctxloom.eval, §56)
+
+| Символ | Роль |
+| --- | --- |
+| `run_suite(cases, metrics)` / `run_case(case, metrics)` | выполнить кейсы и скорить итоговые контексты |
+| `EvalCase` / `EvalResult` / `EvalReport` / `Metric` | структуры кейс/скор/отчёт (`overall()`, `render()`, `to_dict()`) |
+| `core_metrics` | четыре не генеративные метрики (answer/provenance/evidence/claim) |
+| `answer_coverage()` · `calculation_correctness(values=…)` · `source_coverage()` | фабрики с грёд-трусом (skip при отсутствии `expected`) |
 
 ## Структурный вывод
 
