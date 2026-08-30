@@ -48,6 +48,7 @@ from .providers import (
 from .replay import ReplayLLM, ReplayMiss, replay_context, replay_summary
 from .resources import RuntimeResources
 from .runtime import Runtime
+from .scheduler import Scheduler, uncertainty_policy
 from .session import Session, SessionStore
 from .streaming import EventHub, ProgressEvent
 from .structured import (
@@ -110,6 +111,7 @@ __all__ = [
     "RunOutcome",
     "RunStats",
     "Runtime",
+    "Scheduler",
     "RuntimeResources",
     "ReplayLLM",
     "ReplayMiss",
@@ -128,6 +130,7 @@ __all__ = [
     "Tracer",
     "Trigger",
     "Unlink",
+    "uncertainty_policy",
     "Update",
     "View",
     "Write",

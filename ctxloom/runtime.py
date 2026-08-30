@@ -13,6 +13,7 @@ from .context import Context
 from .effects import Effects, current_effects, reset_effects, set_effects
 from .events import Event
 from .patches import Create, Delete, Link, Patch, Unlink, Update
+from .scheduler import Scheduler
 from .session import Session
 from .streaming import ProgressEvent
 from .tracing.models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
@@ -31,12 +32,14 @@ class Runtime:
         session: "Session | None" = None,
         budget: Budget | None = None,
         tracer: Tracer | list[Tracer] | None = None,
+        scheduler: Scheduler | None = None,
     ):
         self.context = context
         self.agents = agents or []
         self.max_concurrency = max_concurrency
         self.session = session
         self.budget = budget
+        self.scheduler = scheduler
         self.tracer: Tracer | CompositeTracer | None = (
             tracer
             if isinstance(tracer, Tracer) or tracer is None
@@ -230,6 +233,9 @@ class Runtime:
         # Limit the number of runs by the max_runs budget. Set the budget_runs_exceeded
         # outcome only when the limit is actually reached, not when the event simply
         # has no subscribed agents.
+        if self.scheduler is not None and work:
+            work = await self.scheduler(self.context, work)
+
         active = self._active_budget
         if active is not None and active.max_runs is not None:
             remaining = active.max_runs - self._runs_used

@@ -23,6 +23,8 @@ class Agent(ABC):  # noqa: B024 — interface without abstract methods, run() ha
     name: str = ""
     consumes: Sequence[Consume] | None = None
     produces: Sequence[Produce[Any]] | None = None
+    #: Declarative capability labels (§25), consumed by the adaptive policy.
+    capabilities: tuple[str, ...] = ()
     triggers: list[Trigger] = []
     # Run priority within a single generation: lower value runs earlier.
     # Useful for "finishers"/evaluators that logically run last (§24).
