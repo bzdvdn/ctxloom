@@ -26,6 +26,7 @@ reference.
 | [effects](en/effects.md) | The produce contract & mental model (§24): `self.effects`, Patch = runtime transport |
 | [eval](en/eval.md) | Multi-level evaluation (§56): evidence/claim/provenance/calc/answer metrics |
 | [examples](en/examples.md) | knowledge, research, medic-lab, devops, repair |
+| [port-matrix](en/port-matrix.md) | how canonical patterns (LangGraph/LangChain/CrewAI/…) map to our idioms + `examples/` |
 | [api](en/api.md) | Public API reference (top-level symbols) |
 
 ## Русский
@@ -45,4 +46,5 @@ reference.
 | [effects](ru/effects.md) | Контракт produce и ментальная модель (§24): `self.effects`, Patch = транспорт рантайма |
 | [eval](ru/eval.md) | Многоуровневая оценка (§56): метрики evidence/claim/provenance/calc/answer |
 | [examples](ru/examples.md) | knowledge, research, medic-lab, devops, repair |
+| [port-matrix](ru/port-matrix.md) | как канонические паттерны (LangGraph/LangChain/CrewAI/…) мапятся на наши идиомы + `examples/` |
 | [api](ru/api.md) | Справочник публичного API (символы верхнего уровня) |
