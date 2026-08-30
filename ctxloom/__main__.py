@@ -119,6 +119,37 @@ def cmd_trace(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_replay(args: argparse.Namespace) -> int:
+    from .replay import replay_context, replay_summary
+    from .session import SessionStore
+
+    store = SessionStore(_open_store(args.path, args.backend))
+    sessions = store.list_sessions()
+    if not sessions:
+        print("no sessions found")
+        return 1
+    session_id = args.session or sessions[-1]
+    try:
+        context = replay_context(store, session_id, version=args.version)
+    except KeyError as exc:
+        print(str(exc))
+        return 1
+    summary = replay_summary(context)
+    print(f"session {session_id!r} — replay v{summary['version']}")
+    print(
+        f"artifacts: {summary['artifacts']} · relations: {summary['relations']} · "
+        f"pending questions: {summary['pending_questions']}"
+    )
+    for tname, count in sorted(summary["by_type"].items()):
+        print(f"  {tname}: {count}")
+    if args.diagram:
+        from .viz import context_to_mermaid
+
+        print()
+        print(context_to_mermaid(context))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m ctxloom",
@@ -154,6 +185,24 @@ def build_parser() -> argparse.ArgumentParser:
         "run_id", nargs="?", default=None, help="run id (default: latest)"
     )
     p_trace.set_defaults(func=cmd_trace)
+
+    p_replay = sub.add_parser(
+        "replay", help="deterministic state replay of a saved session (§55)"
+    )
+    p_replay.add_argument(
+        "path", help="KV backend file (sessions.sqlite3) or directory"
+    )
+    p_replay.add_argument(
+        "--session", default=None, help="session id (default: latest)"
+    )
+    p_replay.add_argument(
+        "--version", type=int, default=None, help="replay to this commit"
+    )
+    p_replay.add_argument("--backend", choices=["file", "sqlite"], default="auto")
+    p_replay.add_argument(
+        "--diagram", action="store_true", help="also print the provenance graph"
+    )
+    p_replay.set_defaults(func=cmd_replay)
 
     return parser
 

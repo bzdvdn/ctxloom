@@ -55,6 +55,15 @@ modules.
 | `trace_to_mermaid(trace)` | one run as a Mermaid `sequenceDiagram` |
 | `python -m ctxloom graph\|context\|trace` | CLI printing the diagrams to stdout |
 
+## Replay (ctxloom.replay, §55)
+
+| Symbol | Role |
+| --- | --- |
+| `ReplayLLM(recording, mode="record"\|"replay", inner=…)` | records every LLM call to JSONL, or replays them exactly; `ReplayMiss` on divergence |
+| `ReplayMiss` | a replaying call did not match the recording |
+| `replay_context(store, session_id, version=None)` | reconstructs a saved session's state at a commit |
+| `replay_summary(context)` | compact state summary for the `replay` CLI |
+
 ## Structured output
 
 | Symbol | Role |

@@ -27,6 +27,7 @@ from .providers import (
     LLMResponseChunk,
     Message,
 )
+from .replay import ReplayLLM, ReplayMiss, replay_context, replay_summary
 from .resources import RuntimeResources
 from .runtime import Runtime
 from .session import Session, SessionStore
@@ -82,6 +83,8 @@ __all__ = [
     "RunStats",
     "Runtime",
     "RuntimeResources",
+    "ReplayLLM",
+    "ReplayMiss",
     "SQLiteBackend",
     "SQLiteKVBackend",
     "Session",

@@ -3096,7 +3096,7 @@ Verification: 189 tests; mypy (strict) and ruff clean.
 | Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
 | Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
 | Branching (`context.branch()`) | §39-§40 | planned (checkpoints + `merge_from` exist) |
-| Replay (§55) | §55 | planned — commits are deterministic, replay is lightweight |
+| Replay (§55) | §55 | implemented — `ReplayLLM` record/replay, state replay + `python -m ctxloom replay` |
 | Evaluation harness | §56 | planned |
 | Security / access control | §57 | planned |
 | Adaptive / uncertainty-driven scheduling | §26, §24 | partial — budget + LLM tool router (devops demo); uncertainty-driven selection planned |
@@ -3120,6 +3120,6 @@ Demos shipped in the repo (not in the wheel):
   intentionally Russian** (a deliberate product choice, §68-adjacent); code and
   comments are English.
 
-Roadmap direction: domain connectors as examples, branching + replay, the
-evidence-graph browser in the trace UI, an evaluation harness, and stronger
-adaptive scheduling.
+Roadmap direction: domain connectors as examples, branching (§39-§40), the
+evidence-graph browser in the trace UI, an evaluation harness (§56), and
+stronger adaptive scheduling.

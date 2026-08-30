@@ -54,6 +54,15 @@
 | `trace_to_mermaid(trace)` | один запуск как Mermaid `sequenceDiagram` |
 | `python -m ctxloom graph\|context\|trace` | CLI, печатающий диаграммы в stdout |
 
+## Replay (ctxloom.replay, §55)
+
+| Символ | Роль |
+| --- | --- |
+| `ReplayLLM(recording, mode="record"\|"replay", inner=…)` | записывает каждый LLM-вызов в JSONL или воспроизводит их точно; `ReplayMiss` при расхождении |
+| `ReplayMiss` | воспроизводимый вызов не совпал с записью |
+| `replay_context(store, session_id, version=None)` | восстанавливает состояние сохранённой сессии на коммите |
+| `replay_summary(context)` | компактная сводка состояния для CLI `replay` |
+
 ## Структурный вывод
 
 | Символ | Роль |
