@@ -44,7 +44,12 @@ from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
 from .tools import FunctionTool, Tool, ToolOutput, tool
 from .tracing import AgentSpan, CompositeTracer, RunTrace, Tracer, TraceStore
 from .triggers import Trigger
-from .viz import blueprint, context_to_mermaid, trace_to_mermaid
+from .viz import (
+    blueprint,
+    context_to_mermaid,
+    trace_provenance_to_mermaid,
+    trace_to_mermaid,
+)
 
 __all__ = [
     "Agent",
@@ -78,6 +83,7 @@ __all__ = [
     "Message",
     "MessagesPrompt",
     "MergeConflict",
+    "Metric",
     "Observation",
     "Patch",
     "PendingQuestion",
@@ -121,5 +127,6 @@ __all__ = [
     "produce",
     "structured_llm",
     "tool",
+    "trace_provenance_to_mermaid",
     "trace_to_mermaid",
 ]

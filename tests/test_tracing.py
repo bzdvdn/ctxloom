@@ -54,6 +54,24 @@ class CountingQuestion(Question):
         return super().model_dump(*args, **kwargs)
 
 
+class Note(BaseModel):
+    text: str
+
+
+class Linker(Agent):
+    """Writes two artifacts and a provenance edge via the patch."""
+
+    consumes = [Consume(Question)]
+
+    async def run(self, event, context):
+        return (
+            Patch()
+            .create(Note(text="one"), id="note:1")
+            .create(Note(text="two"), id="note:2")
+            .link("note:1", "supported_by", "note:2")
+        )
+
+
 def test_trace_store_roundtrip(tmp_path):
     store = TraceStore(str(tmp_path / "traces.db"))
     trace = RunTrace(
@@ -397,3 +415,78 @@ def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
     assert "__RUN_ID__" not in html
     assert "sequenceDiagram" in html
     assert "MERMAID_SRC" in html
+
+
+def test_trace_run_page_embeds_provenance_graph(tmp_path):
+    from ctxloom.tracing.models import RelationRef
+    from ctxloom.tracing.web import create_trace_router
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    store = TraceStore(str(tmp_path / "evg.db"))
+    store.export(
+        RunTrace(
+            id="r1",
+            outcome="completed",
+            duration_ms=12.0,
+            spans=[
+                AgentSpan(
+                    agent="answerer",
+                    event_type="Answer",
+                    writes=[
+                        {
+                            "artifact_id": "a1",
+                            "op_type": "create",
+                            "data_type": "Answer",
+                            "data": "{}",
+                        },
+                        {
+                            "artifact_id": "c1",
+                            "op_type": "create",
+                            "data_type": "Claim",
+                            "data": "{}",
+                        },
+                    ],
+                    relations=[
+                        RelationRef(
+                            source_id="a1",
+                            relation="supported_by",
+                            target_id="c1",
+                            source_type="Answer",
+                            target_type="Claim",
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    app = FastAPI()
+    app.include_router(create_trace_router(store))
+    client = TestClient(app)
+    html = client.get("/traces/r1").text
+    assert "__MERMAID_GRAPH__" not in html
+    assert "Evidence graph" in html
+    assert "MERMAID_GRAPH_SRC" in html
+    assert "supported_by" in html  # the provenance edge was rendered server-side
+
+
+def test_runtime_records_provenance_relations(tmp_path):
+    store = TraceStore(str(tmp_path / "rels.db"))
+    ctx = Context(resources=RuntimeResources())
+    runtime = Runtime(ctx, agents=[Linker()], tracer=Tracer(store=store))
+    ctx.create(Question(text="link me"))
+    asyncio.run(runtime.arun())
+
+    items = store.query()["items"]
+    assert len(items) == 1
+    loaded = store.get(items[0]["id"])
+    assert loaded is not None
+    assert loaded.spans and loaded.spans[0].writes
+    relations = loaded.spans[0].relations
+    assert len(relations) == 1
+    edge = relations[0]
+    assert edge.source_id == "note:1"
+    assert edge.relation == "supported_by"
+    assert edge.target_id == "note:2"
+    assert edge.source_type == "Note"
+    assert edge.target_type == "Note"

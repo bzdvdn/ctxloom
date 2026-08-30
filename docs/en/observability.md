@@ -36,8 +36,10 @@ app.include_router(create_trace_router(store), prefix="/traces")
 ```
 
 It serves `traces.html` (list of runs, filterable) and `run.html` (spans, reads,
-writes, LLM input/output, timing). The `devops` example mounts this router and
-is the reference UI.
+writes, LLM input/output, timing, plus two live Mermaid diagrams: the run's
+**sequence** and its **evidence graph** — written artifacts with `patch.link`
+provenance edges, §34). The `devops` example mounts this router and is the
+reference UI.
 
 ### Langfuse and Postgres as additional sinks
 

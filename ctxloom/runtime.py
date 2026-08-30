@@ -14,7 +14,7 @@ from .events import Event
 from .patches import Create, Delete, Link, Patch, Unlink, Update
 from .session import Session
 from .streaming import ProgressEvent
-from .tracing.models import AgentSpan, ArtifactRef, LLMCall, RunTrace
+from .tracing.models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from .tracing.tracer import CompositeTracer, RecordingLLM, Tracer, _clip
 
 #: A scheduled patch with its trigger reads and (optional) trace span.
@@ -101,6 +101,29 @@ class Runtime:
     def _artifact_data(self, artifact_id: str) -> Any | None:
         artifact = self.context.get(artifact_id)
         return artifact.data if artifact is not None else None
+
+    @staticmethod
+    def _type_name(artifact_id: str, context: Context | None) -> str:
+        artifact = context.get(artifact_id) if context is not None else None
+        data = artifact.data if artifact is not None else None
+        return type(data).__name__ if data is not None else ""
+
+    def _relation_refs(self, patch: Patch) -> list[RelationRef]:
+        """Provenance edges (`patch.link`) recorded for the span (§34)."""
+        refs: list[RelationRef] = []
+        for op in patch.operations:
+            if not isinstance(op, Link):
+                continue
+            refs.append(
+                RelationRef(
+                    source_id=op.artifact_id,
+                    relation=op.relation,
+                    target_id=op.target_id,
+                    source_type=self._type_name(op.artifact_id, self.context),
+                    target_type=self._type_name(op.target_id, self.context),
+                )
+            )
+        return refs
 
     def _write_refs(self, patch: Patch, writes: list[Write]) -> list[ArtifactRef]:
         ops_by_id: dict[str, tuple[str, Any | None]] = {}
@@ -318,6 +341,7 @@ class Runtime:
             commit.writes = self._apply_patch(patch, commit)
             if span is not None:
                 span.writes = self._write_refs(patch, commit.writes)
+                span.relations = self._relation_refs(patch)
             self.context.log_commit(commit)
             if self.session is not None:
                 # git-like persist after each commit: the session survives a crash

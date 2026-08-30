@@ -9,6 +9,7 @@ honest diagrams are the *static map* and the *dynamic state*:
 | `blueprint(agents)` | static map: artifact types = nodes, agents = edges (`Consume` / `creates` / `lifecycle`) |
 | `context_to_mermaid(context)` | live provenance graph: artifacts grouped by type, `patch.link` relations |
 | `trace_to_mermaid(trace)` | one run as a `sequenceDiagram`: spans over time, writes/reads, LLM calls |
+| `trace_provenance_to_mermaid(trace)` | one run's **evidence graph**: written artifacts as nodes, `patch.link` edges (§34, §54) |
 
 All three are pure string functions — no dependencies, paste the output into
 GitHub, Notion, or [mermaid.live](https://mermaid.live).

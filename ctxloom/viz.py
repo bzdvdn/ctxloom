@@ -185,6 +185,57 @@ def trace_to_mermaid(trace: RunTrace) -> str:
     return "\n".join(lines)
 
 
+def trace_provenance_to_mermaid(trace: RunTrace) -> str:
+    """Mermaid provenance graph of one run: written artifacts + `patch.link` edges (§34).
+
+    Artifacts written by any span become nodes; the `relations` recorded by the
+    spans become the edges — a per-run "evidence graph" (`Answer →supported_by→
+    Claim →derived_from→ Evidence →extracted_from→ Doc`).
+    """
+
+    def _short(data_type: str) -> str:
+        return data_type.rsplit(".", 1)[-1] if data_type else "artifact"
+
+    nodes: dict[str, tuple[str, str]] = {}
+    for span in trace.spans:
+        for write in span.writes:
+            nodes.setdefault(
+                write.artifact_id, (_short(write.data_type), write.artifact_id)
+            )
+        for rel in span.relations:
+            nodes.setdefault(
+                rel.source_id, (rel.source_type or "artifact", rel.source_id)
+            )
+            nodes.setdefault(
+                rel.target_id, (rel.target_type or "artifact", rel.target_id)
+            )
+
+    for span in trace.spans:
+        for rel in span.relations:
+            if rel.source_id not in nodes:
+                nodes[rel.source_id] = (rel.source_type or "artifact", rel.source_id)
+            if rel.target_id not in nodes:
+                nodes[rel.target_id] = (rel.target_type or "artifact", rel.target_id)
+
+    if not nodes:
+        return 'flowchart TD\n    EMPTY["no provenance recorded"]'
+
+    lines: list[str] = ["flowchart TD"]
+    node_ids: dict[str, str] = {}
+    for index, (artifact_id, (tname, _)) in enumerate(nodes.items()):
+        node = f"N{index}"
+        node_ids[artifact_id] = node
+        lines.append(f'    {node}["{_esc(tname)}:{_esc(artifact_id)}"]')
+    for span in trace.spans:
+        for rel in span.relations:
+            if rel.source_id in node_ids and rel.target_id in node_ids:
+                lines.append(
+                    f'    {node_ids[rel.source_id]} -->|"{_esc(rel.relation)}"| '
+                    f"{node_ids[rel.target_id]}"
+                )
+    return "\n".join(lines)
+
+
 def _plural(n: int, word: str) -> str:
     return f"{n} {word}" + ("s" if n != 1 else "")
 
@@ -192,5 +243,6 @@ def _plural(n: int, word: str) -> str:
 __all__ = [
     "blueprint",
     "context_to_mermaid",
+    "trace_provenance_to_mermaid",
     "trace_to_mermaid",
 ]

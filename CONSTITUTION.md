@@ -3074,7 +3074,7 @@ Everything else — tools, RAG, APIs, planners, schedulers, multi-agent executio
 # Appendix — Implementation Status
 
 State of the public `ctxloom` codebase, aligned with this constitution (ver 0.2).
-Verification: 189 tests; mypy (strict) and ruff clean.
+Verification: 300 tests; mypy (strict) and ruff clean.
 
 | Area | Section(s) | Status |
 |---|---|---|
@@ -3092,12 +3092,12 @@ Verification: 189 tests; mypy (strict) and ruff clean.
 | Confidence / contradictions as state | §35-§36 | implemented (deterministic, §67) |
 | Idempotency (stable ids, create-or-refresh) | §42 | implemented |
 | Staleness / invalidation from recorded reads | §43-§44 | implemented (`stale_artifacts`) |
-| Observability (run traces + dashboard + sinks) | §54 | implemented (SQLite store, web UI, Langfuse / Postgres sinks) |
+| Observability (run traces + dashboard + sinks) | §54 | implemented (SQLite store, web UI, Langfuse / Postgres sinks) — the run page renders both the sequence diagram and the **evidence graph** (`patch.link` provenance, §34) |
 | Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
 | Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
 | Branching (`context.branch()`) | §39-§40 | implemented — three-way `merge()` with `MergeConflict`, `BranchStore` over KV, CLI |
 | Replay (§55) | §55 | implemented — `ReplayLLM` record/replay, state replay + `python -m ctxloom replay` |
-| Evaluation harness | §56 | planned |
+| Evaluation harness | §56 | implemented — `ctxloom.eval`: multi-level metrics (evidence/claim/provenance/calc/answer/sources) over the final state |
 | Security / access control | §57 | planned |
 | Adaptive / uncertainty-driven scheduling | §26, §24 | partial — budget + LLM tool router (devops demo); uncertainty-driven selection planned |
 
@@ -3120,5 +3120,6 @@ Demos shipped in the repo (not in the wheel):
   intentionally Russian** (a deliberate product choice, §68-adjacent); code and
   comments are English.
 
-Roadmap direction: domain connectors as examples, the evidence-graph browser in
-the trace UI, an evaluation harness (§56), and stronger adaptive scheduling.
+Roadmap direction: domain connectors as examples, the evidence graph is now in
+the trace UI (§34, §54), an evaluation harness landed (§56), and stronger
+adaptive scheduling.

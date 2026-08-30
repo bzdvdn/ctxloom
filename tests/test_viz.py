@@ -4,8 +4,19 @@ from __future__ import annotations
 
 from ctxloom import Agent, Consume, Context, Patch, Produce, RuntimeResources
 from ctxloom.recipes import StatusMachine
-from ctxloom.tracing.models import AgentSpan, ArtifactRef, LLMCall, RunTrace
-from ctxloom.viz import blueprint, context_to_mermaid, trace_to_mermaid
+from ctxloom.tracing.models import (
+    AgentSpan,
+    ArtifactRef,
+    LLMCall,
+    RelationRef,
+    RunTrace,
+)
+from ctxloom.viz import (
+    blueprint,
+    context_to_mermaid,
+    trace_provenance_to_mermaid,
+    trace_to_mermaid,
+)
 from pydantic import BaseModel
 
 
@@ -123,3 +134,50 @@ def _ref(artifact_id: str) -> ArtifactRef:
         data_type="dummy.Dummy",
         data="{}",
     )
+
+
+def test_trace_provenance_renders_nodes_and_edges():
+    trace = RunTrace(
+        id="run-1",
+        outcome="completed",
+        spans=[
+            AgentSpan(
+                agent="answerer",
+                event_type="Answer",
+                writes=[
+                    ArtifactRef(artifact_id="answer:q1", data_type="example.Answer"),
+                    ArtifactRef(artifact_id="claim:1", data_type="example.Claim"),
+                    ArtifactRef(artifact_id="ev:1", data_type="example.Evidence"),
+                ],
+                relations=[
+                    RelationRef(
+                        source_id="answer:q1",
+                        relation="supported_by",
+                        target_id="claim:1",
+                        source_type="Answer",
+                        target_type="Claim",
+                    ),
+                    RelationRef(
+                        source_id="claim:1",
+                        relation="derived_from",
+                        target_id="ev:1",
+                        source_type="Claim",
+                        target_type="Evidence",
+                    ),
+                ],
+            )
+        ],
+    )
+    diagram = trace_provenance_to_mermaid(trace)
+    assert diagram.startswith("flowchart TD")
+    assert "Answer:answer:q1" in diagram
+    assert "Evidence:ev:1" in diagram
+    assert '-->|"supported_by"|' in diagram
+    assert '-->|"derived_from"|' in diagram
+
+
+def test_trace_provenance_empty_is_graceful():
+    trace = RunTrace(id="run-empty", outcome="completed")
+    diagram = trace_provenance_to_mermaid(trace)
+    assert diagram.startswith("flowchart TD")
+    assert "no provenance recorded" in diagram

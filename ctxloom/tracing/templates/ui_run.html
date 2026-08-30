@@ -125,11 +125,13 @@
   <div class="head-row" id="head"></div>
   <section class="card"><h2>Run</h2><div class="meta-grid" id="meta"></div></section>
   <section class="card"><h2>Work by agent</h2><div class="agents" id="agents"></div></section>
-  <section class="card"><h2>Diagram</h2><div class="diag-head"><button id="copy-mermaid">copy</button><span class="diag-hint">mermaid — rendered live; paste the source into mermaid.live / GitHub</span></div><div id="mermaid" class="mermaid"></div><details id="mermaid-src"><summary>show source</summary><pre id="mermaid-pre"></pre></details></section>
+  <section class="card"><h2>Sequence</h2><div class="diag-head"><button id="copy-mermaid">copy</button><span class="diag-hint">mermaid — rendered live; paste the source into mermaid.live / GitHub</span></div><div id="mermaid" class="mermaid"></div><details id="mermaid-src"><summary>show source</summary><pre id="mermaid-pre"></pre></details></section>
+  <section class="card"><h2>Evidence graph</h2><div class="diag-head"><button id="copy-graph">copy</button><span class="diag-hint">provenance: written artifacts + patch.link edges (§34)</span></div><div id="mermaid-graph" class="mermaid"></div><details id="graph-src"><summary>show source</summary><pre id="graph-pre"></pre></details></section>
 </main>
 <script>
 const RUN_ID=__RUN_ID__;
 const MERMAID_SRC=__MERMAID__;
+const MERMAID_GRAPH_SRC=__MERMAID_GRAPH__;
 function applyTheme(dark){document.documentElement.classList.toggle('dark',dark);document.getElementById('theme').textContent=dark?'light':'dark';try{localStorage.setItem('ctxloom-theme',dark?'dark':'light');}catch(_){}}
 function initTheme(){let s=null;try{s=localStorage.getItem('ctxloom-theme');}catch(_){}applyTheme(s?s==='dark':true);}
 document.getElementById('theme').addEventListener('click',()=>applyTheme(!document.documentElement.classList.contains('dark')));
@@ -224,17 +226,17 @@ function llmHtml(c){
     '<div class="node-body">'+(c.error?'<div class="err-box">'+escapeHtml(c.error)+'</div>':'')+detail+(c.response?'<div class="role assistant"><span class="role-label">response</span>'+escapeHtml(c.response)+'</div>':'')+'</div></details>';
 }
 
-function renderDiagram(){
-  const pre=document.getElementById('mermaid-pre');
-  pre.textContent=MERMAID_SRC||'no spans to draw';
-  if(!MERMAID_SRC) return;
-  const el=document.getElementById('mermaid');
+function mountMermaid(src, nodeId, preId){
+  const pre=document.getElementById(preId);
+  pre.textContent=src||'no provenance recorded';
+  if(!src) return;
+  const el=document.getElementById(nodeId);
   const s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
   s.onload=()=>{
     const dark=document.documentElement.classList.contains('dark');
     window.mermaid.initialize({startOnLoad:false,theme:dark?'dark':'default'});
-    el.textContent=MERMAID_SRC;
+    el.textContent=src;
     try{window.mermaid.run({nodes:[el]});}
     catch(err){el.innerHTML='<div class="diag-error">Mermaid could not render: '+escapeHtml(err&&err.message?err.message:String(err))+'</div>';}
   };
@@ -246,16 +248,17 @@ function fallbackCopy(text){
   try{document.execCommand('copy');}catch(_){}document.body.removeChild(ta);
 }
 function initCopy(){
-  const btn=document.getElementById('copy-mermaid');
-  btn.addEventListener('click',()=>{
+  const bind=(btnId,src)=>{const btn=document.getElementById(btnId);btn.addEventListener('click',()=>{
     const done=()=>{btn.textContent='copied';setTimeout(()=>btn.textContent='copy',900);};
-    const text=MERMAID_SRC||'';
+    const text=src||'';
     if(navigator.clipboard){navigator.clipboard.writeText(text).then(done).catch(()=>{fallbackCopy(text);done();});}
     else{fallbackCopy(text);done();}
-  });
+  });};
+  bind('copy-mermaid',MERMAID_SRC);
+  bind('copy-graph',MERMAID_GRAPH_SRC);
 }
 
-initTheme(); load(); renderDiagram(); initCopy();
+initTheme(); load(); mountMermaid(MERMAID_SRC,'mermaid','mermaid-pre'); mountMermaid(MERMAID_GRAPH_SRC,'mermaid-graph','graph-pre'); initCopy();
 </script>
 </body>
 </html>

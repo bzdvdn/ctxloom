@@ -45,6 +45,16 @@ class LLMCall(BaseModel):
     error: str | None = None
 
 
+class RelationRef(BaseModel):
+    """A provenance edge recorded for a span (`source —relation→ target`, §34)."""
+
+    source_id: str
+    relation: str
+    target_id: str
+    source_type: str = ""
+    target_type: str = ""
+
+
 class AgentSpan(BaseModel):
     """A single agent execution within a run (§54)."""
 
@@ -52,6 +62,7 @@ class AgentSpan(BaseModel):
     event_type: str = ""
     reads: list[ArtifactRef] = Field(default_factory=list)
     writes: list[ArtifactRef] = Field(default_factory=list)
+    relations: list[RelationRef] = Field(default_factory=list)
     llm_calls: list[LLMCall] = Field(default_factory=list)
     latency_ms: float = 0.0
     error: str | None = None

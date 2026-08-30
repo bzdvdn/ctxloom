@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .models import AgentSpan, ArtifactRef, LLMCall, RunTrace
+from .models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 
 
 class TraceSink(Protocol):
@@ -61,6 +61,7 @@ class TraceStore:
                 error TEXT,
                 reads TEXT NOT NULL DEFAULT '[]',
                 writes TEXT NOT NULL DEFAULT '[]',
+                relations TEXT NOT NULL DEFAULT '[]',
                 llm_calls TEXT NOT NULL DEFAULT '[]'
             );
             CREATE INDEX IF NOT EXISTS idx_spans_run ON spans(run_id);
@@ -78,7 +79,11 @@ class TraceStore:
             self._conn.execute(
                 "ALTER TABLE spans ADD COLUMN llm_calls TEXT NOT NULL DEFAULT '[]'"
             )
-            self._conn.commit()
+        if "relations" not in cols:
+            self._conn.execute(
+                "ALTER TABLE spans ADD COLUMN relations TEXT NOT NULL DEFAULT '[]'"
+            )
+        self._conn.commit()
 
     def export(self, trace: RunTrace) -> None:
         started = trace.started_at.timestamp() if trace.started_at else time.time()
@@ -90,7 +95,8 @@ class TraceStore:
         for span in trace.spans:
             self._conn.execute(
                 "INSERT INTO spans (run_id, agent, event_type, latency_ms, error, "
-                "reads, writes, llm_calls) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "reads, writes, relations, llm_calls) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     trace.id,
                     span.agent,
@@ -99,6 +105,7 @@ class TraceStore:
                     span.error,
                     json.dumps([r.model_dump(mode="json") for r in span.reads]),
                     json.dumps([w.model_dump(mode="json") for w in span.writes]),
+                    json.dumps([r.model_dump(mode="json") for r in span.relations]),
                     json.dumps([c.model_dump(mode="json") for c in span.llm_calls]),
                 ),
             )
@@ -172,7 +179,7 @@ class TraceStore:
         if row is None:
             return None
         span_rows = self._conn.execute(
-            "SELECT agent, event_type, latency_ms, error, reads, writes, llm_calls "
+            "SELECT agent, event_type, latency_ms, error, reads, writes, relations, llm_calls "
             "FROM spans WHERE run_id = ? ORDER BY id",
             (trace_id,),
         ).fetchall()
@@ -184,7 +191,8 @@ class TraceStore:
                 error=r[3],
                 reads=[ArtifactRef(**d) for d in json.loads(r[4])],
                 writes=[ArtifactRef(**d) for d in json.loads(r[5])],
-                llm_calls=[LLMCall(**d) for d in json.loads(r[6])],
+                relations=[RelationRef(**d) for d in json.loads(r[6])],
+                llm_calls=[LLMCall(**d) for d in json.loads(r[7])],
             )
             for r in span_rows
         ]

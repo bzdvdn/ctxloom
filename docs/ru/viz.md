@@ -9,6 +9,7 @@ runtime выводит исполнение из изменений состоя
 | `blueprint(agents)` | статическая карта: типы артефактов = ноды, агенты = рёбра (`Consume` / `creates` / `lifecycle`) |
 | `context_to_mermaid(context)` | живой граф провенанса: артефакты сгруппированы по типам, связи `patch.link` |
 | `trace_to_mermaid(trace)` | один запуск как `sequenceDiagram`: спаны по времени, записи/чтения, LLM-вызовы |
+| `trace_provenance_to_mermaid(trace)` | **граф доказательств** запуска: записанные артефакты как ноды, рёбра `patch.link` (§34, §54) |
 
 Все три — чистые функции, возвращающие строку, без зависимостей: вставляйте вывод
 в GitHub, Notion или [mermaid.live](https://mermaid.live).
