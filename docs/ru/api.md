@@ -28,7 +28,7 @@
 | `Agent` | тонкий контейнер: `name`, `consumes`, `produces`, `concurrency_limit` |
 | `create_agent` | конструктор-фабрика агента — без подкласса для обычных контейнеров |
 | `Consume` / `consume` | декларативная (или декоратор) завязка реакции; `Consume.by_field` для скоуп-событий |
-| `Produce` / `produce` | единица работы: пишет `self.effects` (или слот `effects` в функции-декораторе) → `None`; возврат модели/Patch тоже компилируется |
+| `Produce` / `produce` | производитель: пишет `self.effects` (или слот `effects` в функции-декораторе) → `None`; возврат модели/Patch тоже компилируется |
 | `Trigger` | вторичное (не артефактное) условие входа produce |
 | `StructuredGenerateAgent` | декларативный агент LLM→схема→артефакт (`schema`, `build_prompt`, `fallback`) |
 | `LLMAgent` | блокирующий цикл LLM+инструменты (`system`, `tools`, `max_steps`) |

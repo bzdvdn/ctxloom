@@ -14,6 +14,7 @@ reference.
 | Page | What it covers |
 | --- | --- |
 | [index](en/index.md) | What ctxloom is, the mental model, quick start |
+| [why-ctxloom](en/why-ctxloom.md) | the *design argument*: why effects, why no graph, why determinism, why versioned state |
 | [concepts](en/concepts.md) | Context, Artifact, Patch, Agent, Produce, provenance, HITL, budget |
 | [sources](en/sources.md) | Retrieval: FileSystem, Embedding, CSV, Web; SourceRef |
 | [providers](en/providers.md) | LLMs, embedders, images, speech, video — 20+ vendors |
@@ -35,6 +36,7 @@ reference.
 | Страница | О чём |
 | --- | --- |
 | [index](ru/index.md) | Что такое ctxloom, ментальная модель, быстрый старт |
+| [why-ctxloom](ru/why-ctxloom.md) | *дизайн-аргумент*: почему effects, почему без графа, почему детерминизм, почему версионируемое состояние |
 | [concepts](ru/concepts.md) | Context, Artifact, Patch, Agent, Produce, provenance, HITL, баджеты |
 | [sources](ru/sources.md) | Получение данных: FileSystem, Embedding, CSV, Web; SourceRef |
 | [providers](ru/providers.md) | LLM, эмбединги, изображения, речь, видео — 20+ вендоров |

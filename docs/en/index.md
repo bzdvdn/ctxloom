@@ -8,11 +8,17 @@ There is no execution graph: agents react to changes in state, and the runtime
 derives what can run next from those changes.
 
 ```text
-CREATE / UPDATE / PATCH
-       │
-       ▼
-CONTEXT ───────► ARTIFACTS ─────► AGENTS REACT ──► PATCH ──► CONTEXT'
+                                   EVENT (created/updated)
+                                          │
+                                          ▼
+CONTEXT ───────► ARTIFACTS ──► AGENTS REACT ──self.effects──► EFFECTS
+   ▲                 │                                            │
+   │                 │                                            │  compile
+   └────── CONTEXT' ◄────────────────┘ PATCH ◄────────────────────┘
 ```
+
+You describe *what data exists*, *what artifacts exist*, and *what agents can do
+with them*. The runtime does the plumbing.
 
 You describe *what data exists*, *what artifacts exist*, and *what agents can do
 with them*. The runtime does the plumbing.
@@ -24,8 +30,33 @@ with them*. The runtime does the plumbing.
 | A program follows a graph / plan | Agents **react** to state changes |
 | Messages are strings | **Typed artifacts** (`Claim`, `Evidence`, `Answer`, …) |
 | Orchestration is explicit | Orchestration **falls out of the state** |
+| A unit of work *returns* a change | A produce **writes effects** (`self.effects`) — the runtime compiles them |
 | Retries/rollback are manual | Context is **versioned** (git-like commits, diff, rollback) |
 | "Who produced this?" is lost | **Provenance** links every derived artifact to its inputs |
+
+## Why effects instead of "return a change"?
+
+At the heart of the loop is how a produce makes a change. Many frameworks ask a
+unit of work to *return* its result, and some orchestrator applies it. ctxloom
+inverts authorship: a produce **states what should change** via `self.effects`
+(create / update / link / ask) and returns `None`; the runtime compiles the
+effect set into one atomic patch — the whole step lands (or none of it does).
+
+```python
+async def produce(self, context, inputs, event=None) -> None:
+    evidence = self.effects.create(Evidence(...), id="evidence:q1")
+    answer = self.effects.create(Answer(...), id="answer:q1")
+    evidence.link("extracted_from", doc)
+    answer.link("supported_by", evidence)
+    self.effects.update(turn, status="answered")
+    return None
+```
+
+Because handles are objects, not ids, one statement can reference the artifact
+created by another — and because the runtime owns the compilation, you never
+assemble a `Patch` by hand. Human-in-the-loop is just another effect
+(`effects.ask(...)`). See [Why ctxloom](why-ctxloom.md) for the full argument,
+and [The produce contract](effects.md) for details.
 
 ## Why artifacts instead of messages?
 
@@ -74,8 +105,6 @@ class Answer(BaseModel):
 
 
 class Echo(Produce[Answer]):
-    artifact_type = Answer
-
     async def produce(self, context, inputs, event=None):
         question = next(a for a in inputs if isinstance(a.data, Question))
         self.effects.create(Answer(text=f"echo: {question.data.text}"))
@@ -101,6 +130,8 @@ on that loop.
 
 ## Where to go next
 
+- [Why ctxloom](why-ctxloom.md) — the *design argument*: why effects, why no
+  graph, why determinism, why versioned state.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
 - [Sources](sources.md) — where agents get information from.
 - [Recipes](recipes.md) — ready-made search fan-out, ref materialization,
