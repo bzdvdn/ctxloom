@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctxloom"
-version = "0.1.0"
+version = "0.1.0rc1"
 description = "Reactive, artifact-driven agent runtime: agents transform versioned, typed, provenance-aware artifacts inside an evolving context"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -49,6 +49,9 @@ default-groups = ["dev", "web"]
 
 # Публикация: в wheel едет только пакет `ctxloom`; examples/tests остаются
 # в репозитории для демо и разработки, но не попадают в дистрибутив.
+[project.scripts]
+ctxloom = "ctxloom.__main__:main"
+
 [tool.setuptools]
 packages = { find = { where = ["."], include = ["ctxloom*"], exclude = ["examples*", "tests*"] } }
 
