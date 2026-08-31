@@ -145,7 +145,7 @@
 | Символ | Роль |
 | --- | --- |
 | `Session`, `SessionStore` | долгоживущая память чата между запросами |
-| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend` | key/value чекпоинты под сессии |
+| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value чекпоинты под сессии (`pg` extra для Postgres) — синхронные по дизайну (частые мелкие записи; async-вариант — возможный шаг позже) |
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | чекпоинты всего контекста |
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | примитивы трейсинга |
 | `LangfuseTracer`, `PostgresStore` | внешние приёмники трейсов |

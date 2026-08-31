@@ -146,7 +146,7 @@ modules.
 | Symbol | Role |
 | --- | --- |
 | `Session`, `SessionStore` | durable per-chat working memory across requests |
-| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend` | key/value checkpoints backing sessions |
+| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value checkpoints backing sessions (`pg` extra for Postgres) — sync by design (small frequent writes; an async variant is a later option) |
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | full-context checkpoints |
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | tracing primitives |
 | `LangfuseTracer`, `PostgresStore` | external trace sinks |

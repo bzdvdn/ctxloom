@@ -7,6 +7,7 @@ from .checkpoints import (
     FileBackend,
     FileKVBackend,
     KVBackend,
+    PostgreSQLKVBackend,
     SQLiteBackend,
     SQLiteKVBackend,
 )
@@ -68,7 +69,7 @@ from .viz import (
     trace_to_mermaid,
 )
 
-__version__ = "0.1.0rc1"
+__version__ = "0.2.0rc1"
 
 __all__ = [
     "Agent",
@@ -104,6 +105,7 @@ __all__ = [
     "Metric",
     "Observation",
     "Patch",
+    "PostgreSQLKVBackend",
     "PendingQuestion",
     "Produce",
     "ProgressEvent",

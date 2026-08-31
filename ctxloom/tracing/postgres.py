@@ -17,7 +17,9 @@ class PostgresStore:
     """Pushes traces to Postgres (`TraceSink`). Requires external driver."""
 
     def __init__(self, dsn: str):
-        import psycopg  # type: ignore[import-not-found]
+        from .._extras import require_extra
+
+        psycopg = require_extra("PostgresStore", "psycopg", "pg")
 
         self._conn = psycopg.connect(dsn)
         self._create_schema()

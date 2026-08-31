@@ -4,6 +4,29 @@ All notable changes to **ctxloom** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
+## [0.2.0-rc1] — 2026-08-31
+
+Second release candidate — the framework API is stable at the `0.2` surface,
+now ready for wider adoption.
+
+### Added
+
+- **PostgreSQL session backend** — `PostgreSQLKVBackend` (behind the `pg`
+  extra): sessions stored in the same Postgres as the application.
+- **Readable optional-dependency errors** — `ctxloom._extras.require_extra`:
+  missing `pg`/other extras now say
+  `pip install "ctxloom[pg]"` / `uv sync --extra pg` instead of a bare
+  `ModuleNotFoundError` (applies to the Postgres KV and trace sink).
+
+### Internal
+
+- **CI** — GitHub Actions: checks + wheel smoke (`ci.yml`) and release-on-tag
+  (`release.yml`).
+- **Release process** — `docs/en|ru/release.md` (versioning, changelog,
+  build/verify/publish) and the `ctxloom` console script.
+
+---
+
 ## [0.1.0-rc1] — 2026-08-31
 
 First release candidate — the framework is ready for early adoption in

@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import pytest
 from ctxloom.commit import Commit
 from ctxloom.context import Context
 from ctxloom.patches import Update
@@ -49,3 +50,46 @@ def test_checkpoint_roundtrip():
     assert isinstance(op, Update)
     assert op.artifact_id == doc.id
     assert op.new_data.content == "Updated"
+
+
+def test_postgres_kv_requires_dsn_and_lazy_driver():
+    """The backend exists in the public API; psycopg is imported only at use.
+
+    Run against a real Postgres with TEST_PG_DSN set:
+      TEST_PG_DSN=postgresql://user:pass@localhost/ctxloom pytest tests/test_checkpoint.py
+    """
+    import os
+
+    from ctxloom import PostgreSQLKVBackend
+
+    dsn = os.environ.get("TEST_PG_DSN")
+    if not dsn:
+        pytest.skip("TEST_PG_DSN not set — skipping Postgres KV integration")
+    import psycopg  # noqa: F401  (ensure the extra is installed)
+
+    backend = PostgreSQLKVBackend(dsn)
+    backend.set("k1", {"hello": "world"})
+    assert backend.get("k1") == {"hello": "world"}
+    assert backend.keys() == ["k1"]
+    backend.delete("k1")
+    assert backend.get("k1") is None
+
+
+def test_require_extra_readable_error():
+    """Missing extra dependency → a hint, not a bare ModuleNotFoundError."""
+    from unittest import mock
+
+    from ctxloom._extras import require_extra
+
+    def _boom(name, *a, **kw):
+        raise ModuleNotFoundError(f"No module named '{name}'", name=name)
+
+    with mock.patch("ctxloom._extras.importlib.import_module", side_effect=_boom):
+        try:
+            require_extra("PostgreSQLKVBackend", "psycopg", "pg")
+        except ImportError as exc:
+            message = str(exc)
+            assert 'pip install "ctxloom[pg]"' in message
+            assert "PostgreSQLKVBackend requires" in message
+        else:  # pragma: no cover
+            raise AssertionError("expected ImportError with the install hint")

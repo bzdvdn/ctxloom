@@ -176,3 +176,85 @@ class SQLiteBackend(CheckpointBackend):
         if row is None:
             raise ValueError("Checkpoint not found in SQLite database")
         return cast(dict[str, Any], json.loads(row[0]))
+
+
+class PostgreSQLKVBackend(KVBackend):
+    """PostgreSQL KV backend (`kv_entries(key, data)`) — behind the `pg` extra.
+
+    Like the SQLite KV backend, but shared across processes: a natural store
+    when sessions are persisted in the same Postgres as the application. The
+    driver (`psycopg`) is imported lazily so the core stays dependency-free;
+    install it with `uv sync --extra pg` (or group `pg`).
+
+    NOTE: the KV interface is synchronous — session checkpoints are small,
+    frequent writes, and async here would pull in a separate driver/threading
+    for little gain. If scale demands it, an async variant can be added later.
+    """
+
+    def __init__(self, dsn: str):
+        from ._extras import require_extra
+
+        self._psycopg = require_extra("PostgreSQLKVBackend", "psycopg", "pg")
+        self.dsn = dsn
+        self._init_db()
+
+    def _connect(self) -> Any:
+        return self._psycopg.connect(self.dsn)
+
+    def _init_db(self) -> None:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS kv_entries (
+                        key TEXT PRIMARY KEY,
+                        data TEXT NOT NULL
+                    )
+                    """
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def set(self, key: str, data: dict[str, Any]) -> None:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO kv_entries (key, data) VALUES (%s, %s) "
+                    "ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data",
+                    (key, json.dumps(data)),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get(self, key: str) -> dict[str, Any] | None:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT data FROM kv_entries WHERE key = %s", (key,))
+                row = cur.fetchone()
+        finally:
+            conn.close()
+        return cast(dict[str, Any], json.loads(row[0])) if row is not None else None
+
+    def delete(self, key: str) -> None:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM kv_entries WHERE key = %s", (key,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def keys(self) -> list[str]:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT key FROM kv_entries")
+                rows = cur.fetchall()
+        finally:
+            conn.close()
+        return [r[0] for r in rows]
