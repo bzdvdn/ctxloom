@@ -1,7 +1,8 @@
-from .agents import Agent
+from .agents import Agent, create_agent
 from .artifacts import Artifact
 from .branching import BranchStore
 from .budget import Budget, RunOutcome, RunStats
+from .chat import ChatAssistant, ChatEvent, default_session_state, run_message
 from .checkpoints import (
     CheckpointBackend,
     FileBackend,
@@ -69,7 +70,7 @@ from .viz import (
     trace_to_mermaid,
 )
 
-__version__ = "0.2.0rc1"
+__version__ = "0.3.0rc1"
 
 __all__ = [
     "Agent",
@@ -77,6 +78,8 @@ __all__ = [
     "Budget",
     "BranchStore",
     "CheckpointBackend",
+    "ChatAssistant",
+    "ChatEvent",
     "Commit",
     "Consume",
     "Context",
@@ -144,9 +147,12 @@ __all__ = [
     "blueprint",
     "consume",
     "context_to_mermaid",
+    "create_agent",
+    "default_session_state",
     "llm_reply",
     "parse_structured",
     "produce",
+    "run_message",
     "structured_llm",
     "tool",
     "trace_provenance_to_mermaid",

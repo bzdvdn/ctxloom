@@ -7,7 +7,7 @@
 
 | Символ | Роль |
 | --- | --- |
-| `Context` | версионируемое рабочее состояние; ресурсы; запросы; announce; diff/rollback |
+| `Context` | версионируемое рабочее состояние; ресурсы; запросы; `latest(Model)`; announce; diff/rollback |
 | `View` | результат типа-запроса (`context.view(...)`) |
 | `RuntimeResources` | провайдеры + источники + произвольные ресурсы приложения |
 | `Commit`, `Read`, `Write` | учёт версий и записанные операции провенанса |
@@ -26,8 +26,9 @@
 | Символ | Роль |
 | --- | --- |
 | `Agent` | тонкий контейнер: `name`, `consumes`, `produces`, `concurrency_limit` |
+| `create_agent` | конструктор-фабрика агента — без подкласса для обычных контейнеров |
 | `Consume` / `consume` | декларативная (или декоратор) завязка реакции; `Consume.by_field` для скоуп-событий |
-| `Produce` / `produce` | единица работы: контекст + событие → патч | None |
+| `Produce` / `produce` | единица работы: пишет `self.effects` (или слот `effects` в функции-декораторе) → `None`; возврат модели/Patch тоже компилируется |
 | `Trigger` | вторичное (не артефактное) условие входа produce |
 | `StructuredGenerateAgent` | декларативный агент LLM→схема→артефакт (`schema`, `build_prompt`, `fallback`) |
 | `LLMAgent` | блокирующий цикл LLM+инструменты (`system`, `tools`, `max_steps`) |
@@ -44,6 +45,17 @@
 | `Budget`, `RunOutcome`, `RunStats` | лимиты запуска и итог/статистика |
 | `Event`, `EventType` | проводной формат «что-то изменилось» |
 | `EventHub`, `ProgressEvent` | канал прогресса/announce, который потребляют web-UI |
+
+## Чат-слой (ctxloom.chat + ctxloom.web)
+
+| Символ | Роль |
+| --- | --- |
+| `ChatAssistant` | сессии + цикл хода + история в одном handle (`stream`/`invoke`/`history`); хуки: `agents`, `user_message`, `reply`, `session_state` |
+| `ChatEvent` | один транспорт-нейтральный фрейм (`session`/`status`/`message`) |
+| `run_message(runtime, text, *, user_message, reply)` | строительный блок хода: создать вход → стримить статусы → терминальный ответ |
+| `default_session_state(ctx, user_message)` | универсальный читатель истории (любой артефакт с `.text`) |
+| `create_chat_router(assistant)` | FastAPI `APIRouter` канонического SSE-контракта (`/api/chat/stream`, `/api/runs/{id}`) — нужен extra `web` |
+| `ctxloom.web.sse(event, data)` | один SSE-фрейм |
 
 ## Визуализация (ctxloom.viz + python -m ctxloom)
 

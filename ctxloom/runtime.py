@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -63,6 +64,7 @@ class Runtime:
         self._turn_started_at = 0.0
         self._run_id = ""
         self._spans: list[AgentSpan] = []
+        self._no_runs_warned = False
         # Memo: (artifact_id, version) → serialized data for one turn.
         self._trace_data_cache: dict[tuple[str, int], str] = {}
 
@@ -442,6 +444,8 @@ class Runtime:
             outcome=self.outcome,
             duration=time.monotonic() - self._turn_started_at,
         )
+        if total_runs == 0:
+            self._warn_no_runs()
         if self.tracer is not None:
             self.tracer.on_turn_end(
                 RunTrace(
@@ -462,6 +466,29 @@ class Runtime:
 
     def run(self, max_iterations: int = 100, budget: Budget | None = None) -> int:
         return asyncio.run(self.arun(max_iterations, budget))
+
+    def _warn_no_runs(self) -> None:
+        if self._no_runs_warned:
+            return
+        self._no_runs_warned = True
+        if not self.agents:
+            return
+        consumed = sorted(
+            {
+                c.artifact_type.__name__
+                for agent in self.agents
+                for c in (agent.consumes or [])
+                if c.artifact_type is not None
+            }
+        )
+        hint = (
+            f" None of the {len(self.agents)} agents ran — nothing consumed the"
+            " artifacts present."
+        )
+        if consumed:
+            hint += f" Agents consume: {', '.join(consumed)}."
+        hint += " Check your Consume(...) target types or the create()'d artifact type."
+        print(hint, file=sys.stderr)
 
     async def astream(
         self,

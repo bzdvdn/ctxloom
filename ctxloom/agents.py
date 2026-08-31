@@ -118,3 +118,44 @@ class Agent(ABC):  # noqa: B024 — interface without abstract methods, run() ha
         for p in self.produces:
             await p.produce(context, inputs, event)
         return None
+
+
+def create_agent(
+    name: str,
+    *,
+    consumes: Sequence[Consume] | None = None,
+    produces: Sequence[Produce[Any]] | None = None,
+    capabilities: tuple[str, ...] = (),
+    priority: int = 0,
+    concurrency_limit: int | None = None,
+    triggers: list[Trigger] | None = None,
+) -> Agent:
+    """Builds an Agent instance without subclassing.
+
+    `Agent` is a container — nothing needs overriding in the common case — so a
+    subclass is only ceremony. This constructor-style builder covers all of the
+    declarative knobs:
+
+    ```
+    echo = create_agent(
+        name="echo",
+        consumes=[Consume(Question)],
+        produces=[echo_produce],          # a Produce or @produce(...) function
+    )
+    ```
+
+    Falls back to `name` defaults the same way as `Agent.__init__`.
+    """
+    agent = Agent(
+        name=name, triggers=triggers if triggers is not None else [], priority=priority
+    )
+    if consumes is not None:
+        agent.consumes = consumes
+        if triggers is None:
+            agent.triggers = agent._generate_triggers_from_consumes()
+    if produces is not None:
+        agent.produces = produces
+    agent.capabilities = capabilities
+    agent.concurrency_limit = concurrency_limit
+    agent._validate_contracts()
+    return agent

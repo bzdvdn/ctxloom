@@ -59,3 +59,27 @@ guard → decide → describe (self.effects) → return None
 
 If you find yourself writing `Patch()` inside a produce — stop and use
 `self.effects`; the runtime does the compiling.
+
+## The function form (`@produce`) — same authoring surface
+
+A decorator produce receives the same effects slot — name a parameter `effects`
+and the runtime passes it in, exactly like `self.effects` in a class produce:
+
+```python
+from ctxloom import produce
+
+@produce(Answer)
+async def answer_turn(context, inputs, event, effects):
+    if not inputs:
+        return None
+    qid = inputs[0].id
+    ans = effects.create(Answer(text=...), id=f"answer:{qid}")
+    effects.link(ans, "derived_from", inputs[0])
+    effects.update(turn, status="answered")
+    return None
+```
+
+Declared parameters are recognized **by name** after `(context, inputs)`: an
+`event` and/or `effects` parameter is filled automatically. The return-based
+contract still works: returning a model / list of models / `Patch` / `None`
+is compiled by the runtime, so short produces stay one-liners.

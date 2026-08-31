@@ -1,13 +1,31 @@
 # Examples
 
-Five working applications ship in `examples/` (in-repo, not packaged). They are
-the reference implementations for the [recipes](recipes.md) and
-[patterns](patterns.md) — canonical examples are split into a `produce/`
-package (stages) + thin `web.py`/`chat.py` entries.
+Thirteen working applications ship in `examples/` (in-repo, not packaged). They
+are the reference implementations for the [recipes](recipes.md),
+[patterns](patterns.md) and the [port matrix](port-matrix.md) — canonical
+examples are split into a `produce/` package (stages) + thin
+`web.py`/`chat.py`/`main.py` entries.
 
 All demos run **with or without API keys**: configure `.env` (copy
 `.env.example`) for LLM/embedder/image providers, or let them fall back to
 deterministic demo mode.
+
+The session-chat demos (`knowledge`, `devops`, `research`, `repair`) build
+their web layer on the canonical `ctxloom.chat` + `ctxloom.web` contract —
+each supplies only the domain hooks (agents, input model, terminal reply),
+the SSE transport and session persistence come from the framework. Ports
+(`reflection` …) and `adaptive` are CLI-only by design.
+
+## Tutorial ladder
+
+- `llm_ladder` — the **recommended starting point**: the LLM workflow from a
+  single call (level 1) through patching artifacts (level 2) to a full
+  state-changing session with lifecycle (level 3). Self-contained, offline
+  fallbacks, model mode via `.env`. See [index](index.md#llm-ladder).
+
+```bash
+uv run python ./examples/llm_ladder/level1.py
+```
 
 ## `knowledge` — multi-source chat with evidence
 
@@ -91,10 +109,36 @@ uv run python -m examples.forklab.main --conflict # explicit MergeConflict + pol
 The same pattern is the natural base for rewriting `medic-lab`: hypotheses
 become real forks instead of tag-routed channels.
 
+## `adaptive` — hybrid scheduling
+
+**What it shows:** the adaptive planner (`ctxloom.scheduler`) in action — hard
+filter rules prune capabilities, a deterministic metric ranks the rest, an
+optional LLM breaks ties, `rank_limit` caps the number of agents that actually
+run; HITL-enabled agents are pinned, none starve.
+
+```bash
+uv run python -m examples.adaptive.main            # "money" → picked: b
+uv run python -m examples.adaptive.main --tag x    # rule prunes b entirely
+```
+
+## Canonical ports (offline-capable mini-demos)
+
+Small, self-contained ports of the classic agent patterns — every one runs
+`uv run python -m examples.<name>.main` and is mapped in the
+[port matrix](port-matrix.md):
+
+- `reflection` — generate → critique → regenerate a draft until a guard passes.
+- `map_reduce` — chunk a document, per-chunk produces, then aggregate
+  (`fan_out` + `combine`).
+- `supervisor` — a supervisor delegates *specialist* produces (HITL approvals).
+- `summarize` — conversation memory summarization (short → long window).
+- `time_travel` — `Context.branch()`, run two strategies in parallel,
+  three-way `merge()`.
+
 ## Running tests
 
 ```bash
-.venv/bin/python -m pytest      # 245 tests
+.venv/bin/python -m pytest      # 331 tests (1 skipped without TEST_PG_DSN)
 .venv/bin/mypy                  # strict typing across the repo
 .venv/bin/ruff check            # lint
 ```

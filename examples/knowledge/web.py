@@ -1,19 +1,20 @@
 """FastAPI + SSE for a knowledge chat (multi-source assistant, CTXSPACE).
 
-SSE contract (like the repair assistant):
+The transport is the canonical ctxloom chat contract (owned by `ctxloom.chat`
++ the router in `ctxloom.web`):
 
   event: session  — session id
   event: status   — progress («Searching for info…», «Found N…», «Assembling the answer…»)
   event: message  — terminal reply {reply, waiting, sources}
 
-Reply — an Answer with a source list (evidence-backed, §17) or a ChatReply.
+This file only supplies the domain hooks: the agent list, the input artifact
+type and the terminal reply builder (Answer → ChatReply → honest fallback).
 
 Run:  .venv/bin/python examples/knowledge/web.py
 """
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,13 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, FileKVBackend, Runtime, SessionStore
+from ctxloom import (
+    Budget,
+    ChatAssistant,
+    FileKVBackend,
+    SessionStore,
+)
+from ctxloom.web import create_chat_router
 from dotenv import load_dotenv
 from examples.knowledge.agents import (
     AnswerBuilder,
@@ -43,44 +50,27 @@ from examples.knowledge.models import (
     UserQuery,
 )
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 FALLBACK_REPLY = "Failed to assemble an answer. Try rephrasing the question."
 
-
-class ChatRequest(BaseModel):
-    message: str
-    session_id: str
-
-
-def _sse(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-def _session_state(ctx) -> dict:
-    msgs: list[dict] = [
-        {"role": "user", "text": m.data.text, "at": m.created_at.isoformat()}
-        for m in ctx.list_artifacts(UserQuery)
-    ]
-    for r in ctx.list_artifacts(ChatReply):
-        msgs.append(
-            {"role": "assistant", "text": r.data.text, "at": r.created_at.isoformat()}
-        )
-    for a in ctx.list_artifacts(Answer):
-        text = a.data.text
-        if a.data.sources:
-            text += "\n\nSources:\n" + "\n".join(f"• {s}" for s in a.data.sources)
-        msgs.append({"role": "assistant", "text": text, "at": a.created_at.isoformat()})
-    msgs.sort(key=lambda item: item["at"])
-    return {"messages": msgs}
+AGENTS = [
+    Planner(),
+    SearchScout(),
+    ResolverAgent(),
+    TableResolver(),
+    EvidenceBuilder(),
+    VerifierAgent(),
+    CalculatorAgent(),
+    ProgressEvaluator(),
+    AnswerBuilder(),
+]
 
 
-def _terminal_reply(ctx, msg_id: str) -> dict:
+def terminal_reply(ctx: Any, msg_id: str) -> dict:
     """Terminal reply for a message: Answer → ChatReply → insufficient."""
     answers = [a for a in ctx.list_artifacts(Answer) if a.data.query_id == msg_id]
     if answers:
@@ -117,76 +107,48 @@ def _terminal_reply(ctx, msg_id: str) -> dict:
     return {"reply": FALLBACK_REPLY, "waiting": False, "sources": []}
 
 
+def session_state(ctx: Any) -> dict:
+    msgs: list[dict] = [
+        {"role": "user", "text": m.data.text, "at": m.created_at.isoformat()}
+        for m in ctx.list_artifacts(UserQuery)
+    ]
+    for r in ctx.list_artifacts(ChatReply):
+        msgs.append(
+            {"role": "assistant", "text": r.data.text, "at": r.created_at.isoformat()}
+        )
+    for a in ctx.list_artifacts(Answer):
+        text = a.data.text
+        if a.data.sources:
+            text += "\n\nSources:\n" + "\n".join(f"• {s}" for s in a.data.sources)
+        msgs.append({"role": "assistant", "text": text, "at": a.created_at.isoformat()})
+    msgs.sort(key=lambda item: item["at"])
+    return {"messages": msgs}
+
+
+def _build_assistant(llm: Any = _UNSET, store_dir: str | None = None) -> ChatAssistant:
+    store = SessionStore(
+        FileKVBackend(str(Path(store_dir) if store_dir else ROOT / "sessions"))
+    )
+    return ChatAssistant(
+        store=store,
+        agents=AGENTS,
+        user_message=UserQuery,
+        reply=terminal_reply,
+        session_state=session_state,
+        resources=lambda: build_resources(llm=llm),
+        budget=Budget(max_runs=200),
+        max_concurrency=4,
+    )
+
+
 def create_app(db=None, llm: Any = _UNSET, store_dir: str | None = None) -> FastAPI:
     """App factory. `llm` and `store_dir` are for tests; the default resolves
     providers from .env (OpenRouter·DeepSeek for chat). `db` is kept for CLI
     compatibility."""
-    store = SessionStore(
-        FileKVBackend(str(Path(store_dir) if store_dir else ROOT / "sessions"))
-    )
-
     app = FastAPI(title="knowledge-ai (ctxloom)")
-
-    @app.get("/api/health")
-    async def health() -> dict:
-        return {"ok": True}
-
-    @app.post("/api/chat/stream")
-    async def chat_stream(req: ChatRequest) -> StreamingResponse:
-        session = store.open(req.session_id, resources=build_resources(llm=llm))
-        runtime = Runtime(
-            session.context,
-            agents=[
-                Planner(),
-                SearchScout(),
-                ResolverAgent(),
-                TableResolver(),
-                EvidenceBuilder(),
-                VerifierAgent(),
-                CalculatorAgent(),
-                ProgressEvaluator(),
-                AnswerBuilder(),
-            ],
-            session=session,
-            budget=Budget(max_runs=200),
-            max_concurrency=4,
-        )
-        msg = session.context.create(
-            UserQuery(text=req.message, session_id=req.session_id)
-        )
-
-        async def stream():
-            yield _sse("session", {"session_id": req.session_id})
-            try:
-                async for event in runtime.astream():
-                    if event.kind == "status":
-                        yield _sse("status", {"message": event.message})
-            except Exception:
-                yield _sse(
-                    "message",
-                    {"reply": FALLBACK_REPLY, "waiting": False, "sources": []},
-                )
-                return
-            yield _sse("message", _terminal_reply(session.context, msg.id))
-            session.save()
-
-        return StreamingResponse(
-            stream(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
-
-    @app.get("/api/runs/{session_id}")
-    async def runs(session_id: str) -> JSONResponse:
-        session = store.open(session_id)
-        if not session.loaded:
-            return JSONResponse({"messages": []})
-        return JSONResponse(_session_state(session.context))
-
-    @app.delete("/api/runs/{session_id}")
-    async def run_delete(session_id: str) -> dict:
-        store.delete_session(session_id)
-        return {"ok": True}
+    app.include_router(
+        create_chat_router(_build_assistant(llm=llm, store_dir=store_dir))
+    )
 
     web_dir = ROOT / "web"
     if web_dir.exists():

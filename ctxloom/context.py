@@ -194,6 +194,17 @@ class Context:
             if isinstance(a.data, artifact_type)
         ]
 
+    def latest(self, artifact_type: type[TArtifact]) -> Artifact[TArtifact] | None:
+        """The most recently created artifact of a type, or None.
+
+        Sugar over `list_artifacts` for "grab the latest answer/finding" —
+        the common read after a run.
+        """
+        artifacts = self.list_artifacts(artifact_type)
+        if not artifacts:
+            return None
+        return max(artifacts, key=lambda a: a.created_at)
+
     # ---- Context Views (§27): projection for the agent/prompt within the budget ----
 
     def view(

@@ -8,7 +8,7 @@ modules.
 
 | Symbol | Role |
 | --- | --- |
-| `Context` | versioned working state; resources; queries; announce; diff/rollback |
+| `Context` | versioned working state; resources; queries; `latest(Model)`; announce; diff/rollback |
 | `View` | result of a typed join query (`context.view(...)`) |
 | `RuntimeResources` | providers + sources + arbitrary app resources |
 | `Commit`, `Read`, `Write` | version bookkeeping and recorded provenance ops |
@@ -27,8 +27,9 @@ modules.
 | Symbol | Role |
 | --- | --- |
 | `Agent` | thin container: `name`, `consumes`, `produces`, `concurrency_limit` |
+| `create_agent` | constructor-style Agent builder — no subclassing needed for plain containers |
 | `Consume` / `consume` | declarative (or decorator) reaction declaration; `Consume.by_field` for scoped events |
-| `Produce` / `produce` | the work unit: context + event → patch | None |
+| `Produce` / `produce` | the work unit: writes `self.effects` (or `effects` slot in a decorated function) → `None`; model/Patch return is compiled too |
 | `Trigger` | secondary (non-artifact) enter condition for a produce |
 | `StructuredGenerateAgent` | declarative LLM→schema→artifact agent (`schema`, `build_prompt`, `fallback`) |
 | `LLMAgent` | blocking LLM+tools loop (`system`, `tools`, `max_steps`) |
@@ -45,6 +46,17 @@ modules.
 | `Budget`, `RunOutcome`, `RunStats` | run limits and the final outcome/stats |
 | `Event`, `EventType` | the wire format of "something changed" |
 | `EventHub`, `ProgressEvent` | progress/announce channel consumed by web UIs |
+
+## Chat layer (ctxloom.chat + ctxloom.web)
+
+| Symbol | Role |
+| --- | --- |
+| `ChatAssistant` | sessions + turn loop + history in one handle (`stream`/`invoke`/`history`); hooks: `agents`, `user_message`, `reply`, `session_state` |
+| `ChatEvent` | one transport-neutral frame (`session`/`status`/`message`) |
+| `run_message(runtime, text, *, user_message, reply)` | the turn building block: create input → stream statuses → terminal reply |
+| `default_session_state(ctx, user_message)` | generic history reader (any artifact with `.text`) |
+| `create_chat_router(assistant)` | FastAPI `APIRouter` for the canonical SSE contract (`/api/chat/stream`, `/api/runs/{id}`) — needs the `web` extra |
+| `ctxloom.web.sse(event, data)` | one SSE frame |
 
 ## Visualization (ctxloom.viz + python -m ctxloom)
 

@@ -76,6 +76,71 @@ def test_produce_decorator_style():
     assert markers[0].data.value == "Привет"
 
 
+# --- Style 2b: the @produce decorator with an effects slot (like self.effects) ---
+
+
+@produce(Marker)
+async def decorator_effects(context, inputs, event, effects):
+    artifact = context.get(event.artifact_id) if event is not None else None
+    if artifact is None or not isinstance(artifact.data, Input):
+        return None
+    handle = effects.create(Marker(value=artifact.data.text.upper()))
+    effects.link(handle, "derived_from", artifact)
+    return None
+
+
+class DecoratorEffectsAgent(Agent):
+    consumes = [Consume(Input)]
+    produces = [decorator_effects]
+
+
+def test_produce_decorator_effects_style():
+    ctx = Context()
+    runtime = Runtime(ctx, agents=[DecoratorEffectsAgent()])
+    artifact = ctx.create(Input(text="world"))
+    asyncio.run(runtime.arun())
+
+    markers = ctx.list_artifacts(Marker)
+    assert len(markers) == 1
+    assert markers[0].data.value == "WORLD"
+    relations = [r for r in ctx.relations() if r.relation == "derived_from"]
+    assert len(relations) == 1
+    assert relations[0].source_id == markers[0].id
+    assert relations[0].target_id == artifact.id
+
+
+# --- Style 2c: effects slot also covers update/ask (full self.effects surface) ---
+
+
+class Task(BaseModel):
+    status: str
+
+
+@produce(Task)
+async def decorator_update(context, inputs, event, effects):
+    existing = next((a for a in inputs if isinstance(a.data, Task)), None)
+    if existing is not None:
+        effects.update(existing, status="done")
+        return None
+    return None
+
+
+class DecoratorUpdateAgent(Agent):
+    consumes = [Consume(Task)]
+    produces = [decorator_update]
+
+
+def test_produce_decorator_update_through_slot():
+    ctx = Context()
+    runtime = Runtime(ctx, agents=[DecoratorUpdateAgent()])
+    ctx.create(Task(status="new"))
+    asyncio.run(runtime.arun())
+
+    tasks = ctx.list_artifacts(Task)
+    assert len(tasks) == 1
+    assert tasks[0].data.status == "done"
+
+
 # --- Two-argument factory stays compatible ---
 
 

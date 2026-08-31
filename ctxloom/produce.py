@@ -128,20 +128,31 @@ def produce(
 ) -> Callable[[Callable[..., Any]], Produce[Any]]:
     """Decorator to create a Produce from a function.
 
-    The function must accept (context, inputs, event) and return a model,
-    a list of models, a Patch, or None; the produce writes its effects and its
-    `produce` returns None (the runtime compiles the slot).
+    The function must accept ``(context, inputs)`` plus, optionally, ``event``
+    and/or ``effects`` (each recognized by name):
+
+    - ``def f(context, inputs)`` — return style (no event, no slot);
+    - ``def f(context, inputs, event)`` — return style with the event;
+    - ``def f(context, inputs, effects)`` — author the produce-scoped
+      ``Effects`` slot directly (the same surface as ``self.effects``);
+    - ``def f(context, inputs, event, effects)`` — both.
+
+    Return style: return a model / a list of models / a ``Patch`` / ``None``;
+    the runtime writes them into the slot (reate/append) as usual. Effects
+    style: write ``effects.create/update/link/ask/...`` and return ``None`` —
+    the function behaves exactly like a class produce with ``self.effects``.
     """
 
     def decorator(func: Callable[..., Any]) -> Produce[Any]:
-        # Check the signature
-        sig = inspect.signature(func)
-        params = list(sig.parameters.values())
-        # Expect three parameters: context, inputs, event
-        if len(params) != 3:
+        # Recognize which optional parameters the function declares.
+        params = list(inspect.signature(func).parameters.values())
+        names = [p.name for p in params]
+        if len(params) < 2:
             raise TypeError(
-                f"Function {func.__name__} must accept exactly 3 arguments: (context, inputs, event)"
+                f"Function {func.__name__} must accept at least (context, inputs)"
             )
+        accepts_event = "event" in names
+        accepts_effects = "effects" in names
 
         class _FunctionProduce(Produce[Any]):
             async def produce(
@@ -150,7 +161,14 @@ def produce(
                 inputs: list[Artifact[Any]],
                 event: Event | None = None,
             ) -> None:
-                result = func(context, inputs, event)
+                args: list[Any] = [context, inputs]
+                if accepts_event:
+                    args.append(event)
+                result = (
+                    func(*args, effects=self.effects)
+                    if accepts_effects
+                    else func(*args)
+                )
                 if asyncio.iscoroutine(result):
                     result = await result
                 self._apply_result(result)

@@ -23,6 +23,7 @@ import importlib
 import sys
 from typing import TYPE_CHECKING
 
+from . import __version__
 from .agents import Agent
 from .viz import blueprint, context_to_mermaid, trace_to_mermaid
 
@@ -196,10 +197,16 @@ def cmd_branch(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m ctxloom",
+        prog="ctxloom",
         description="Inspect & visualize ctxloom agents, contexts and traces as Mermaid.",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    sub = parser.add_subparsers(dest="command")
 
     p_graph = sub.add_parser("graph", help="static agent blueprint")
     p_graph.add_argument(
@@ -273,6 +280,21 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command is None:
+        print(
+            f"ctxloom {__version__} — inspect & visualize agents, contexts and"
+            " traces as Mermaid.\n"
+        )
+        print("Render what your agent app already did:")
+        print("  ctxloom graph   <module:Agent>   static blueprint")
+        print("  ctxloom trace   <trace.db>       run diagram")
+        print("  ctxloom context <sessions.sqlite3>  live provenance graph")
+        print("  ctxloom replay  <sessions.sqlite3>  deterministic replay")
+        print("  ctxloom branch  <path> <session> <action>  persistent forks\n")
+        print("Run 'ctxloom <command> --help' for details, or try an example:")
+        print("  uv run python ./examples/llm_ladder/level1.py")
+        parser.print_help()
+        return 0
     return int(args.func(args))
 
 

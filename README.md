@@ -63,22 +63,17 @@ version. No explicit graphs, no node pipelines.
   `python -m ctxloom` with `graph`/`context`/`trace`/`replay`/`branch`.
 - **Sessions & checkpoints** — `SessionStore` over `FileKVBackend`/`SQLiteKVBackend`
   for durable chat memory across requests.
+- **Chat layer** — `ChatAssistant` runs session-persisted turns
+  (`stream`/`invoke`/`history`) with your hooks; `create_chat_router` mounts the
+  canonical SSE chat contract (`/api/chat/stream`, history, delete) on *your*
+  FastAPI app (`ctxloom[web]`).
 
 ## Quick start
 
 ```python
 from pydantic import BaseModel
 
-from ctxloom import (
-    Agent,
-    Budget,
-    Consume,
-    Context,
-    Patch,
-    Produce,
-    Runtime,
-    RuntimeResources,
-)
+from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
 from ctxloom.sources import FileSystemSource
 
 
@@ -90,25 +85,22 @@ class Answer(BaseModel):
     text: str
 
 
-class Echo(Produce[Answer]):
-    artifact_type = Answer
-
-    async def produce(self, context, inputs, event=None):
-        question = next(a for a in inputs if isinstance(a.data, Question))
-        self.effects.create(Answer(text=f"echo: {question.data.text}"))
+@produce(Answer)
+async def echo(context, inputs, event, effects):
+    question = next((a for a in inputs if isinstance(a.data, Question)), None)
+    if question is None:
         return None
+    effects.create(Answer(text=f"echo: {question.data.text}"))
 
 
-class EchoAgent(Agent):
-    name = "echo"
-    consumes = [Consume(Question)]
-    produces = [Echo()]
-
+echo_agent = create_agent("echo", consumes=[Consume(Question)], produces=[echo])
 
 ctx = Context(resources=RuntimeResources(sources={"docs": FileSystemSource("./docs")}))
-runtime = Runtime(ctx, agents=[EchoAgent()], budget=Budget(max_runs=10))
+runtime = Runtime(ctx, agents=[echo_agent], budget=Budget(max_runs=10))
 ctx.create(Question(text="hello"))  # agents that consume it react automatically
 runtime.run()
+
+print(ctx.latest(Answer).data.text)  # "echo: hello"
 ```
 
 You describe artifacts, what agents consume and produce — and the runtime derives
@@ -131,13 +123,36 @@ in two languages (English & Русский); the design and invariants are in
   strategies on their own forks, explicit three-way merge, evaluate on the merged state.
 - `examples/llm_ladder` — the LLM workflow from simplest to state-changing patches
   (3 self-contained levels, offline fallbacks, model mode via `.env`).
+- `examples/adaptive` — hybrid scheduling demo: hard rule filters + deterministic
+  rank + optional LLM tie-break + `rank_limit` + HITL pin.
+- `examples/{reflection,map_reduce,supervisor,summarize,time_travel}` — compact
+  catalog canonical ports (see the [port matrix](docs/en/port-matrix.md)).
 
 ## Run a demo
 
+Start with the tutorial ladder (`llm_ladder`, 3 levels, offline-capable), then
+the web demos:
+
 ```bash
-uv run python ./examples/llm_ladder/level1.py    # the simplest LLM turn (offline too)
-uv run python ./examples/repair/web.py           # room renovation: plan, estimate, CSV export
-uv run python ./examples/devops/web.py           # HITL ops assistant + trace dashboard
+uv run python ./examples/llm_ladder/level1.py  # the simplest LLM turn (offline too)
+uv run python ./examples/repair/web.py         # room renovation: plan, estimate, CSV export
+uv run python ./examples/devops/web.py         # HITL ops assistant + trace dashboard
+```
+
+Ports of the classic agent patterns run as one-liners too — see
+[docs/en/examples.md](docs/en/examples.md) for the full inventory
+(`python -m examples.{reflection,map_reduce,supervisor,summarize,time_travel,adaptive}.main`).
+
+## CLI
+
+`ctxloom` renders what an agent app already did as Mermaid — with no arguments
+it greets you; `--version` prints the release:
+
+```bash
+ctxloom                # welcome + how-to
+ctxloom --version      # ctxloom 0.2.0rc1
+ctxloom graph examples.knowledge.agents:KnowledgeFlow
+ctxloom trace traces.db
 ```
 
 ## Documentation

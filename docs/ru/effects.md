@@ -59,3 +59,28 @@ guard → решить → описать (self.effects) → return None
 
 Если внутри produce хочется написать `Patch()` — остановитесь и используйте
 `self.effects`; компилирует рантайm.
+
+## Функция-форма `@produce` — тот же авторский слой
+
+Декоратор-производящая получает тот же слот эффектов: назовите параметр
+`effects` — рантайм передаст его в функцию, ровно как `self.effects` в
+класс-форме:
+
+```python
+from ctxloom import produce
+
+@produce(Answer)
+async def answer_turn(context, inputs, event, effects):
+    if not inputs:
+        return None
+    qid = inputs[0].id
+    ans = effects.create(Answer(text=...), id=f"answer:{qid}")
+    effects.link(ans, "derived_from", inputs[0])
+    effects.update(turn, status="answered")
+    return None
+```
+
+Параметры после `(context, inputs)` распознаются **по имени**: `event` и/или
+`effects` заполняются автоматически. Return-контракт сохраняется: возврат
+модели / списка моделей / `Patch` / `None` компилируется рантаймом, так что
+короткие produce остаются однострочными.

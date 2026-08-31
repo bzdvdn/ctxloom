@@ -4,6 +4,45 @@ All notable changes to **ctxloom** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
+## [0.3.0-rc1] — 2026-09-01
+
+Third release candidate — "build your agent in minutes" surface: a ready
+app-facing chat layer, a zero-subclass agent factory, and a furnished CLI.
+The runtime itself is unchanged (still reactive/effect-driven); this release is
+about the ergonomics around it.
+
+### Added
+
+- **Chat layer** — `ChatAssistant` (`ctxloom.chat`): session-persisted turns
+  (`stream`/`invoke`/`history`) driven by hooks (`agents`, `user_message`,
+  `reply`, `session_state`, `create_message`, `tracer`); transport-agnostic
+  building blocks (`run_message`, `default_session_state`).
+- **Web router** — `ctxloom.web.create_chat_router(assistant)` mounts the
+  canonical SSE chat contract (`/api/chat/stream`, `/api/runs/{id}`, `health`,
+  delete) on *your* FastAPI app. FastAPI is imported lazily with a readable
+  `pip install "ctxloom[web]"` error when the extra is missing.
+- **Error resilience** — the chat layer never leaks a 500: runtime crashes,
+  failing reply hooks and session-open errors degrade to a fallback `message`
+  (`error: true`) and are logged via the `ctxloom.chat` logger.
+- **`create_agent`** — constructor-style agent factory: `Agent` is a thin
+  container, no subclassing needed for the common case.
+- **Function produces with effects** — `@produce(…)` functions may declare an
+  `event`/`effects` parameter (recognized by name) and author the same slot as
+  `self.effects`; return-based produces still work.
+- **`Context.latest(type)`** — the most recent artifact of a type.
+- **Zero-run diagnostic** — a run where no agent reacted prints a one-time hint
+  (agents present / consumed types) instead of failing silently.
+- **CLI friendliness** — `ctxloom` with no args prints a welcome + how-to,
+  `ctxloom --version` reports the release.
+
+### Refactored
+
+- **Examples** — `knowledge`, `research`, `devops`, `repair` web layers rebuilt
+  on `ctxloom.chat` + `create_chat_router` (~60% less code each; domain hooks
+  only). medic-lab/forkLab stay custom by design.
+
+---
+
 ## [0.2.0-rc1] — 2026-08-31
 
 Second release candidate — the framework API is stable at the `0.2` surface,
