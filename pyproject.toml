@@ -15,6 +15,11 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/bzdvdn/ctxloom"
+Repository = "https://github.com/bzdvdn/ctxloom"
+Documentation = "https://github.com/bzdvdn/ctxloom/tree/master/docs"
+
 [project.optional-dependencies]
 dev = [
     "ruff>=0.8",

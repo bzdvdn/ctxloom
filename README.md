@@ -2,6 +2,11 @@
 
 **Reactive, artifact-driven agent runtime.**
 
+[![CI](https://github.com/bzdvdn/ctxloom/actions/workflows/ci.yml/badge.svg)](https://github.com/bzdvdn/ctxloom/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://github.com/bzdvdn/ctxloom)
+[![PyPI version](https://img.shields.io/pypi/v/ctxloom)](https://pypi.org/project/ctxloom/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 `ctxloom` is a framework for building agents as reactive, stateful processes
 that transform **versioned, typed, provenance-aware artifacts** inside an
 **evolving context** — instead of describing execution as a graph.
