@@ -46,8 +46,9 @@ def _clip_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 class Tracer:
     """Observer of runs for the Runtime (§54).
 
-    Runtime invokes `on_turn_begin` / `on_span` / `on_turn_end`; the collected
-    `RunTrace` is pushed to all sinks (`export`). A sink is a store, Langfuse, PG.
+    Runtime invokes `on_turn_begin` / `on_span` (sync, no I/O) and
+    `on_turn_end` (async — the sinks write to SQLite/Postgres/Langfuse).
+    `on_turn_end` awaits each sink's `export`, so sinks are async stores.
     """
 
     def __init__(
@@ -73,9 +74,9 @@ class Tracer:
     def on_span(self, span: AgentSpan) -> None:
         pass
 
-    def on_turn_end(self, trace: RunTrace) -> None:
+    async def on_turn_end(self, trace: RunTrace) -> None:
         for sink in self.sinks:
-            sink.export(trace)
+            await sink.export(trace)
 
 
 class RecordingLLM(LLMProvider):
@@ -151,6 +152,6 @@ class CompositeTracer:
         for tracer in self.tracers:
             tracer.on_span(span)
 
-    def on_turn_end(self, trace: RunTrace) -> None:
+    async def on_turn_end(self, trace: RunTrace) -> None:
         for tracer in self.tracers:
-            tracer.on_turn_end(trace)
+            await tracer.on_turn_end(trace)

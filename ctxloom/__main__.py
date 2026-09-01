@@ -102,22 +102,28 @@ def cmd_context(args: argparse.Namespace) -> int:
 
 
 def cmd_trace(args: argparse.Namespace) -> int:
+    import asyncio
+
     from .tracing import TraceStore
 
     store = TraceStore(args.path)
-    trace_id = args.run_id
-    if trace_id is None:
-        result = store.query(limit=1)
-        if not result["items"]:
-            print("no traces found")
+
+    async def _run() -> int:
+        trace_id = args.run_id
+        if trace_id is None:
+            result = await store.query(limit=1)
+            if not result["items"]:
+                print("no traces found")
+                return 1
+            trace_id = result["items"][0]["id"]
+        trace = await store.get(trace_id)
+        if trace is None:
+            print(f"trace {trace_id!r} not found")
             return 1
-        trace_id = result["items"][0]["id"]
-    trace = store.get(trace_id)
-    if trace is None:
-        print(f"trace {trace_id!r} not found")
-        return 1
-    print(trace_to_mermaid(trace))
-    return 0
+        print(trace_to_mermaid(trace))
+        return 0
+
+    return asyncio.run(_run())
 
 
 def cmd_replay(args: argparse.Namespace) -> int:

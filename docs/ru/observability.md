@@ -27,6 +27,10 @@ from ctxloom.tracing import TraceStore
 store = TraceStore("traces.db")   # SQLite-приёмник; также отдаёт запуски UI
 ```
 
+Интерфейс стореджа — async (`export`/`query`/`get`); SQLite-ядро выполняется в
+рабочем потоке, поэтому один и тот же объект работает и в веб-приложении, и в
+обычном синхронном коде.
+
 Дашборд — это FastAPI-роутер, монтируемый на ваше приложение:
 
 ```python
@@ -44,7 +48,8 @@ app.include_router(create_trace_router(store), prefix="/traces")
 ### Langfuse и Postgres как дополнительные приёмники
 
 Трейс можно отправлять в несколько мест сразу через `CompositeTracer`, передаваемый
-в `Runtime`. `Tracer` — тонкий: `on_turn_begin` → `on_span` → `on_turn_end`.
+в `Runtime`. `Tracer` — тонкий: `on_turn_begin` → `on_span` → `on_turn_end`
+(I/O выполняет только `on_turn_end`; приёмники экспортируют асинхронно).
 
 ```python
 from ctxloom import Runtime
@@ -64,8 +69,13 @@ runtime = Runtime(
 
 Трейсы доставляются один раз в конце хода (семантика доставки-один-раз); трейсер
 Langfuse мапит суммарные чтения/записи в `input`/`output`, чтобы таймлайн читался
-в их UI. SQLite `TraceStore` остаётся источником для веб-дашборда; Postgres
-зеркалирует ту же схему `runs`/`spans` для внешнего тулинга.
+в их UI. SQLite `TraceStore` остаётся одним из источников для веб-дашборда;
+Postgres зеркалирует ту же схему `runs`/`spans`.
+
+И `TraceStore`, и `PostgresStore` реализуют `TraceReader` (async `query`/`get`),
+поэтому `create_trace_router` работает и с теми, и с другими: укажите дашборду
+`PostgresStore(dsn)` — и он покажет трейсы из Postgres без локального
+SQLite-файла.
 
 ## Модель эмиссии
 

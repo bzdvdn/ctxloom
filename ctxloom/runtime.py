@@ -447,7 +447,7 @@ class Runtime:
         if total_runs == 0:
             self._warn_no_runs()
         if self.tracer is not None:
-            self.tracer.on_turn_end(
+            await self.tracer.on_turn_end(
                 RunTrace(
                     id=self._run_id,
                     session_id=(

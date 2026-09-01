@@ -11,8 +11,12 @@ from ctxloom import (
     TraceStore,
 )
 from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.tracing import AgentSpan, ArtifactRef, LLMCall, RunTrace
+from ctxloom.tracing import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from pydantic import BaseModel
+
+
+def run(coro):
+    return asyncio.run(coro)
 
 
 class Question(BaseModel):
@@ -104,15 +108,15 @@ def test_trace_store_roundtrip(tmp_path):
             )
         ],
     )
-    store.export(trace)
+    run(store.export(trace))
 
-    assert store.get("abc") is not None
-    assert store.get("nope") is None
-    assert store.query()["total"] == 1
-    assert store.query(session_id="other")["items"] == []
-    assert store.query(session_id="s1")["items"][0]["id"] == "abc"
-    assert store.query(outcome="completed")["total"] == 1
-    assert store.query(outcome="failed")["items"] == []
+    assert run(store.get("abc")) is not None
+    assert run(store.get("nope")) is None
+    assert run(store.query())["total"] == 1
+    assert run(store.query(session_id="other"))["items"] == []
+    assert run(store.query(session_id="s1"))["items"][0]["id"] == "abc"
+    assert run(store.query(outcome="completed"))["total"] == 1
+    assert run(store.query(outcome="failed"))["items"] == []
 
 
 def test_runtime_records_spans_and_trace(tmp_path):
@@ -123,9 +127,9 @@ def test_runtime_records_spans_and_trace(tmp_path):
     ctx.create(Question(text="привет"))
     asyncio.run(runtime.arun())
 
-    traces = store.query()["items"]
+    traces = run(store.query())["items"]
     assert len(traces) == 1
-    trace = store.get(traces[0]["id"])
+    trace = run(store.get(traces[0]["id"]))
     assert trace is not None
     assert trace.outcome == "completed"
     # greeter span: read the question, created the answer
@@ -162,7 +166,7 @@ def test_runtime_records_llm_calls(tmp_path):
     ctx.create(Question(text="hi"))
     asyncio.run(runtime.arun())
 
-    trace = store.get(store.query()["items"][0]["id"])
+    trace = run(store.get(run(store.query())["items"][0]["id"]))
     assert trace is not None
     llam = next(s for s in trace.spans if s.agent == "LlamAgent")
     assert len(llam.llm_calls) == 1
@@ -194,8 +198,8 @@ def test_composite_tracer_fans_out(tmp_path):
     )
     ctx.create(Question(text="привет"))
     asyncio.run(runtime.arun())
-    assert store_a.query()["total"] == 1
-    assert store_b.query()["total"] == 1
+    assert run(store_a.query())["total"] == 1
+    assert run(store_b.query())["total"] == 1
 
 
 def test_trace_store_migrates_old_schema(tmp_path):
@@ -222,7 +226,7 @@ def test_trace_store_migrates_old_schema(tmp_path):
     conn.close()
 
     store = TraceStore(path)  # migration adds llm_calls
-    assert store.get("old") is not None  # the old trace is readable
+    assert run(store.get("old")) is not None  # the old trace is readable
     rows = store._conn.execute("PRAGMA table_info(spans)").fetchall()
     assert any(r[1] == "llm_calls" for r in rows)
 
@@ -249,24 +253,24 @@ def test_trace_memoizes_artifact_dump(tmp_path):
 def test_trace_store_retention_prunes_oldest(tmp_path):
     store = TraceStore(str(tmp_path / "ret.db"), max_runs=2)
     for i in range(5):
-        store.export(RunTrace(id=f"r{i}", session_id="s", outcome="completed"))
+        run(store.export(RunTrace(id=f"r{i}", session_id="s", outcome="completed")))
 
-    items = store.query()["items"]
+    items = run(store.query())["items"]
     ids = {item["id"] for item in items}
     assert ids == {"r3", "r4"}  # the last 2 remain
-    assert store.get("r0") is None
+    assert run(store.get("r0")) is None
     # spans of old traces are also removed
     rows = store._conn.execute("SELECT COUNT(*) FROM spans").fetchone()[0]
     assert rows == 0  # r3/r4 have no spans (exported without spans)
 
 
 class FakeClient:
-    """Captures POST requests instead of real HTTP."""
+    """Captures POST requests instead of real HTTP (async, like httpx)."""
 
     def __init__(self):
         self.requests: list[tuple[str, dict]] = []
 
-    def post(self, url: str, json=None):
+    async def post(self, url: str, json=None):
         self.requests.append((url, json or {}))
 
 
@@ -280,37 +284,39 @@ def test_langfuse_exports_trace_spans_and_llm():
         host="http://langfuse.local",
         client=client,
     )
-    langfuse.on_turn_end(
-        RunTrace(
-            id="tr",
-            session_id="s1",
-            outcome="completed",
-            spans=[
-                AgentSpan(
-                    agent="greeter",
-                    event_type="artifact_created",
-                    writes=[
-                        ArtifactRef(
-                            artifact_id="a1",
-                            version=0,
-                            op_type="create",
-                            data_type="Answer",
-                            data='{"t":"Привет!"}',
-                        )
-                    ],
-                    llm_calls=[
-                        LLMCall(
-                            agent="greeter",
-                            provider="fake",
-                            model="m",
-                            messages=[{"role": "user", "content": "hi"}],
-                            response="ok",
-                            prompt_tokens=3,
-                            completion_tokens=2,
-                        )
-                    ],
-                )
-            ],
+    run(
+        langfuse.on_turn_end(
+            RunTrace(
+                id="tr",
+                session_id="s1",
+                outcome="completed",
+                spans=[
+                    AgentSpan(
+                        agent="greeter",
+                        event_type="artifact_created",
+                        writes=[
+                            ArtifactRef(
+                                artifact_id="a1",
+                                version=0,
+                                op_type="create",
+                                data_type="Answer",
+                                data='{"t":"Привет!"}',
+                            )
+                        ],
+                        llm_calls=[
+                            LLMCall(
+                                agent="greeter",
+                                provider="fake",
+                                model="m",
+                                messages=[{"role": "user", "content": "hi"}],
+                                response="ok",
+                                prompt_tokens=3,
+                                completion_tokens=2,
+                            )
+                        ],
+                    )
+                ],
+            )
         )
     )
 
@@ -360,7 +366,7 @@ def test_trace_router_basic_auth(tmp_path):
     from fastapi.testclient import TestClient
 
     store = TraceStore(str(tmp_path / "auth.db"))
-    store.export(RunTrace(id="r1", session_id="s", outcome="completed"))
+    run(store.export(RunTrace(id="r1", session_id="s", outcome="completed")))
     app = FastAPI()
     app.include_router(create_trace_router(store, username="obs", password="secret"))
     client = TestClient(app)
@@ -399,12 +405,16 @@ def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
     from fastapi.testclient import TestClient
 
     store = TraceStore(str(tmp_path / "diag.db"))
-    store.export(
-        RunTrace(
-            id="r1",
-            outcome="completed",
-            duration_ms=12.0,
-            spans=[AgentSpan(agent="planner", event_type="ResearchTurn", writes=[])],
+    run(
+        store.export(
+            RunTrace(
+                id="r1",
+                outcome="completed",
+                duration_ms=12.0,
+                spans=[
+                    AgentSpan(agent="planner", event_type="ResearchTurn", writes=[])
+                ],
+            )
         )
     )
     app = FastAPI()
@@ -424,40 +434,42 @@ def test_trace_run_page_embeds_provenance_graph(tmp_path):
     from fastapi.testclient import TestClient
 
     store = TraceStore(str(tmp_path / "evg.db"))
-    store.export(
-        RunTrace(
-            id="r1",
-            outcome="completed",
-            duration_ms=12.0,
-            spans=[
-                AgentSpan(
-                    agent="answerer",
-                    event_type="Answer",
-                    writes=[
-                        {
-                            "artifact_id": "a1",
-                            "op_type": "create",
-                            "data_type": "Answer",
-                            "data": "{}",
-                        },
-                        {
-                            "artifact_id": "c1",
-                            "op_type": "create",
-                            "data_type": "Claim",
-                            "data": "{}",
-                        },
-                    ],
-                    relations=[
-                        RelationRef(
-                            source_id="a1",
-                            relation="supported_by",
-                            target_id="c1",
-                            source_type="Answer",
-                            target_type="Claim",
-                        )
-                    ],
-                )
-            ],
+    run(
+        store.export(
+            RunTrace(
+                id="r1",
+                outcome="completed",
+                duration_ms=12.0,
+                spans=[
+                    AgentSpan(
+                        agent="answerer",
+                        event_type="Answer",
+                        writes=[
+                            {
+                                "artifact_id": "a1",
+                                "op_type": "create",
+                                "data_type": "Answer",
+                                "data": "{}",
+                            },
+                            {
+                                "artifact_id": "c1",
+                                "op_type": "create",
+                                "data_type": "Claim",
+                                "data": "{}",
+                            },
+                        ],
+                        relations=[
+                            RelationRef(
+                                source_id="a1",
+                                relation="supported_by",
+                                target_id="c1",
+                                source_type="Answer",
+                                target_type="Claim",
+                            )
+                        ],
+                    )
+                ],
+            )
         )
     )
     app = FastAPI()
@@ -477,9 +489,9 @@ def test_runtime_records_provenance_relations(tmp_path):
     ctx.create(Question(text="link me"))
     asyncio.run(runtime.arun())
 
-    items = store.query()["items"]
+    items = run(store.query())["items"]
     assert len(items) == 1
-    loaded = store.get(items[0]["id"])
+    loaded = run(store.get(items[0]["id"]))
     assert loaded is not None
     assert loaded.spans and loaded.spans[0].writes
     relations = loaded.spans[0].relations
@@ -490,3 +502,53 @@ def test_runtime_records_provenance_relations(tmp_path):
     assert edge.target_id == "note:2"
     assert edge.source_type == "Note"
     assert edge.target_type == "Note"
+
+
+def test_postgres_store_roundtrip(tmp_path):
+    """Postgres async write+read against a real server (TEST_PG_DSN)."""
+    import os
+
+    import pytest
+    from ctxloom.tracing import PostgresStore
+
+    dsn = os.environ.get("TEST_PG_DSN")
+    if not dsn:
+        pytest.skip("TEST_PG_DSN not set — skipping Postgres trace integration")
+    import psycopg  # noqa: F401  (ensure the extra is installed)
+
+    store = PostgresStore(dsn)
+    trace = RunTrace(
+        id="pg-1",
+        session_id="s",
+        outcome="completed",
+        spans=[
+            AgentSpan(
+                agent="greeter",
+                event_type="artifact_created",
+                writes=[
+                    ArtifactRef(
+                        artifact_id="a1",
+                        op_type="create",
+                        data_type="Answer",
+                        data='{"text":"hi"}',
+                    )
+                ],
+                relations=[
+                    RelationRef(
+                        source_id="a1",
+                        relation="supported_by",
+                        target_id="c1",
+                        source_type="Answer",
+                        target_type="Claim",
+                    )
+                ],
+            )
+        ],
+    )
+    run(store.export(trace))
+    assert run(store.get("pg-1")) is not None
+    items = run(store.query(session_id="s"))["items"]
+    assert any(i["id"] == "pg-1" for i in items)
+    loaded = run(store.get("pg-1"))
+    assert loaded is not None
+    assert loaded.spans[0].relations[0].relation == "supported_by"

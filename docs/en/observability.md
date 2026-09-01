@@ -27,6 +27,9 @@ from ctxloom.tracing import TraceStore
 store = TraceStore("traces.db")   # SQLite sink; also serves runs back to the UI
 ```
 
+The store's interface is async (`export`/`query`/`get`); the SQLite core runs in
+a worker thread, so the same object works in a web app and in plain sync code.
+
 The dashboard is a FastAPI router mounted on your app:
 
 ```python
@@ -44,7 +47,8 @@ reference UI.
 ### Langfuse and Postgres as additional sinks
 
 A trace can go to several places at once via `CompositeTracer`, passed to the
-`Runtime`. `Tracer`s are thin: `on_turn_begin` → `on_span` → `on_turn_end`.
+`Runtime`. `Tracer`s are thin: `on_turn_begin` → `on_span` → `on_turn_end`
+(only `on_turn_end` performs I/O; sinks `export` asynchronously).
 
 ```python
 from ctxloom import Runtime
@@ -64,9 +68,13 @@ runtime = Runtime(
 
 Spans are delivered once per turn end (delivery-once semantics); the Langfuse
 tracer maps read/write summaries into `input`/`output`, so the timeline is
-readable in their UI. The SQLite `TraceStore` stays the source for the web
-dashboard; Postgres mirrors the same `runs`/`spans` schema for external
-tooling.
+readable in their UI. The SQLite `TraceStore` stays a source for the web
+dashboard; Postgres mirrors the same `runs`/`spans` schema.
+
+Both `TraceStore` and `PostgresStore` implement `TraceReader` (async
+`query`/`get`), so `create_trace_router` works against **either**: point the
+dashboard at `PostgresStore(dsn)` to view traces written to Postgres without a
+local SQLite file.
 
 ## Emission model
 

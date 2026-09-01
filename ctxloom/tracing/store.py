@@ -1,12 +1,15 @@
 """Trace sinks: what accepts a finished `RunTrace`.
 
-`TraceStore` is the SQLite sink (`runs`/`spans` tables). Pattern as in teff:
-the exporter writes the trace, and the observer (`Tracer`) decides where to push. Later —
-Langfuse and Postgres sinks with the same `export` interface.
+`TraceStore` is the SQLite sink (`runs`/`spans` tables), `PostgresStore` the
+Postgres one. Both expose an async interface (`export`/`query`/`get`) — SQLite
+keeps its sync `sqlite3` core and bridges it with `asyncio.to_thread`, so the
+whole tracing surface is uniform `async` (this is what makes a web dashboard
+over Postgres possible). Langfuse is a separate `Tracer` subclass.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
 import time
@@ -18,13 +21,34 @@ from .models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 
 
 class TraceSink(Protocol):
-    """Interface for trace sinks (SQLite, Langfuse, Postgres…)."""
+    """Async interface for trace sinks (SQLite, Postgres, Langfuse…)."""
 
-    def export(self, trace: RunTrace) -> None: ...
+    async def export(self, trace: RunTrace) -> None: ...
+
+
+class TraceReader(Protocol):
+    """Async read interface used by the web dashboard (§54)."""
+
+    async def query(
+        self,
+        *,
+        session_id: str | None = None,
+        outcome: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]: ...
+
+    async def get(self, trace_id: str) -> RunTrace | None: ...
 
 
 class TraceStore:
-    """SQLite trace sink: writes `RunTrace` and can serve them back."""
+    """SQLite trace sink: writes `RunTrace` and can serve them back.
+
+    The `sqlite3` connection is used from a single worker thread: public
+    methods are async and delegate to sync implementations via
+    `asyncio.to_thread`. Pass `bridge=None` only inside tests that drive the
+    sync core directly.
+    """
 
     def __init__(
         self,
@@ -85,7 +109,32 @@ class TraceStore:
             )
         self._conn.commit()
 
-    def export(self, trace: RunTrace) -> None:
+    # ---- async public API (bridged to the sync core) ----------------------- #
+
+    async def export(self, trace: RunTrace) -> None:
+        await asyncio.to_thread(self._export_sync, trace)
+
+    async def prune(self, keep: int) -> int:
+        return await asyncio.to_thread(self._prune_sync, keep)
+
+    async def query(
+        self,
+        *,
+        session_id: str | None = None,
+        outcome: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            self._query_sync, session_id, outcome, limit, offset
+        )
+
+    async def get(self, trace_id: str) -> RunTrace | None:
+        return await asyncio.to_thread(self._get_sync, trace_id)
+
+    # ---- sync core --------------------------------------------------------- #
+
+    def _export_sync(self, trace: RunTrace) -> None:
         started = trace.started_at.timestamp() if trace.started_at else time.time()
         self._conn.execute(
             "INSERT INTO runs (id, session_id, started_at, duration_ms, outcome) "
@@ -111,9 +160,9 @@ class TraceStore:
             )
         self._conn.commit()
         if self.max_runs is not None:
-            self.prune(self.max_runs)
+            self._prune_sync(self.max_runs)
 
-    def prune(self, keep: int) -> int:
+    def _prune_sync(self, keep: int) -> int:
         """Keeps the last `keep` traces, deletes older ones (retention)."""
         cur = self._conn.execute(
             "DELETE FROM runs WHERE id NOT IN "
@@ -126,13 +175,12 @@ class TraceStore:
         self._conn.commit()
         return cur.rowcount
 
-    def query(
+    def _query_sync(
         self,
-        *,
-        session_id: str | None = None,
-        outcome: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
+        session_id: str | None,
+        outcome: str | None,
+        limit: int,
+        offset: int,
     ) -> dict[str, Any]:
         """Latest traces with filters and pagination (§54).
 
@@ -170,7 +218,7 @@ class TraceStore:
         ]
         return {"items": items, "total": total}
 
-    def get(self, trace_id: str) -> RunTrace | None:
+    def _get_sync(self, trace_id: str) -> RunTrace | None:
         row = self._conn.execute(
             "SELECT id, session_id, started_at, duration_ms, outcome "
             "FROM runs WHERE id = ?",

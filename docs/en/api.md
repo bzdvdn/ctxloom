@@ -160,6 +160,6 @@ modules.
 | `Session`, `SessionStore` | durable per-chat working memory across requests |
 | `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value checkpoints backing sessions (`pg` extra for Postgres) — sync by design (small frequent writes; an async variant is a later option) |
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | full-context checkpoints |
-| `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | tracing primitives |
-| `LangfuseTracer`, `PostgresStore` | external trace sinks |
+| `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | tracing primitives (async sinks: `export`/`query`/`get`) |
+| `LangfuseTracer`, `PostgresStore` | external trace sinks — Postgres supports async read+write; the dashboard (`create_trace_router`) accepts any `TraceReader` |
 | `create_trace_router(store)` (`ctxloom.tracing.web`) | FastAPI dashboard router |

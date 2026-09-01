@@ -4,6 +4,30 @@ All notable changes to **ctxloom** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
+## [0.3.1-rc1] — 2026-09-01
+
+Patch release on top of 0.3.0.
+
+### Fixed
+
+- **Async tracing end-to-end** — `Tracer.on_turn_end`, sink `export`/`query`/`get`
+  are now async. `TraceStore` (SQLite) bridges its core via `asyncio.to_thread`.
+- **`PostgresStore` read support** — was write-only (`export`); now also `query`/`get`,
+  and the schema grew the `relations` jsonb column to match SQLite. Uses
+  `psycopg.AsyncConnection` per operation.
+- **`create_trace_router` accepts any `TraceReader`** — the dashboard now works
+  against `PostgresStore(dsn)` directly, not just SQLite.
+- **`LangfuseTracer` is async** (`httpx.AsyncClient`); `RecordingLLM` unchanged.
+- **CLI `ctxloom trace` awaits** the async store.
+- Exported `RelationRef` from `ctxloom.tracing`.
+
+### Changed
+
+- Docs (`api.md`, `observability.md`, EN/RU) describe the async interface and the
+  Postgres-backed dashboard.
+
+---
+
 ## [0.3.0-rc1] — 2026-09-01
 
 Third release candidate — "build your agent in minutes" surface: a ready

@@ -50,10 +50,10 @@ class LangfuseTracer(Tracer):
         else:
             import httpx
 
-            self._client = httpx.Client(headers=self._headers)
+            self._client = httpx.AsyncClient(headers=self._headers)
 
-    def on_turn_end(self, trace: RunTrace) -> None:
-        self._post(
+    async def on_turn_end(self, trace: RunTrace) -> None:
+        await self._post(
             "/traces",
             {
                 "id": trace.id,
@@ -68,7 +68,7 @@ class LangfuseTracer(Tracer):
             },
         )
         for span in trace.spans:
-            self._post(
+            await self._post(
                 "/observations",
                 {
                     "id": f"{trace.id}:span:{span.agent}",
@@ -97,7 +97,7 @@ class LangfuseTracer(Tracer):
                 },
             )
             for call in span.llm_calls:
-                self._post(
+                await self._post(
                     "/observations",
                     {
                         "id": f"{trace.id}:llm:{call.agent}:{span.agent}",
@@ -121,5 +121,5 @@ class LangfuseTracer(Tracer):
                     },
                 )
 
-    def _post(self, path: str, payload: dict[str, Any]) -> None:
-        self._client.post(self._base + path, json=payload)
+    async def _post(self, path: str, payload: dict[str, Any]) -> None:
+        await self._client.post(self._base + path, json=payload)

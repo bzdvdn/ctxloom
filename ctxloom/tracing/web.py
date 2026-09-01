@@ -5,6 +5,9 @@ Serves a JSON API (`/api/traces`, `/api/traces/{id}`), a `/traces` list, and a
 trace page `/traces/{id}` (templates in `templates/`). Polling provides "real
 time".
 
+The router works against any `TraceReader` — SQLite (`TraceStore`) or Postgres
+(`PostgresStore`) — both have async `query`/`get`.
+
 FastAPI is imported lazily inside `create_trace_router`: the module itself and the whole
 `tracing` package do not require fastapi installed — it is needed only where
 the router is created (a web app).
@@ -16,7 +19,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .store import TraceStore
+from .store import TraceReader
 
 if TYPE_CHECKING:
     from fastapi import APIRouter
@@ -25,12 +28,12 @@ _TEMPLATES = Path(__file__).parent / "templates"
 
 
 def create_trace_router(
-    store: TraceStore,
+    store: TraceReader,
     *,
     username: str | None = None,
     password: str | None = None,
 ) -> APIRouter:
-    """Router over the SQLite trace store.
+    """Router over a trace store (SQLite or Postgres).
 
     Returns `fastapi.APIRouter`; fastapi is imported here (lazily)
     so that `ctxloom.tracing.web` works without it.
@@ -77,13 +80,13 @@ def create_trace_router(
         limit: int = Query(default=25, ge=1, le=200),
         offset: int = Query(default=0, ge=0),
     ) -> dict[str, Any]:
-        return store.query(
+        return await store.query(
             session_id=session_id, outcome=outcome, limit=limit, offset=offset
         )
 
     @router.get("/api/traces/{trace_id}")
     async def get_trace(trace_id: str) -> dict[str, Any]:
-        trace = store.get(trace_id)
+        trace = await store.get(trace_id)
         if trace is None:
             raise HTTPException(status_code=404, detail="trace not found")
         return trace.to_dict()
@@ -96,7 +99,7 @@ def create_trace_router(
     async def traces_run_page(trace_id: str) -> str:
         from ..viz import trace_provenance_to_mermaid, trace_to_mermaid
 
-        trace = store.get(trace_id)
+        trace = await store.get(trace_id)
         mermaid = trace_to_mermaid(trace) if trace is not None else ""
         provenance = trace_provenance_to_mermaid(trace) if trace is not None else ""
         return (

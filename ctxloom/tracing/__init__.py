@@ -6,9 +6,9 @@ but without `web`, so that importing the package does not pull in FastAPI.
 """
 
 from .langfuse import LangfuseTracer
-from .models import AgentSpan, ArtifactRef, LLMCall, RunTrace
+from .models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from .postgres import PostgresStore
-from .store import TraceSink, TraceStore
+from .store import TraceReader, TraceSink, TraceStore
 from .tracer import CompositeTracer, RecordingLLM, Tracer
 
 __all__ = [
@@ -19,7 +19,9 @@ __all__ = [
     "LangfuseTracer",
     "PostgresStore",
     "RecordingLLM",
+    "RelationRef",
     "RunTrace",
+    "TraceReader",
     "TraceSink",
     "TraceStore",
     "Tracer",
