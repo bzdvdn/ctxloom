@@ -79,6 +79,8 @@ async def structured_llm(
     system: str = SYSTEM_STRUCTURED,
     user: str,
     attempts: int = 2,
+    temperature: float = 0.0,
+    max_tokens: int = 2048,
 ) -> TModel | None:
     """Single LLM call against a schema: JSON + tolerant parse + retry.
 
@@ -96,9 +98,9 @@ async def structured_llm(
                 Message.system(system),
                 Message.user(text),
             ],
-            temperature=0.0,
+            temperature=temperature,
             response_format={"type": "json_object"},
-            max_tokens=2048,
+            max_tokens=max_tokens,
         )
 
     request = _request(f"{instruction}\n\n{user}")
@@ -137,6 +139,8 @@ async def llm_reply(
     system: str = "",
     user: str,
     attempts: int = 2,
+    temperature: float = 0.0,
+    max_tokens: int = 2048,
 ) -> str | None:
     """A *plain-text* chat completion → `str`, or `None` on an honest failure.
 
@@ -153,6 +157,8 @@ async def llm_reply(
         system=system,
         user=user,
         attempts=attempts,
+        temperature=temperature,
+        max_tokens=max_tokens,
     )
     return body.text if body is not None else None
 
@@ -179,10 +185,14 @@ class StructuredLLM(Generic[TModel]):
         *,
         system: str = SYSTEM_STRUCTURED,
         attempts: int = 2,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
     ):
         self.schema = schema
         self.system = system
         self.attempts = attempts
+        self.temperature = temperature
+        self.max_tokens = max_tokens
 
     async def call(self, context: Context, user: str) -> TModel | None:
         return await structured_llm(
@@ -191,4 +201,6 @@ class StructuredLLM(Generic[TModel]):
             system=self.system,
             user=user,
             attempts=self.attempts,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )

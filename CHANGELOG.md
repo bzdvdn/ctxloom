@@ -4,6 +4,19 @@ All notable changes to **ctxloom** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
+## [0.3.2-rc1] — 2026-09-02
+
+Patch release on top of 0.3.1.
+
+### Added
+
+- **Cоnfigurable structured completions** — `structured_llm` / `llm_reply` /
+  `StructuredLLM` now accept `temperature` and `max_tokens` (defaults stay
+  `0.0` / `2048`, backward compatible) for non-zero-`temperature` models or
+  longer generations.
+
+---
+
 ## [0.3.1-rc1] — 2026-09-01
 
 Patch release on top of 0.3.0.
