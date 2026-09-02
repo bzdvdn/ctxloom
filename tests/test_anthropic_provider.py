@@ -34,7 +34,7 @@ def make_provider():
 
     return AnthropicProvider(
         api_key="test-key",
-        max_tokens_default=256,
+        max_tokens=256,
         transport=httpx.MockTransport(handler),
     )
 
@@ -87,6 +87,23 @@ def test_anthropic_payload_shape():
     assert payload["max_tokens"] == 99
     assert payload["system"] == "SYS"
     assert payload["messages"] == [{"role": "user", "content": "U"}]
+
+
+def test_anthropic_payload_uses_provider_default_temperature():
+    provider = make_provider()
+    provider.temperature = 0.2
+    payload = provider._payload(LLMRequest(messages=[Message.user("U")]), stream=False)
+    # max_tokens always present for Anthropic (API requires it) — provider default.
+    assert payload["max_tokens"] == 256
+    assert payload["temperature"] == 0.2
+
+
+def test_anthropic_payload_omits_temperature_when_unset():
+    provider = make_provider()
+    provider.temperature = None
+    payload = provider._payload(LLMRequest(messages=[Message.user("U")]), stream=False)
+    assert "temperature" not in payload
+    assert payload["max_tokens"] == 256  # required by the API, provider default
 
 
 def test_anthropic_llm_factory_requires_key():

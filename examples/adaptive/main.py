@@ -34,9 +34,28 @@ from ctxloom import (
     RuntimeResources,
     structured_llm,
 )
-from ctxloom.providers import LLMProvider, llm_from_env
+from ctxloom.providers import LLMProvider
 from ctxloom.scheduler import Rule, uncertainty_policy
 from pydantic import BaseModel
+
+
+def build_llm() -> LLMProvider | None:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
+    import os
+
+    from ctxloom.providers import openai_llm, openrouter_llm
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
 
 
 class Task(BaseModel):
@@ -263,7 +282,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    ctx = run(tag=args.tag, text=args.text, llm=llm_from_env())
+    ctx = run(tag=args.tag, text=args.text, llm=build_llm())
     summaries = sorted(ctx.list_artifacts(Summary), key=lambda s: s.data.by)
     finals = ctx.list_artifacts(Final)
     print("adaptive · filter → rank → LLM tie-break → HITL approval")

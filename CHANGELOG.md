@@ -4,6 +4,38 @@ All notable changes to **ctxloom** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
+## [0.4.0-rc1] — 2026-09-02
+
+Minor release — provider-level generation defaults + explicit provider wiring.
+
+### Added
+
+- **Provider-level `temperature` / `max_tokens`** — the defaults live on the
+  provider instance (`openai_llm(..., temperature=0.7, max_tokens=2048)`), any
+  per-call value overrides them, and a `None` at both levels omits the field so
+  the API applies its own default. `LLMRequest.temperature` is now `float | None`
+  (was a hard-coded `0.7`), ending the 0.7-vs-0.0 drift between call sites.
+- Applied across the stack: `structured_llm` / `llm_reply` /
+  `LLMAgent` / `HITLLMAgent` / `ToolUse` accept `temperature`/`max_tokens`
+  (default `None` = provider default). `OpenAICompatProvider`, `AnthropicProvider`
+  and `GeminiProvider` follow the same resolution order
+  (call → provider → omit); Anthropic always sends `max_tokens` (API requires
+  it, default `4096`).
+- **Image provider defaults** — `OpenAICompatImageProvider` takes `n`/`size`/
+  `quality` in the constructor; `generate(prompt, size=...)` overrides per call,
+  unset fields are omitted.
+
+### Changed
+
+- **Explicit providers in examples** — demos no longer use `llm_from_env()`.
+  Each defines a local `build_llm()` picking `openrouter_llm(...)` or
+  `openai_llm(...)` explicitly (with `max_tokens=2048`) and returning `None`
+  offline. `openai_llm`/`openrouter_llm` now tolerate `base_url`/`model` as
+  `None` (defaults applied) and return `None` without a key, so demos stay
+  offline-capable.
+
+---
+
 ## [0.3.2-rc1] — 2026-09-02
 
 Patch release on top of 0.3.1.

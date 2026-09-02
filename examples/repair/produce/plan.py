@@ -57,6 +57,7 @@ async def _make_plan(context: Context, project: Project) -> list[PlanStep]:
     context.announce("Составляю план ремонта…", kind="status")
     result = await structured_llm(
         context,
+        temperature=0.1,
         schema=RepairPlan,
         user=_PLAN_PROMPT.format(geometry=geometry, palette=palette, budget=budget),
     )

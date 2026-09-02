@@ -15,7 +15,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ctxloom import Budget, Context, Runtime, RuntimeResources
-from ctxloom.providers import llm_from_env, openrouter_llm
+from ctxloom.providers import openai_llm, openrouter_llm
 from ctxloom.sources import FileSystemSource, Source, WebSource
 from ctxloom.tracing import Tracer, TraceStore
 from dotenv import load_dotenv
@@ -41,7 +41,15 @@ def _usable_llm() -> Any | None:
     """
     import os
 
-    llm = llm_from_env()
+    if os.getenv("OPENAI_BASE_URL"):
+        llm = openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    else:
+        llm = None
     if llm is None:
         reasoning_on = os.getenv("MEDIC_LAB_REASONING", "on").strip().lower() not in {
             "off",

@@ -53,11 +53,15 @@ class GeminiProvider(LLMProvider):
         proxy: str | None = None,
         auth_header: str = "x-goog-api-key",
         auth_scheme: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         self._headers = {"Content-Type": "application/json"}
         self._headers[auth_header] = auth_value(api_key, auth_scheme)
         self._transport = transport
@@ -90,9 +94,17 @@ class GeminiProvider(LLMProvider):
             payload["systemInstruction"] = {
                 "parts": [{"text": "\n".join(system_parts)}]
             }
-        generation: dict[str, Any] = {"temperature": request.temperature}
-        if request.max_tokens is not None:
-            generation["maxOutputTokens"] = request.max_tokens
+        temperature = (
+            request.temperature if request.temperature is not None else self.temperature
+        )
+        max_tokens = (
+            request.max_tokens if request.max_tokens is not None else self.max_tokens
+        )
+        generation: dict[str, Any] = {}
+        if temperature is not None:
+            generation["temperature"] = temperature
+        if max_tokens is not None:
+            generation["maxOutputTokens"] = max_tokens
         if request.stop:
             generation["stopSequences"] = request.stop
         if request.response_format:

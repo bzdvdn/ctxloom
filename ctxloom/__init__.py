@@ -70,7 +70,7 @@ from .viz import (
     trace_to_mermaid,
 )
 
-__version__ = "0.3.2rc1"
+__version__ = "0.4.0rc1"
 
 __all__ = [
     "Agent",

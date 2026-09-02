@@ -46,6 +46,11 @@ Pattern: **`llm_from_env() or <vendor default>`**. If no key is set the factory
 returns `None`, and the demo falls back to deterministic behavior (this is why
 every example keeps working with no API key at all).
 
+The in-repo examples prefer the **explicit factories** (`openai_llm(...)`,
+`openrouter_llm(...)`) with an explicit `max_tokens` — each demo defines a small
+`build_llm()` that reads `.env` and picks the provider, so you always see which
+provider runs and it stays offline-capable when no key is present.
+
 ## Chat providers
 
 `OpenAICompatProvider` is the generic OpenAI-compatible client and is the
@@ -104,6 +109,32 @@ MISTRAL_API_KEY=...
 IMAGE_PROVIDER=openrouter
 IMAGE_MODEL=google/gemini-2.0-flash-exp:free
 ```
+
+## Temperature & max_tokens — provider defaults, per-call overrides
+
+`temperature` and `max_tokens` are **provider-level defaults**, overridable per
+call. A `None` at both levels means the field is omitted from the request and
+the API applies its own default.
+
+```python
+from ctxloom.providers import openai_llm, openrouter_llm
+
+# provider default for every request made through it
+llm = openai_llm(model="gpt-4o-mini", temperature=0.7, max_tokens=2048)
+```
+
+Per-call overrides win (e.g. a deterministic extractor that must not wander):
+
+```python
+body = await structured_llm(context, schema=AnswerBody, user=text, temperature=0.0)
+```
+
+Resolution order: **call → provider → omit the field**. The same applies to
+`llm_reply`, `ToolUse`, `LLMAgent`/`HITLLMAgent` (`temperature`/`max_tokens`
+class attributes, `None` = provider default), and to the image provider
+(`n`/`size`/`quality` defaults in the constructor, per-call override via
+`generate(prompt, size=...)`). Anthropic always sends `max_tokens` (the API
+requires it) — default `4096`, change it in the constructor.
 
 ## Deterministic demo mode
 

@@ -28,8 +28,27 @@ from ctxloom import (
     structured_llm,
 )
 from ctxloom.prompts import PromptTemplate
-from ctxloom.providers import LLMProvider, llm_from_env
+from ctxloom.providers import LLMProvider
 from pydantic import BaseModel
+
+
+def build_llm() -> LLMProvider | None:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
+    import os
+
+    from ctxloom.providers import openai_llm, openrouter_llm
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
 
 
 class Request(BaseModel):
@@ -207,7 +226,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m examples.time_travel.main")
     parser.parse_args()
 
-    merged = run(llm=llm_from_env())
+    merged = run(llm=build_llm())
     candidates = sorted(
         merged.list_artifacts(Candidate), key=lambda c: c.data.score, reverse=True
     )

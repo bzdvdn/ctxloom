@@ -8,18 +8,23 @@ from .chat import OpenAICompatEmbedder, OpenAICompatProvider, _network_knobs
 
 
 def openai_llm(
-    model: str = "gpt-4o-mini",
-    base_url: str = "https://api.openai.com/v1",
+    model: str | None = None,
+    base_url: str | None = None,
     api_key: str | None = None,
     **kwargs: Any,
-) -> OpenAICompatProvider:
+) -> OpenAICompatProvider | None:
     if api_key is None:
         import os
 
         api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None  # without a key the app runs on its deterministic fallbacks
     merged = {**_network_knobs("OPENAI", kwargs), **kwargs}
     return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **merged
+        base_url=base_url or "https://api.openai.com/v1",
+        api_key=api_key,
+        model=model or "gpt-4o-mini",
+        **merged,
     )
 
 

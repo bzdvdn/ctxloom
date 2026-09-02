@@ -86,6 +86,8 @@ class ToolUse(Produce[ToolAnswer]):
         *,
         name: str = "llm",
         max_steps: int = 8,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ):
         self.name = name
         self.system = system
@@ -93,6 +95,8 @@ class ToolUse(Produce[ToolAnswer]):
             {t.name: t for t in tools} if not isinstance(tools, dict) else dict(tools)
         )
         self.max_steps = max_steps
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         super().__init__()
 
     async def produce(
@@ -123,6 +127,8 @@ class ToolUse(Produce[ToolAnswer]):
                 schema=_ToolUseStep,
                 system=self._system_prompt(),
                 user=self._user_prompt(goal, history),
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
             )
             if decision is None:
                 return "Could not reach a decision."
@@ -151,6 +157,8 @@ class ToolUse(Produce[ToolAnswer]):
             system="Answer now based on the available data. "
             'Reply with strict JSON: {"text":"..."}',
             user=self._user_prompt(goal, history),
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )
         if forced is not None and forced.text:
             return forced.text
@@ -222,6 +230,8 @@ class ToolUseHITL(Produce[ToolAnswer]):
         max_steps: int = 8,
         max_asks: int = 2,
         resume_announce: Callable[[str], str] | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ):
         self.name = name
         self.system = system
@@ -230,6 +240,8 @@ class ToolUseHITL(Produce[ToolAnswer]):
         )
         self.max_steps = max_steps
         self.max_asks = max_asks
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         # App callback: human answer → status message (kind="status").
         self.resume_announce = resume_announce
         super().__init__()
@@ -274,6 +286,8 @@ class ToolUseHITL(Produce[ToolAnswer]):
             schema=_ToolUseStepHITL,
             system=self._system_prompt(),
             user=self._user_prompt(goal, history),
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )
         if decision is None:
             self._answer(qid, "Could not reach a decision.")
@@ -425,6 +439,8 @@ class ToolUseHITL(Produce[ToolAnswer]):
             system="Answer now based on the available data. "
             'Reply with strict JSON: {"text":"..."}',
             user=self._user_prompt(goal, history),
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )
         text = (
             forced.text

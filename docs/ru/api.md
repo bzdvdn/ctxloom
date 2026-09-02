@@ -130,6 +130,7 @@
 | `ImageProvider`, `SpeechProvider`, `TranscriberProvider`, `VideoProvider` | медиа-контракты |
 | `OpenAICompatProvider`, `OpenAICompatEmbedder` + вендорные фабрики (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ чат/эмбеддинг-бэкендов |
 | `Message`, `Role` | одно сообщение чата; `role` — закрытый `Literal` + фабрики `Message.system/user/assistant/tool` |
+| `LLMRequest` | одна генерация: `messages` + `temperature`/`max_tokens` — `None` = дефолт провайдера (вызов перекрывает провайдера, провайдер `None` = поле не отправляется) |
 | `*_from_env(**overrides)` | подключение из `.env`; возвращает `None`, если не настроено |
 | `FakeLLM`, `FakeEmbedder` | детерминированные заглушки для тестов/демо |
 

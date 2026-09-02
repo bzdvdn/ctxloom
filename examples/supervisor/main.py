@@ -29,8 +29,28 @@ from ctxloom import (
     structured_llm,
 )
 from ctxloom.prompts import PromptTemplate
-from ctxloom.providers import LLMProvider, llm_from_env
+from ctxloom.providers import LLMProvider
 from pydantic import BaseModel
+
+
+def build_llm() -> LLMProvider | None:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
+    import os
+
+    from ctxloom.providers import openai_llm, openrouter_llm
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
 
 ROUTES = {"budget", "timeline", "quality"}
 
@@ -251,7 +271,7 @@ def main() -> int:
     parser.add_argument("--text", default="Optimize the lighting and socket budget.")
     args = parser.parse_args()
 
-    ctx = run(text=args.text, llm=llm_from_env())
+    ctx = run(text=args.text, llm=build_llm())
     replies = ctx.list_artifacts(FinalReply)
     reports = ctx.list_artifacts(SpecialistReport)
     print("supervisor · route → specialist → HITL approval")

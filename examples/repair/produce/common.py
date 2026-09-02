@@ -55,6 +55,8 @@ async def _extract_info(
     result = await structured_llm(
         context,
         schema=ProjectInfo,
+        temperature=0.0,
+        max_tokens=3000,
         user=(
             "Извлеки факты о ремонте. Не домысливай: неизвестные поля = null.\n"
             f"Сообщение: {text}"
@@ -102,9 +104,11 @@ def _parse_pick(text: str, options: list[DesignOption]) -> DesignOption | None:
 def _assistant_context(project: Project) -> str:
     """A brief project summary for the post-approval assistant."""
     parts = [
-        f"Комната: {project.info.room_type}, {project.info.area} м²"
-        if project.info.area
-        else f"Комната: {project.info.room_type}",
+        (
+            f"Комната: {project.info.room_type}, {project.info.area} м²"
+            if project.info.area
+            else f"Комната: {project.info.room_type}"
+        ),
         f"бюджет {project.info.budget} ₽" if project.info.budget else "",
         f"вариант: {project.design_choice}" if project.design_choice else "",
     ]
@@ -130,9 +134,11 @@ def _conversation_text(context: Context, current_msg_id: str, limit: int = 10) -
     if not recent:
         return ""
     lines = [
-        f"user: {a.data.text}"
-        if isinstance(a.data, UserMsg)
-        else f"assistant: {a.data.text}"
+        (
+            f"user: {a.data.text}"
+            if isinstance(a.data, UserMsg)
+            else f"assistant: {a.data.text}"
+        )
         for a in recent
     ]
     return "Разговор:\n" + "\n".join(lines)

@@ -85,6 +85,39 @@ def test_calls_generate_content_endpoint():
     assert seen["body"]["generationConfig"]["temperature"] == 0.1
 
 
+def test_gemini_payload_uses_provider_defaults_and_omits_unset():
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json=COMPLETION)
+
+    seen: dict = {}
+    provider = GeminiProvider(
+        api_key="gem-key",
+        temperature=0.4,
+        max_tokens=777,
+        transport=httpx.MockTransport(handler),
+    )
+    asyncio.run(provider.complete(LLMRequest(messages=[Message.user("hi")])))
+    gen = seen["body"]["generationConfig"]
+    assert gen["temperature"] == 0.4
+    assert gen["maxOutputTokens"] == 777
+
+    seen2: dict = {}
+    empty = GeminiProvider(
+        api_key="gem-key",
+        transport=httpx.MockTransport(
+            lambda req: (
+                seen2.update(body=json.loads(req.content))
+                or httpx.Response(200, json=COMPLETION)
+            )
+        ),
+    )
+    asyncio.run(empty.complete(LLMRequest(messages=[Message.user("hi")])))
+    gen2 = seen2["body"]["generationConfig"]
+    assert "temperature" not in gen2
+    assert "maxOutputTokens" not in gen2
+
+
 def test_system_role_goes_to_system_instruction():
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)

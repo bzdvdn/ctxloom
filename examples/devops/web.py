@@ -27,7 +27,7 @@ from ctxloom import (
     Tracer,
     TraceStore,
 )
-from ctxloom.providers import llm_from_env, openrouter_llm
+from ctxloom.providers import openai_llm, openrouter_llm
 from ctxloom.tracing.web import create_trace_router
 from ctxloom.web import create_chat_router
 from dotenv import load_dotenv
@@ -42,10 +42,29 @@ from examples.devops.models import ChatReply, UserMsg
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+
+def build_llm() -> Any | None:
+    """Explicit provider: OpenRouter (default) or a local OpenAI-compatible
+    endpoint; `None` when no key is configured → offline/deterministic."""
+    import os
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
+
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 FALLBACK_REPLY = "Failed to assemble the answer. Try rephrasing the question."
+
 
 AGENTS = [RouteAgent(), K8sAgent(), GitlabAgent(), AnsibleAgent(), RenderAgent()]
 
@@ -92,7 +111,7 @@ def session_state(ctx: Any) -> dict:
 def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
     """App factory. `llm` and `store_dir` — for tests; by default the
     providers come from .env (OpenRouter·DeepSeek)."""
-    active_llm = llm if llm is not None else (llm_from_env() or openrouter_llm())
+    active_llm = llm if llm is not None else build_llm()
     store = SessionStore(
         FileKVBackend(str(Path(store_dir) if store_dir else ROOT / "sessions"))
     )

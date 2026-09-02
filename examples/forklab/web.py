@@ -22,7 +22,7 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add repo root to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom.providers import LLMProvider, llm_from_env
+from ctxloom.providers import LLMProvider, openai_llm, openrouter_llm
 from ctxloom.viz import context_to_mermaid
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -37,6 +37,24 @@ from examples.forklab.pipeline import (
     merge_forks,
     result_data,
 )
+
+
+def build_llm() -> LLMProvider | None:
+    """Explicit provider: OpenRouter (default) or a local OpenAI-compatible
+    endpoint; `None` when no key is configured → offline."""
+    import os
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
 
 load_dotenv()
 
@@ -55,7 +73,7 @@ def _sse(event: str, data: dict[str, Any]) -> str:
 
 def create_app(llm: LLMProvider | None = None) -> FastAPI:
     """App factory. `llm` is for tests; by default it comes from `.env` (§68)."""
-    active_llm = llm if llm is not None else llm_from_env()
+    active_llm = llm if llm is not None else build_llm()
     app = FastAPI(title="fork-lab (ctxloom)")
 
     @app.get("/api/health")

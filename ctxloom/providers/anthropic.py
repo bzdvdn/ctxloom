@@ -34,7 +34,8 @@ class AnthropicProvider(LLMProvider):
         timeout: float = 90.0,
         transport: Any | None = None,
         extra_headers: dict[str, str] | None = None,
-        max_tokens_default: int = 4096,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         proxy: str | None = None,
         auth_header: str = "x-api-key",
         auth_scheme: str | None = None,
@@ -43,7 +44,10 @@ class AnthropicProvider(LLMProvider):
         self.model = model
         self.base_url = base_url.rstrip("/")
         self._timeout = timeout
-        self._max_tokens_default = max_tokens_default
+        # Anthropic's Messages API requires `max_tokens`; 4096 is the library
+        # default. Pass an explicit value to change it, or override per call.
+        self.max_tokens = max_tokens if max_tokens is not None else 4096
+        self.temperature = temperature
         self._headers = {
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
@@ -73,13 +77,21 @@ class AnthropicProvider(LLMProvider):
         ]
         if not messages:
             messages = [{"role": "user", "content": ""}]
+        temperature = (
+            request.temperature if request.temperature is not None else self.temperature
+        )
         payload: dict[str, Any] = {
             "model": request.extra.get("model") or self.model,
-            "max_tokens": request.max_tokens or self._max_tokens_default,
-            "temperature": request.temperature,
+            "max_tokens": (
+                request.max_tokens
+                if request.max_tokens is not None
+                else self.max_tokens
+            ),
             "messages": messages,
             "stream": stream,
         }
+        if temperature is not None:
+            payload["temperature"] = temperature
         if system:
             payload["system"] = system
         if request.stop:

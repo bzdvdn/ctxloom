@@ -28,8 +28,28 @@ from ctxloom import (
     structured_llm,
 )
 from ctxloom.prompts import PromptTemplate
-from ctxloom.providers import LLMProvider, llm_from_env
+from ctxloom.providers import LLMProvider
 from pydantic import BaseModel
+
+
+def build_llm() -> LLMProvider | None:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
+    import os
+
+    from ctxloom.providers import openai_llm, openrouter_llm
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
 
 MAX_ROUNDS = 2  # how many rewrites are allowed
 ACCEPT_AT = 0.8  # critic score that ends the loop
@@ -224,7 +244,7 @@ def main() -> int:
     parser.add_argument("--topic", default="Hydropower: pros and cons")
     args = parser.parse_args()
 
-    ctx = run(topic=args.topic, llm=llm_from_env())
+    ctx = run(topic=args.topic, llm=build_llm())
     finals = ctx.list_artifacts(Final)
     print("reflection · generate → critique → regenerate")
     for f in finals:

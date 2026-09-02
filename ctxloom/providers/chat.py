@@ -41,6 +41,8 @@ class OpenAICompatProvider(LLMProvider):
         proxy: str | None = None,
         auth_header: str = "Authorization",
         auth_scheme: str | None = "Bearer",
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -52,6 +54,8 @@ class OpenAICompatProvider(LLMProvider):
             self._headers.setdefault(auth_header, auth_value(api_key, auth_scheme))
         self._transport = transport
         self._proxy = proxy
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -65,18 +69,27 @@ class OpenAICompatProvider(LLMProvider):
         return self._client
 
     def _payload(self, request: LLMRequest, stream: bool) -> dict[str, Any]:
+        # A request-level value overrides the provider default; if neither is
+        # set, the field is omitted and the API applies its own default.
+        temperature = (
+            request.temperature if request.temperature is not None else self.temperature
+        )
+        max_tokens = (
+            request.max_tokens if request.max_tokens is not None else self.max_tokens
+        )
         payload: dict[str, Any] = {
             "messages": [
                 {"role": m.role, "content": m.content} for m in request.messages
             ],
-            "temperature": request.temperature,
             "stream": stream,
         }
+        if temperature is not None:
+            payload["temperature"] = temperature
         model = request.extra.get("model") or self.model
         if model is not None:
             payload["model"] = model
-        if request.max_tokens is not None:
-            payload["max_tokens"] = request.max_tokens
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         if request.stop:
             payload["stop"] = request.stop
         if request.response_format:

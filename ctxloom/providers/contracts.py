@@ -51,7 +51,11 @@ class Message:
 @dataclass
 class LLMRequest:
     messages: list[Message]
-    temperature: float = 0.7
+
+    # `None` means "use the provider's default" — the provider decides what to
+    # send (or omits the field entirely, letting the API pick). An explicit
+    # value here is a per-call override of the provider default.
+    temperature: float | None = None
     max_tokens: int | None = None
     stop: list[str] = field(default_factory=list)
     response_format: dict[str, Any] | None = None

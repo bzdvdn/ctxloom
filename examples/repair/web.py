@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -27,7 +28,7 @@ from ctxloom import (
 from ctxloom.providers import (
     embedder_from_env,
     image_from_env,
-    llm_from_env,
+    openai_llm,
     openrouter_llm,
 )
 from ctxloom.web import create_chat_router
@@ -37,6 +38,24 @@ from examples.repair.models import ChatReply, Project, UserMsg
 from examples.repair.services import Catalog
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
+
+
+def build_llm() -> Any | None:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured → offline."""
+    import os
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
 
 load_dotenv()
 
@@ -103,7 +122,7 @@ def session_state(ctx: Context) -> dict:
 def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
     """Application factory. `llm` and `store_dir` are for tests; by default the
     providers come from .env (OpenRouter·DeepSeek for chat)."""
-    active_llm = llm if llm is not None else (llm_from_env() or openrouter_llm())
+    active_llm = llm if llm is not None else build_llm()
     store = SessionStore(
         FileKVBackend(str(Path(store_dir) if store_dir else ROOT / "sessions"))
     )

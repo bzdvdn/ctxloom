@@ -20,7 +20,7 @@ from ctxloom import (
     RuntimeResources,
     SessionStore,
 )
-from ctxloom.providers import llm_from_env
+from ctxloom.providers import openai_llm, openrouter_llm
 from ctxloom.recipes import keyword_score
 from ctxloom.sources import CSVSource, FileSystemSource
 from dotenv import load_dotenv
@@ -46,11 +46,29 @@ KNOWLEDGE_DOCS = ROOT / "docs"
 _UNSET = object()
 
 
+def build_llm() -> Any:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured → the demo
+    runs offline on deterministic fallbacks."""
+    import os
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL", ""),
+            api_key=os.getenv("OPENAI_API_KEY", ""),
+            model=os.getenv("OPENAI_MODEL", ""),
+            max_tokens=2048,
+        )
+    return None
+
+
 def build_resources(llm: Any = _UNSET) -> RuntimeResources:
     """The demo's sources (+ optional LLM). `llm`: from env by default;
     pass an explicit provider or `None` for hermetic tests/fallbacks."""
     if llm is _UNSET:
-        llm = llm_from_env()
+        llm = build_llm()
     return RuntimeResources(
         llm=llm,
         sources={

@@ -48,6 +48,8 @@ class StructuredGenerateAgent(Agent):
     schema: type[BaseModel] | None = None
     system_prompt: str = SYSTEM_STRUCTURED
     attempts: int = 2
+    temperature: float | None = None
+    max_tokens: int | None = None
 
     def build_prompt(self, inputs: list[Artifact[Any]]) -> str:
         raise NotImplementedError
@@ -66,6 +68,8 @@ class StructuredGenerateAgent(Agent):
             system=self.system_prompt,
             user=text,
             attempts=self.attempts,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )
         if result is None:
             result = self.fallback(inputs)
@@ -90,6 +94,8 @@ class LLMAgent(Agent):
     system: str = ""
     tools: Sequence[Tool] | dict[str, Tool] = ()
     max_steps: int = 8
+    temperature: float | None = None
+    max_tokens: int | None = None
 
     def __init__(self, *, name: str | None = None, **kwargs: Any):
         llm_name = name or self.name or self.__class__.__name__.lower()
@@ -106,6 +112,8 @@ class LLMAgent(Agent):
                 system=self.system,
                 tools=self.tools,
                 max_steps=self.max_steps,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
             ),
             Produce(ToolAnswer),
             *user_produces,
@@ -126,6 +134,8 @@ class HITLLMAgent(Agent):
     max_steps: int = 8
     max_asks: int = 2
     resume_announce: Callable[[str], str] | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
 
     def __init__(self, *, name: str | None = None, **kwargs: Any):
         llm_name = name or self.name or self.__class__.__name__.lower()
@@ -149,6 +159,8 @@ class HITLLMAgent(Agent):
                 max_steps=self.max_steps,
                 max_asks=self.max_asks,
                 resume_announce=self.resume_announce,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
             ),
             Produce(ToolAnswer),
             Produce(Observation),

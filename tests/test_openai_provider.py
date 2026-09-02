@@ -83,6 +83,34 @@ def test_payload_includes_model_and_format():
     assert payload["response_format"] == {"type": "json_object"}
 
 
+def test_payload_omits_unset_temperature_and_max_tokens():
+    provider = build_provider()
+    payload = provider._payload(LLMRequest(messages=[Message.user("hi")]), stream=False)
+    assert "temperature" not in payload
+    assert "max_tokens" not in payload
+
+
+def test_payload_uses_provider_defaults():
+    provider = build_provider()
+    provider.temperature = 0.3
+    provider.max_tokens = 512
+    payload = provider._payload(LLMRequest(messages=[Message.user("hi")]), stream=False)
+    assert payload["temperature"] == 0.3
+    assert payload["max_tokens"] == 512
+
+
+def test_payload_request_overrides_provider_default():
+    provider = build_provider()
+    provider.temperature = 0.3
+    provider.max_tokens = 512
+    payload = provider._payload(
+        LLMRequest(messages=[Message.user("hi")], temperature=0.9, max_tokens=100),
+        stream=False,
+    )
+    assert payload["temperature"] == 0.9
+    assert payload["max_tokens"] == 100
+
+
 def test_llm_from_env_empty():
     import os
 

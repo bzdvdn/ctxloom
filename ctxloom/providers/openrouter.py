@@ -14,9 +14,9 @@ def openrouter_llm(
     api_key: str | None = None,
     **kwargs: Any,
 ) -> OpenAICompatProvider | None:
-    if api_key is None:
-        import os
+    import os
 
+    if api_key is None:
         api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         return None  # without a key OpenRouter does not work — the app falls back

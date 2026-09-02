@@ -37,8 +37,28 @@ from ctxloom import (
     structured_llm,
 )
 from ctxloom.prompts import PromptTemplate
-from ctxloom.providers import LLMProvider, llm_from_env
+from ctxloom.providers import LLMProvider
 from pydantic import BaseModel
+
+
+def build_llm() -> LLMProvider | None:
+    """Explicit provider for this level: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured → offline."""
+    import os
+
+    from ctxloom.providers import openai_llm, openrouter_llm
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
 
 #: A tiny "knowledge base" shipped with the demo (a source document).
 KNOWLEDGE = (
@@ -182,7 +202,7 @@ def main() -> int:
     parser.add_argument("--topic", default="energy systems")
     args = parser.parse_args()
 
-    ctx = run(question=args.question, topic=args.topic, llm=llm_from_env())
+    ctx = run(question=args.question, topic=args.topic, llm=build_llm())
     answers = ctx.list_artifacts(Answer)
     print("level 2 · two LLM calls → linked patch (evidence + answer + provenance)")
     for a in answers:

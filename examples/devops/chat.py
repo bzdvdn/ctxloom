@@ -7,6 +7,7 @@ Without OPENROUTER_API_KEY there is no LLM — agents honestly say «Could not r
 import asyncio
 import sys
 from pathlib import Path
+from typing import Any
 
 if __package__ in (None, ""):  # running as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -18,7 +19,7 @@ from ctxloom import (
     RuntimeResources,
     SessionStore,
 )
-from ctxloom.providers import llm_from_env, openrouter_llm
+from ctxloom.providers import openai_llm, openrouter_llm
 from dotenv import load_dotenv
 from examples.devops.agents import (
     AnsibleAgent,
@@ -29,12 +30,30 @@ from examples.devops.agents import (
 )
 from examples.devops.models import ChatReply, UserMsg
 
+
+def build_llm() -> Any | None:
+    """Explicit provider for this demo: OpenRouter (default) or a local
+    OpenAI-compatible endpoint; `None` when no key is configured → offline."""
+    import os
+
+    if os.getenv("OPENROUTER_API_KEY"):
+        return openrouter_llm(max_tokens=2048)
+    if os.getenv("OPENAI_BASE_URL"):
+        return openai_llm(
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL"),
+            max_tokens=2048,
+        )
+    return None
+
+
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 
 async def main() -> None:
-    llm = llm_from_env() or openrouter_llm()
+    llm = build_llm()
     if llm is None:
         print(
             "LLM is not configured — agents won't be able to answer. Set OPENROUTER_API_KEY."

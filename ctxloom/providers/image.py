@@ -42,10 +42,16 @@ class OpenAICompatImageProvider(ImageProvider):
         proxy: str | None = None,
         auth_header: str = "Authorization",
         auth_scheme: str | None = "Bearer",
+        n: int = 1,
+        size: str | None = None,
+        quality: str | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+        self.n = n
+        self.size = size
+        self.quality = quality
         self._timeout = timeout
         self._transport = transport
         self._proxy = proxy
@@ -67,17 +73,24 @@ class OpenAICompatImageProvider(ImageProvider):
         return self._client
 
     async def generate(self, prompt: str, **params: Any) -> bytes | None:
+        # Provider-level defaults (n/size/quality) can be overridden per call.
         payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
-            "n": params.get("n", 1),
+            "n": params.get("n", self.n),
         }
+        if "size" in params:
+            payload["size"] = params["size"]
+        elif self.size is not None:
+            payload["size"] = self.size
+        if "quality" in params:
+            payload["quality"] = params["quality"]
+        elif self.quality is not None:
+            payload["quality"] = self.quality
         for key in (
             "aspect_ratio",
             "resolution",
             "output_format",
-            "size",
-            "quality",
             "style",
             "background",
             "moderation",

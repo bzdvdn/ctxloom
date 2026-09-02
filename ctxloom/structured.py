@@ -79,13 +79,16 @@ async def structured_llm(
     system: str = SYSTEM_STRUCTURED,
     user: str,
     attempts: int = 2,
-    temperature: float = 0.0,
-    max_tokens: int = 2048,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
 ) -> TModel | None:
     """Single LLM call against a schema: JSON + tolerant parse + retry.
 
     Returns `schema` or None (not enough resources / the model did not return valid JSON).
     Deterministic logic (JSON, retry) stays in code; the LLM only reasons (§9, §67).
+
+    `temperature`/`max_tokens`: `None` uses the provider default; pass a value
+    for a per-call override.
     """
     llm = context.resources.llm
     if llm is None:
@@ -139,8 +142,8 @@ async def llm_reply(
     system: str = "",
     user: str,
     attempts: int = 2,
-    temperature: float = 0.0,
-    max_tokens: int = 2048,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
 ) -> str | None:
     """A *plain-text* chat completion → `str`, or `None` on an honest failure.
 

@@ -7,7 +7,7 @@ artifact/patch vocabulary:
     level2 — two LLM calls → a linked patch (Evidence + Answer + provenance);
     level3 — lifecycle: Turn → Claim → StatusMachine update → Answer (+ links).
 
-Run offline (no `.env`) or with a model (`llm_from_env()`), see `README.md`.
+Run offline (no `.env`) or with a model — see `README.md`.
 """
 
 from __future__ import annotations

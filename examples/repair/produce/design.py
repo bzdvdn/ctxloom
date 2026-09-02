@@ -43,6 +43,8 @@ async def _make_design_options(
     result = await structured_llm(
         context,
         schema=DesignOptions,
+        temperature=0.1,
+        max_tokens=3000,
         user=(
             "Предложи 3 варианта дизайна комнаты, учитывая пожелания пользователя "
             "(стиль можно варьировать, но заявленные пожелания соблюдай). "
@@ -113,9 +115,11 @@ async def _render_previews(
             if attempt + 1 < retries:
                 await asyncio.sleep(retry_delay)  # pause against 429
         context.announce(
-            f"Превью {index + 1}/{total} готово"
-            if png
-            else f"Превью {index + 1}/{total}: пропущено",
+            (
+                f"Превью {index + 1}/{total} готово"
+                if png
+                else f"Превью {index + 1}/{total}: пропущено"
+            ),
             kind="status",
         )
         if png:
