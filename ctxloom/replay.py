@@ -149,7 +149,7 @@ class ReplayLLM(LLMProvider):
         )
 
 
-def replay_context(
+async def replay_context(
     store: SessionStore,
     session_id: str,
     *,
@@ -160,7 +160,7 @@ def replay_context(
     The session checkpoint carries the full deterministic commit chain (§14), so
     replaying to a version needs no agent execution — it is pure state recovery.
     """
-    context = store.load_session(session_id)
+    context = await store.load_session(session_id)
     if context is None:
         raise KeyError(f"session {session_id!r} not found")
     if version is not None:

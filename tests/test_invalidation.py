@@ -92,21 +92,25 @@ def test_stale_detection_and_fresh_rerun(tmp_path):
 
 
 def test_staleness_survives_session_restart(tmp_path):
+    asyncio.run(_test_staleness_survives_session_restart(tmp_path))
+
+
+async def _test_staleness_survives_session_restart(tmp_path):
     from ctxloom import FileKVBackend, RuntimeResources, SessionStore
 
     store = SessionStore(FileKVBackend(str(tmp_path)))
-    session = store.open("inval", resources=RuntimeResources())
+    session = await store.open("inval", resources=RuntimeResources())
     runtime = Runtime(session.context, agents=[Summarizer()], session=session)
 
     doc = session.context.create(Document(title="T", content="v1"))
-    asyncio.run(runtime.arun())
-    session.save()
+    await runtime.arun()
+    await session.save()
 
     # restart: update the source, save, reload again — staleness is visible
     session.context.update(doc.id, Document(title="T", content="v2"))
-    session.save()
+    await session.save()
 
-    session2 = store.open("inval", resources=RuntimeResources())
+    session2 = await store.open("inval", resources=RuntimeResources())
     assert session2.context.has_stale()
     stale_ids = [a.id for a in session2.context.stale_artifacts()]
     assert stale_ids and stale_ids[0].startswith("summary:")

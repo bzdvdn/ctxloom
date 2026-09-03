@@ -221,8 +221,8 @@ class ChatAssistant:
         self._status_kinds = tuple(status_kinds)
         self._fallback_reply = fallback_reply
 
-    def _open(self, session_id: str) -> Session:
-        return self.store.open(session_id, resources=_resolve(self._resources))
+    async def _open(self, session_id: str) -> Session:
+        return await self.store.open(session_id, resources=_resolve(self._resources))
 
     def _build_runtime(self, session: Session) -> Runtime:
         return Runtime(
@@ -242,7 +242,7 @@ class ChatAssistant:
         `ctxloom.chat` logger, so a web layer never delivers a 500 mid-stream.
         """
         try:
-            session = self._open(session_id)
+            session = await self._open(session_id)
             runtime = self._build_runtime(session)
         except Exception:
             logger.exception(
@@ -269,7 +269,7 @@ class ChatAssistant:
                 yield event
         finally:
             try:
-                session.save()  # persist the conversation after the turn
+                await session.save()  # persist the conversation after the turn
             except Exception:
                 logger.exception(
                     "chat.ChatAssistant: failed to save session %r", session_id
@@ -297,10 +297,10 @@ class ChatAssistant:
                 message = dict(event.payload) or {"reply": self._fallback_reply}
         return message
 
-    def history(self, session_id: str = "") -> dict[str, Any]:
+    async def history(self, session_id: str = "") -> dict[str, Any]:
         """Reconstruct the chat thread of a persisted session."""
         try:
-            session = self._open(session_id)
+            session = await self._open(session_id)
         except Exception:
             logger.exception("chat.ChatAssistant: history open failed %r", session_id)
             return {"messages": []}

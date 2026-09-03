@@ -93,8 +93,8 @@ def create_router(
         trace_store: optional TraceStore — run traces land here (§54).
     """
 
-    def _open_runtime(session_id: str) -> tuple[Any, Runtime]:
-        session = store.open(session_id, resources=resources_factory())
+    async def _open_runtime(session_id: str) -> tuple[Any, Runtime]:
+        session = await store.open(session_id, resources=resources_factory())
         runtime = Runtime(
             session.context,
             agents=agents,
@@ -113,7 +113,7 @@ def create_router(
 
     @router.post("/api/chat/stream")
     async def chat_stream(req: ChatRequest) -> StreamingResponse:
-        session, runtime = _open_runtime(req.session_id)
+        session, runtime = await _open_runtime(req.session_id)
         msg = session.context.create(
             Question(text=req.message, session_id=req.session_id)
         )
@@ -122,7 +122,7 @@ def create_router(
             yield _sse("session", {"session_id": req.session_id})
             async for frame in _run_and_stream(session.context, runtime, msg.id):
                 yield frame
-            session.save()
+            await session.save()
 
         return StreamingResponse(
             stream(),
@@ -132,7 +132,7 @@ def create_router(
 
     @router.post("/api/chat/answer")
     async def chat_answer(req: AnswerRequest) -> StreamingResponse:
-        session, runtime = _open_runtime(req.session_id)
+        session, runtime = await _open_runtime(req.session_id)
         pending = session.context.latest_pending_question()
         active_question: str | None = None
 
@@ -167,7 +167,7 @@ def create_router(
                 session.context, runtime, active_question
             ):
                 yield frame
-            session.save()
+            await session.save()
 
         return StreamingResponse(
             stream(),
@@ -177,7 +177,7 @@ def create_router(
 
     @router.get("/api/runs/{session_id}")
     async def runs(session_id: str) -> JSONResponse:
-        session = store.open(session_id)
+        session = await store.open(session_id)
         return JSONResponse(
             {
                 "questions": [
@@ -192,7 +192,7 @@ def create_router(
 
     @router.delete("/api/runs/{session_id}")
     async def run_delete(session_id: str) -> dict[str, str]:
-        store.delete_session(session_id)
+        await store.delete_session(session_id)
         return {"ok": "true"}
 
     return router

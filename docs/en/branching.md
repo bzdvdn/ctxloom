@@ -71,9 +71,9 @@ from ctxloom import BranchStore
 from ctxloom.checkpoints import SQLiteKVBackend
 
 store = BranchStore(SQLiteKVBackend("sessions.sqlite3"))
-store.save_branch(hypothesis_a, session_id="demo", name="hypothesis-a")
-restored = store.load_branch("demo", "hypothesis-a")
-restored.merge(store.load_branch("demo", "hypothesis-b"))   # base survives too
+await store.save_branch(hypothesis_a, session_id="demo", name="hypothesis-a")
+restored = await store.load_branch("demo", "hypothesis-a")
+restored.merge(await store.load_branch("demo", "hypothesis-b"))   # base survives too
 ```
 
 The fork base snapshot is serialized with the context, so `merge` keeps its

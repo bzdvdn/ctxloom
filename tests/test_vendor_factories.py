@@ -6,6 +6,7 @@ from ctxloom.providers import (
     cerebras_llm,
     github_models_llm,
     groq_llm,
+    mistral_llm,
     nvidia_nim_llm,
     perplexity_llm,
     qwen_llm,
@@ -23,6 +24,7 @@ FACTORIES = [
     (perplexity_llm, "PERPLEXITY_API_KEY", "https://api.perplexity.ai"),
     (groq_llm, "GROQ_API_KEY", "https://api.groq.com/openai/v1"),
     (xai_llm, "XAI_API_KEY", "https://api.x.ai/v1"),
+    (mistral_llm, "MISTRAL_API_KEY", "https://api.mistral.ai/v1"),
 ]
 
 

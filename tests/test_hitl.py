@@ -66,18 +66,22 @@ def make_runtime(session):
     )
 
 
-def make_hitl_runtime(tmp_path):
+async def make_hitl_runtime(tmp_path):
     store = SessionStore(FileKVBackend(str(tmp_path)))
-    session = store.open("hitl")
+    session = await store.open("hitl")
     return session, make_runtime(session), store
 
 
 def test_hitl_wait_then_resume(tmp_path):
-    session, runtime, store = make_hitl_runtime(tmp_path)
+    asyncio.run(_test_hitl_wait_then_resume(tmp_path))
+
+
+async def _test_hitl_wait_then_resume(tmp_path):
+    session, runtime, store = await make_hitl_runtime(tmp_path)
     ctx = session.context
 
     ctx.create(Project(name="office", budget=50_000))
-    asyncio.run(runtime.arun())
+    await runtime.arun()
 
     assert ctx.has_pending_question()
     question = ctx.latest_pending_question()
@@ -86,14 +90,14 @@ def test_hitl_wait_then_resume(tmp_path):
     assert ctx.list_artifacts(Estimate) == []  # estimate not built yet
 
     # Restart: the pending question survives a session reload
-    session2 = store.open("hitl")
+    session2 = await store.open("hitl")
     assert session2.context.has_pending_question()
 
     # A human answer is a regular patch; work can continue with a new runtime
     restored = session2.context.latest_pending_question()
     session2.context.resume(restored.id, "approved")
     runtime2 = make_runtime(session2)
-    asyncio.run(runtime2.arun())
+    await runtime2.arun()
 
     estimates = session2.context.list_artifacts(Estimate)
     assert len(estimates) == 1
@@ -102,36 +106,48 @@ def test_hitl_wait_then_resume(tmp_path):
 
 
 def test_resume_persists_answer(tmp_path):
-    session, runtime, store = make_hitl_runtime(tmp_path)
+    asyncio.run(_test_resume_persists_answer(tmp_path))
+
+
+async def _test_resume_persists_answer(tmp_path):
+    session, runtime, store = await make_hitl_runtime(tmp_path)
     ctx = session.context
 
     ctx.create(Project(name="kitchen", budget=20_000))
-    asyncio.run(runtime.arun())
+    await runtime.arun()
     question = ctx.latest_pending_question()
     ctx.resume(question.id, "reject")
 
     # auto-persist happens on the estimate commit; here the answer is working code.
     # But after arun (estimate), the answered state is already saved.
-    asyncio.run(runtime.arun())
-    session.save()
+    await runtime.arun()
+    await session.save()
 
-    restored = store.load_session("hitl")
+    restored = await store.load_session("hitl")
     q = restored.list_artifacts(PendingQuestion)[0]
     assert q.data.answered is True
     assert q.data.resolution == "reject"
 
 
 def test_resume_wrong_id_returns_none(tmp_path):
-    session, runtime, store = make_hitl_runtime(tmp_path)
+    asyncio.run(_test_resume_wrong_id_returns_none(tmp_path))
+
+
+async def _test_resume_wrong_id_returns_none(tmp_path):
+    session, runtime, store = await make_hitl_runtime(tmp_path)
     ctx = session.context
     ctx.create(Project(name="x", budget=1))
-    asyncio.run(runtime.arun())
+    await runtime.arun()
     assert ctx.resume("nonexistent", "yes") is None
     assert ctx.has_pending_question()
 
 
 def test_multiple_questions_isolated(tmp_path):
-    session, runtime, store = make_hitl_runtime(tmp_path)
+    asyncio.run(_test_multiple_questions_isolated(tmp_path))
+
+
+async def _test_multiple_questions_isolated(tmp_path):
+    session, runtime, store = await make_hitl_runtime(tmp_path)
     ctx = session.context
 
     first = ctx.interrupt("Q1")

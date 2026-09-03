@@ -166,8 +166,8 @@ State lives in the context, so *chat memory is just state*. Across requests:
 
 ```python
 store = SessionStore(FileKVBackend("sessions"))
-session = store.open(session_id, resources=resources)
-# ...create UserMsg, astream, session.save()
+session = await store.open(session_id, resources=resources)
+# ...create UserMsg, astream, await session.save()
 ```
 
 `store.open` rehydrates the context from the last checkpoint; a background

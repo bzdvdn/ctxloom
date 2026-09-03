@@ -104,11 +104,11 @@ def create_chat_router(
 
     @router.get("/runs/{session_id}")
     async def runs(session_id: str) -> JSONResponse:
-        return JSONResponse(assistant.history(session_id))
+        return JSONResponse(await assistant.history(session_id))
 
     @router.delete("/runs/{session_id}")
     async def run_delete(session_id: str) -> dict[str, bool]:
-        assistant.store.delete_session(session_id)
+        await assistant.store.delete_session(session_id)
         return {"ok": True}
 
     return router

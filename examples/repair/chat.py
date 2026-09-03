@@ -56,7 +56,7 @@ async def main() -> None:
         resources.set("images", images)
 
     store = SessionStore(FileKVBackend(str(ROOT / "sessions")))
-    session = store.open(SESSION_ID, resources=resources)
+    session = await store.open(SESSION_ID, resources=resources)
     print("Ремонтный ассистент. Опишите комнату (тип, площадь, бюджет).\n")
 
     runtime = Runtime(
@@ -72,8 +72,8 @@ async def main() -> None:
         if text.lower() in {"exit", "quit"}:
             break
         if text.lower() == "new":
-            session.delete()
-            session = store.open(SESSION_ID, resources=resources)
+            await session.delete()
+            session = await store.open(SESSION_ID, resources=resources)
             runtime = Runtime(
                 session.context,
                 agents=[RepairFlow()],
@@ -113,7 +113,7 @@ async def main() -> None:
             else:
                 print("\n(продолжаю…)")
 
-        session.save()
+        await session.save()
 
 
 if __name__ == "__main__":

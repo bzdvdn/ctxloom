@@ -61,7 +61,7 @@ async def main() -> None:
 
     resources = RuntimeResources(llm=llm)
     store = SessionStore(FileKVBackend(str(ROOT / "sessions")))
-    session = store.open("devops", resources=resources)
+    session = await store.open("devops", resources=resources)
     print("New session" if not session.loaded else "Session restored")
     print(
         "I'll help with k8s, GitLab, Ansible. For example: «why is the pod crashing?»\n"
@@ -79,7 +79,7 @@ async def main() -> None:
         if text.lower() in {"exit", "quit"}:
             break
         if text.lower() == "new":
-            session.delete()
+            await session.delete()
             print("New session.\n")
             continue
         if not text:
@@ -102,7 +102,7 @@ async def main() -> None:
         else:
             print("\n(failed to assemble the answer)\n")
 
-        session.save()
+        await session.save()
 
 
 if __name__ == "__main__":

@@ -164,7 +164,7 @@
 | Символ | Роль |
 | --- | --- |
 | `Session`, `SessionStore` | долгоживущая память чата между запросами |
-| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value чекпоинты под сессии (`pg` extra для Postgres) — синхронные по дизайну (частые мелкие записи; async-вариант — возможный шаг позже) |
+| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value чекпоинты под сессии (`pg` extra для Postgres) — async-native: файловый I/O уходит в отдельный поток, SQLite/Postgres держат одно постоянное соединение (WAL + busy_timeout у SQLite) под `asyncio.Lock` |
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | чекпоинты всего контекста |
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | примитивы трейсинга (async-приёмники: `export`/`query`/`get`) |
 | `LangfuseTracer`, `PostgresStore` | внешние приёмники трейсов — Postgres поддерживает async чтение+запись; дашборд (`create_trace_router`) принимает любой `TraceReader` |

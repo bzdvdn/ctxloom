@@ -392,9 +392,9 @@ class Runtime:
             if self.session is not None:
                 # git-like persist after each commit: the session survives a crash
                 # at the boundary of any agent generation. Session backends are
-                # sync (checkpoints.py) — offload so a slow file/SQLite write
-                # doesn't block the event loop for concurrent agent runs.
-                await asyncio.to_thread(self.session.save)
+                # async-native (checkpoints.py) — a slow file/SQLite write yields
+                # to other concurrent agent runs instead of blocking a thread.
+                await self.session.save()
 
     def _collect_reads(self, agent: Agent, event: Event) -> list[Read]:
         """Records consumed artifacts: the trigger event + inputs per consumes.

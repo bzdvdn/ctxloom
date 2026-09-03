@@ -165,7 +165,7 @@ modules.
 | Symbol | Role |
 | --- | --- |
 | `Session`, `SessionStore` | durable per-chat working memory across requests |
-| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value checkpoints backing sessions (`pg` extra for Postgres) — sync by design (small frequent writes; an async variant is a later option) |
+| `KVBackend`, `FileKVBackend`, `SQLiteKVBackend`, `PostgreSQLKVBackend` | key/value checkpoints backing sessions (`pg` extra for Postgres) — async-native: file I/O runs off-thread, SQLite/Postgres each hold one persistent connection (WAL + busy_timeout on SQLite) serialized by an `asyncio.Lock` |
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | full-context checkpoints |
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | tracing primitives (async sinks: `export`/`query`/`get`) |
 | `LangfuseTracer`, `PostgresStore` | external trace sinks — Postgres supports async read+write; the dashboard (`create_trace_router`) accepts any `TraceReader` |

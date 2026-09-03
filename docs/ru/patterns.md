@@ -167,8 +167,8 @@ runtime = Runtime(ctx, agents=[...], budget=Budget(max_runs=200), max_concurrenc
 
 ```python
 store = SessionStore(FileKVBackend("sessions"))
-session = store.open(session_id, resources=resources)
-# ...создать UserMsg, astream, session.save()
+session = await store.open(session_id, resources=resources)
+# ...создать UserMsg, astream, await session.save()
 ```
 
 `store.open` восстанавливает контекст из последнего чекпоинта; фоновый агент

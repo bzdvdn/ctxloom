@@ -50,14 +50,14 @@ class PassAgent(Agent):
     produces = [Pass()]
 
 
-def _ran_session(tmp_path: str) -> tuple[SessionStore, str]:
+async def _aran_session(tmp_path: str) -> tuple[SessionStore, str]:
     """Runs a real runtime pass and returns (store, session_id) with v1 == 1."""
     store = SessionStore(SQLiteKVBackend(tmp_path))
     ctx = Context(resources=RuntimeResources())
     ctx.create(Seed(text="go"))
     runtime = Runtime(ctx, agents=[PassAgent()], budget=Budget(max_runs=5))
-    asyncio.run(runtime.arun())
-    store.save_session("demo", ctx)
+    await runtime.arun()
+    await store.save_session("demo", ctx)
     return store, "demo"
 
 
@@ -135,19 +135,27 @@ def test_replay_records_model_and_usage(tmp_path):
 
 
 def test_replay_context_reconstructs_past_versions(tmp_path):
-    store, session_id = _ran_session(str(tmp_path / "sessions.sqlite3"))
-    loaded = replay_context(store, session_id)
+    asyncio.run(_test_replay_context_reconstructs_past_versions(tmp_path))
+
+
+async def _test_replay_context_reconstructs_past_versions(tmp_path):
+    store, session_id = await _aran_session(str(tmp_path / "sessions.sqlite3"))
+    loaded = await replay_context(store, session_id)
     assert loaded.version == 1
     assert len(loaded.list_artifacts(Note)) == 2
 
-    at_start = replay_context(store, session_id, version=0)
+    at_start = await replay_context(store, session_id, version=0)
     assert at_start.version == 0
     assert at_start.list_artifacts(Note) == []
 
 
 def test_replay_summary_shape(tmp_path):
-    store, session_id = _ran_session(str(tmp_path / "sessions.sqlite3"))
-    summary = replay_summary(replay_context(store, session_id))
+    asyncio.run(_test_replay_summary_shape(tmp_path))
+
+
+async def _test_replay_summary_shape(tmp_path):
+    store, session_id = await _aran_session(str(tmp_path / "sessions.sqlite3"))
+    summary = replay_summary(await replay_context(store, session_id))
     assert summary["version"] == 1
     assert summary["artifacts"] == 3  # Seed input + 2 Notes
     assert summary["relations"] == 1

@@ -65,7 +65,7 @@ def test_stream_events(tmp_path):
 def test_history_roundtrip(tmp_path):
     assistant = make_assistant(str(tmp_path))
     _drain(assistant.stream("hi", session_id="s1"))
-    history = assistant.history("s1")
+    history = asyncio.run(assistant.history("s1"))
     roles = [m["role"] for m in history["messages"]]
     assert roles == ["user", "assistant"]
     assert history["messages"][0]["text"] == "hi"
@@ -74,7 +74,7 @@ def test_history_roundtrip(tmp_path):
 
 def test_history_empty_for_unknown_session(tmp_path):
     assistant = make_assistant(str(tmp_path))
-    assert assistant.history("nope")["messages"] == []
+    assert asyncio.run(assistant.history("nope"))["messages"] == []
 
 
 def _drain(stream):

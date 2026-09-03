@@ -24,11 +24,11 @@ class Session:
         self._store = store
         self.loaded = loaded
 
-    def save(self) -> None:
-        self._store.save_session(self.session_id, self.context)
+    async def save(self) -> None:
+        await self._store.save_session(self.session_id, self.context)
 
-    def delete(self) -> None:
-        self._store.delete_session(self.session_id)
+    async def delete(self) -> None:
+        await self._store.delete_session(self.session_id)
 
 
 class SessionStore:
@@ -37,38 +37,38 @@ class SessionStore:
     def __init__(self, backend: KVBackend):
         self.backend = backend
 
-    def save_session(self, session_id: str, context: Context) -> None:
-        context.to_kv(self.backend, session_id)
+    async def save_session(self, session_id: str, context: Context) -> None:
+        await context.to_kv(self.backend, session_id)
 
-    def load_session(
+    async def load_session(
         self,
         session_id: str,
         resources: RuntimeResources | None = None,
     ) -> Context | None:
-        context = Context.from_kv(self.backend, session_id)
+        context = await Context.from_kv(self.backend, session_id)
         if context is None:
             return None
         context.resources = resources or RuntimeResources()
         return context
 
-    def has_session(self, session_id: str) -> bool:
-        return self.backend.get(session_id) is not None
+    async def has_session(self, session_id: str) -> bool:
+        return await self.backend.get(session_id) is not None
 
-    def list_sessions(self) -> list[str]:
+    async def list_sessions(self) -> list[str]:
         # Branch keys are the BranchStore's namespace — keep them out of sessions.
-        keys = self.backend.keys()
+        keys = await self.backend.keys()
         return [key for key in keys if not key.startswith("branch:")]
 
-    def delete_session(self, session_id: str) -> None:
-        self.backend.delete(session_id)
+    async def delete_session(self, session_id: str) -> None:
+        await self.backend.delete(session_id)
 
-    def open(
+    async def open(
         self,
         session_id: str,
         resources: RuntimeResources | None = None,
     ) -> Session:
         """Opens a session: loads an existing one or creates an empty one."""
-        context = self.load_session(session_id, resources)
+        context = await self.load_session(session_id, resources)
         loaded = context is not None
         if context is None:
             context = Context(resources=resources or RuntimeResources())

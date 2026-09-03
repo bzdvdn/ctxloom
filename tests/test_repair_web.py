@@ -128,10 +128,12 @@ def test_estimate_csv_endpoint_exports_worksheet(tmp_path):
     assert project.estimate.total
 
     db = str(tmp_path / "sessions")
+    import asyncio
+
     from ctxloom.checkpoints import FileKVBackend
     from ctxloom.session import SessionStore
 
-    SessionStore(FileKVBackend(db)).save_session("s1", __ctx(project))
+    asyncio.run(SessionStore(FileKVBackend(db)).save_session("s1", __ctx(project)))
 
     client = TestClient(create_app(store_dir=db))
     res = client.get("/api/runs/s1/estimate.csv")

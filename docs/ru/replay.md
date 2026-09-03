@@ -46,8 +46,8 @@ from ctxloom.checkpoints import SQLiteKVBackend
 from ctxloom.session import SessionStore
 
 store = SessionStore(SQLiteKVBackend("sessions.sqlite3"))
-context = replay_context(store, session_id, version=7)   # состояние на коммите 7
-print(replay_summary(context))                            # счётчики, по типам
+context = await replay_context(store, session_id, version=7)   # состояние на коммите 7
+print(replay_summary(context))                                  # счётчики, по типам
 ```
 
 ## CLI

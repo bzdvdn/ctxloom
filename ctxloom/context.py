@@ -657,25 +657,25 @@ class Context:
         ws._base = Context.from_dict(d["base"]) if d.get("base") is not None else None
         return ws
 
-    def save_checkpoint(self, backend_or_path: str | CheckpointBackend) -> None:
+    async def save_checkpoint(self, backend_or_path: str | CheckpointBackend) -> None:
         backend: CheckpointBackend
         if isinstance(backend_or_path, str):
             backend = FileBackend(backend_or_path)
         else:
             backend = backend_or_path
-        backend.save(self.to_dict())
+        await backend.save(self.to_dict())
 
     @classmethod
-    def load_checkpoint(cls, backend_or_path: str | CheckpointBackend) -> Context:
+    async def load_checkpoint(cls, backend_or_path: str | CheckpointBackend) -> Context:
         backend: CheckpointBackend
         if isinstance(backend_or_path, str):
             backend = FileBackend(backend_or_path)
         else:
             backend = backend_or_path
-        data = backend.load()
+        data = await backend.load()
         return cls.from_dict(data)
 
-    def to_kv(self, backend: KVBackend, key: str) -> None:
+    async def to_kv(self, backend: KVBackend, key: str) -> None:
         """Serializes and stores this context under `key` in a KV backend.
 
         The one `to_dict()` round-trip shared by `SessionStore`/`BranchStore`
@@ -683,12 +683,12 @@ class Context:
         backend, §39) — call this instead of hand-rolling `backend.set(key,
         context.to_dict())`.
         """
-        backend.set(key, self.to_dict())
+        await backend.set(key, self.to_dict())
 
     @classmethod
-    def from_kv(cls, backend: KVBackend, key: str) -> Context | None:
+    async def from_kv(cls, backend: KVBackend, key: str) -> Context | None:
         """Loads a context previously stored with `to_kv`, or None if absent."""
-        data = backend.get(key)
+        data = await backend.get(key)
         return cls.from_dict(data) if data is not None else None
 
     def __repr__(self) -> str:

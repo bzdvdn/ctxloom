@@ -71,9 +71,9 @@ from ctxloom import BranchStore
 from ctxloom.checkpoints import SQLiteKVBackend
 
 store = BranchStore(SQLiteKVBackend("sessions.sqlite3"))
-store.save_branch(hypothesis_a, session_id="demo", name="hypothesis-a")
-restored = store.load_branch("demo", "hypothesis-a")
-restored.merge(store.load_branch("demo", "hypothesis-b"))   # база тоже выживает
+await store.save_branch(hypothesis_a, session_id="demo", name="hypothesis-a")
+restored = await store.load_branch("demo", "hypothesis-a")
+restored.merge(await store.load_branch("demo", "hypothesis-b"))   # база тоже выживает
 ```
 
 Снимок базы форка сериализуется вместе с контекстом, так что `merge` сохраняет

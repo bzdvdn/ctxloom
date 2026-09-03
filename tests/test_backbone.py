@@ -118,9 +118,9 @@ def test_checkpoint_roundtrip_preserves_head():
     with tempfile.TemporaryDirectory() as tmpdir:
         ctx, _runtime, question = build_runtime()
         path = os.path.join(tmpdir, "checkpoint.json")
-        ctx.save_checkpoint(path)
+        asyncio.run(ctx.save_checkpoint(path))
 
-        ctx2 = Context.load_checkpoint(path)
+        ctx2 = asyncio.run(Context.load_checkpoint(path))
 
         assert ctx2.version == ctx.version
         assert ctx2.head_id == ctx.head_id

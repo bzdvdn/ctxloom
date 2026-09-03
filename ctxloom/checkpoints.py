@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
 import urllib.parse
@@ -9,37 +10,48 @@ from typing import Any, cast
 
 
 class CheckpointBackend(ABC):
-    """Interface for saving and loading the Workspace state."""
+    """Interface for saving and loading the Workspace state (single blob)."""
 
     @abstractmethod
-    def save(self, data: dict[str, Any]) -> None:
+    async def save(self, data: dict[str, Any]) -> None:
         """Saves the state dictionary."""
         ...
 
     @abstractmethod
-    def load(self) -> dict[str, Any]:
+    async def load(self) -> dict[str, Any]:
         """Loads the state dictionary."""
         ...
+
+    async def aclose(self) -> None:  # noqa: B027
+        """Releases held resources (a pooled connection, ...). No-op by default."""
 
 
 class KVBackend(ABC):
     """Key-value store. Used for sessions (session_id → Context)."""
 
     @abstractmethod
-    def set(self, key: str, data: dict[str, Any]) -> None: ...
+    async def set(self, key: str, data: dict[str, Any]) -> None: ...
 
     @abstractmethod
-    def get(self, key: str) -> dict[str, Any] | None: ...
+    async def get(self, key: str) -> dict[str, Any] | None: ...
 
     @abstractmethod
-    def delete(self, key: str) -> None: ...
+    async def delete(self, key: str) -> None: ...
 
     @abstractmethod
-    def keys(self) -> list[str]: ...
+    async def keys(self) -> list[str]: ...
+
+    async def aclose(self) -> None:  # noqa: B027
+        """Releases held resources (a pooled connection, ...). No-op by default."""
 
 
 class FileKVBackend(KVBackend):
-    """File KV backend: one JSON file per key in a directory."""
+    """File KV backend: one JSON file per key in a directory.
+
+    Every call offloads its blocking filesystem I/O to a worker thread
+    (`asyncio.to_thread`) so it never stalls the event loop ctxloom's runtime
+    and chat/web layers run on.
+    """
 
     def __init__(self, directory: str):
         self.directory = Path(directory)
@@ -48,7 +60,7 @@ class FileKVBackend(KVBackend):
         safe = urllib.parse.quote(key, safe="")
         return self.directory / f"{safe}.json"
 
-    def set(self, key: str, data: dict[str, Any]) -> None:
+    def _set_sync(self, key: str, data: dict[str, Any]) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
         path = self._path(key)
         tmp = path.with_suffix(".tmp")
@@ -56,23 +68,103 @@ class FileKVBackend(KVBackend):
             json.dump({"key": key, "data": data}, f)
         tmp.replace(path)
 
-    def get(self, key: str) -> dict[str, Any] | None:
+    async def set(self, key: str, data: dict[str, Any]) -> None:
+        await asyncio.to_thread(self._set_sync, key, data)
+
+    def _get_sync(self, key: str) -> dict[str, Any] | None:
         path = self._path(key)
         if not path.exists():
             return None
         with open(path, encoding="utf-8") as f:
             return cast(dict[str, Any] | None, json.load(f).get("data"))
 
-    def delete(self, key: str) -> None:
+    async def get(self, key: str) -> dict[str, Any] | None:
+        return await asyncio.to_thread(self._get_sync, key)
+
+    def _delete_sync(self, key: str) -> None:
         path = self._path(key)
         if path.exists():
             path.unlink()
 
-    def keys(self) -> list[str]:
+    async def delete(self, key: str) -> None:
+        await asyncio.to_thread(self._delete_sync, key)
+
+    def _keys_sync(self) -> list[str]:
         self.directory.mkdir(parents=True, exist_ok=True)
         return [
             urllib.parse.unquote(p.stem) for p in sorted(self.directory.glob("*.json"))
         ]
+
+    async def keys(self) -> list[str]:
+        return await asyncio.to_thread(self._keys_sync)
+
+
+class FileBackend(CheckpointBackend):
+    """File backend: state is stored in a single JSON file."""
+
+    def __init__(self, path: str):
+        self.path = path
+
+    def _save_sync(self, data: dict[str, Any]) -> None:
+        with open(self.path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+    async def save(self, data: dict[str, Any]) -> None:
+        await asyncio.to_thread(self._save_sync, data)
+
+    def _load_sync(self) -> dict[str, Any]:
+        with open(self.path, encoding="utf-8") as f:
+            return cast(dict[str, Any], json.load(f))
+
+    async def load(self) -> dict[str, Any]:
+        return await asyncio.to_thread(self._load_sync)
+
+
+class _AsyncSQLite:
+    """One persistent `sqlite3.Connection` per backend instance, guarded by an
+    `asyncio.Lock` and run off-thread via `asyncio.to_thread`.
+
+    Reconnecting on every call (the previous behavior) meant every checkpoint
+    write paid a fresh `connect()`, and concurrent writers had no `busy_timeout`
+    to wait out a lock — they just raised `sqlite3.OperationalError: database is
+    locked`. WAL mode lets readers and the single writer overlap; the lock here
+    only serializes access from *this process* (SQLite itself still serializes
+    writers across processes via the database file).
+    """
+
+    def __init__(self, db_path: str, init_sql: str):
+        self.db_path = db_path
+        self._init_sql = init_sql
+        self._conn: sqlite3.Connection | None = None
+        self._lock = asyncio.Lock()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute(self._init_sql)
+        conn.commit()
+        return conn
+
+    def _exec(self, sql: str, params: tuple[Any, ...]) -> list[tuple[Any, ...]]:
+        assert self._conn is not None
+        cur = self._conn.execute(sql, params)
+        self._conn.commit()
+        return cur.fetchall()
+
+    async def execute(
+        self, sql: str, params: tuple[Any, ...] = ()
+    ) -> list[tuple[Any, ...]]:
+        async with self._lock:
+            if self._conn is None:
+                self._conn = await asyncio.to_thread(self._connect)
+            return await asyncio.to_thread(self._exec, sql, params)
+
+    async def aclose(self) -> None:
+        async with self._lock:
+            if self._conn is not None:
+                await asyncio.to_thread(self._conn.close)
+                self._conn = None
 
 
 class SQLiteKVBackend(KVBackend):
@@ -80,65 +172,33 @@ class SQLiteKVBackend(KVBackend):
 
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self._init_db()
+        self._sql = _AsyncSQLite(
+            db_path,
+            "CREATE TABLE IF NOT EXISTS kv_entries "
+            "(key TEXT PRIMARY KEY, data TEXT NOT NULL)",
+        )
 
-    def _init_db(self) -> None:
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS kv_entries (
-                key TEXT PRIMARY KEY,
-                data TEXT NOT NULL
-            )
-            """)
-        conn.commit()
-        conn.close()
-
-    def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
-
-    def set(self, key: str, data: dict[str, Any]) -> None:
-        conn = self._connect()
-        conn.execute(
+    async def set(self, key: str, data: dict[str, Any]) -> None:
+        await self._sql.execute(
             "INSERT OR REPLACE INTO kv_entries (key, data) VALUES (?, ?)",
             (key, json.dumps(data)),
         )
-        conn.commit()
-        conn.close()
 
-    def get(self, key: str) -> dict[str, Any] | None:
-        conn = self._connect()
-        row = conn.execute(
+    async def get(self, key: str) -> dict[str, Any] | None:
+        rows = await self._sql.execute(
             "SELECT data FROM kv_entries WHERE key = ?", (key,)
-        ).fetchone()
-        conn.close()
-        return cast(dict[str, Any], json.loads(row[0])) if row is not None else None
+        )
+        return cast(dict[str, Any], json.loads(rows[0][0])) if rows else None
 
-    def delete(self, key: str) -> None:
-        conn = self._connect()
-        conn.execute("DELETE FROM kv_entries WHERE key = ?", (key,))
-        conn.commit()
-        conn.close()
+    async def delete(self, key: str) -> None:
+        await self._sql.execute("DELETE FROM kv_entries WHERE key = ?", (key,))
 
-    def keys(self) -> list[str]:
-        conn = self._connect()
-        rows = conn.execute("SELECT key FROM kv_entries").fetchall()
-        conn.close()
-        return [r[0] for r in rows]
+    async def keys(self) -> list[str]:
+        rows = await self._sql.execute("SELECT key FROM kv_entries")
+        return [cast(str, r[0]) for r in rows]
 
-
-class FileBackend(CheckpointBackend):
-    """File backend: state is stored in a JSON file."""
-
-    def __init__(self, path: str):
-        self.path = path
-
-    def save(self, data: dict[str, Any]) -> None:
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-    def load(self) -> dict[str, Any]:
-        with open(self.path, encoding="utf-8") as f:
-            return cast(dict[str, Any], json.load(f))
+    async def aclose(self) -> None:
+        await self._sql.aclose()
 
 
 class SQLiteBackend(CheckpointBackend):
@@ -146,36 +206,26 @@ class SQLiteBackend(CheckpointBackend):
 
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self._init_db()
-
-    def _init_db(self) -> None:
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS checkpoint (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                data TEXT NOT NULL
-            )
-            """)
-        conn.commit()
-        conn.close()
-
-    def save(self, data: dict[str, Any]) -> None:
-        json_data = json.dumps(data)
-        conn = sqlite3.connect(self.db_path)
-        conn.execute(
-            "INSERT OR REPLACE INTO checkpoint (id, data) VALUES (1, ?)",
-            (json_data,),
+        self._sql = _AsyncSQLite(
+            db_path,
+            "CREATE TABLE IF NOT EXISTS checkpoint "
+            "(id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)",
         )
-        conn.commit()
-        conn.close()
 
-    def load(self) -> dict[str, Any]:
-        conn = sqlite3.connect(self.db_path)
-        row = conn.execute("SELECT data FROM checkpoint WHERE id = 1").fetchone()
-        conn.close()
-        if row is None:
+    async def save(self, data: dict[str, Any]) -> None:
+        await self._sql.execute(
+            "INSERT OR REPLACE INTO checkpoint (id, data) VALUES (1, ?)",
+            (json.dumps(data),),
+        )
+
+    async def load(self) -> dict[str, Any]:
+        rows = await self._sql.execute("SELECT data FROM checkpoint WHERE id = 1")
+        if not rows:
             raise ValueError(f"Checkpoint not found in SQLite database: {self.db_path}")
-        return cast(dict[str, Any], json.loads(row[0]))
+        return cast(dict[str, Any], json.loads(rows[0][0]))
+
+    async def aclose(self) -> None:
+        await self._sql.aclose()
 
 
 class PostgreSQLKVBackend(KVBackend):
@@ -186,9 +236,12 @@ class PostgreSQLKVBackend(KVBackend):
     driver (`psycopg`) is imported lazily so the core stays dependency-free;
     install it with `uv sync --extra pg` (or group `pg`).
 
-    NOTE: the KV interface is synchronous — session checkpoints are small,
-    frequent writes, and async here would pull in a separate driver/threading
-    for little gain. If scale demands it, an async variant can be added later.
+    Uses psycopg3's native async API (`AsyncConnection`) over one persistent,
+    lazily-(re)connected connection, serialized by an `asyncio.Lock` — the same
+    shape as `SQLiteKVBackend`. A dedicated connection per backend instance is
+    enough for session-checkpoint traffic (small, infrequent writes); reach for
+    `psycopg_pool.AsyncConnectionPool` yourself if you need many concurrent
+    writers sharing one DSN.
     """
 
     def __init__(self, dsn: str):
@@ -196,65 +249,58 @@ class PostgreSQLKVBackend(KVBackend):
 
         self._psycopg = require_extra("PostgreSQLKVBackend", "psycopg", "pg")
         self.dsn = dsn
-        self._init_db()
+        self._conn: Any | None = None
+        self._lock = asyncio.Lock()
 
-    def _connect(self) -> Any:
-        return self._psycopg.connect(self.dsn)
-
-    def _init_db(self) -> None:
-        conn = self._connect()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS kv_entries (
-                        key TEXT PRIMARY KEY,
-                        data TEXT NOT NULL
-                    )
-                    """
+    async def _connection(self) -> Any:
+        conn = self._conn
+        if conn is None or conn.closed:
+            conn = await self._psycopg.AsyncConnection.connect(self.dsn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "CREATE TABLE IF NOT EXISTS kv_entries "
+                    "(key TEXT PRIMARY KEY, data TEXT NOT NULL)"
                 )
-            conn.commit()
-        finally:
-            conn.close()
+            await conn.commit()
+            self._conn = conn
+        return conn
 
-    def set(self, key: str, data: dict[str, Any]) -> None:
-        conn = self._connect()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
+    async def set(self, key: str, data: dict[str, Any]) -> None:
+        async with self._lock:
+            conn = await self._connection()
+            async with conn.cursor() as cur:
+                await cur.execute(
                     "INSERT INTO kv_entries (key, data) VALUES (%s, %s) "
                     "ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data",
                     (key, json.dumps(data)),
                 )
-            conn.commit()
-        finally:
-            conn.close()
+            await conn.commit()
 
-    def get(self, key: str) -> dict[str, Any] | None:
-        conn = self._connect()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT data FROM kv_entries WHERE key = %s", (key,))
-                row = cur.fetchone()
-        finally:
-            conn.close()
+    async def get(self, key: str) -> dict[str, Any] | None:
+        async with self._lock:
+            conn = await self._connection()
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT data FROM kv_entries WHERE key = %s", (key,))
+                row = await cur.fetchone()
         return cast(dict[str, Any], json.loads(row[0])) if row is not None else None
 
-    def delete(self, key: str) -> None:
-        conn = self._connect()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM kv_entries WHERE key = %s", (key,))
-            conn.commit()
-        finally:
-            conn.close()
+    async def delete(self, key: str) -> None:
+        async with self._lock:
+            conn = await self._connection()
+            async with conn.cursor() as cur:
+                await cur.execute("DELETE FROM kv_entries WHERE key = %s", (key,))
+            await conn.commit()
 
-    def keys(self) -> list[str]:
-        conn = self._connect()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT key FROM kv_entries")
-                rows = cur.fetchall()
-        finally:
-            conn.close()
-        return [r[0] for r in rows]
+    async def keys(self) -> list[str]:
+        async with self._lock:
+            conn = await self._connection()
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT key FROM kv_entries")
+                rows = await cur.fetchall()
+        return [cast(str, r[0]) for r in rows]
+
+    async def aclose(self) -> None:
+        async with self._lock:
+            if self._conn is not None and not self._conn.closed:
+                await self._conn.close()
+            self._conn = None

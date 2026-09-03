@@ -94,7 +94,7 @@ async def main() -> None:
         print("For generation set OPENAI_BASE_URL / OPENAI_MODEL / OPENAI_API_KEY.\n")
 
     store = SessionStore(FileKVBackend(str(ROOT / "sessions")))
-    session = store.open("knowledge", resources=resources)
+    session = await store.open("knowledge", resources=resources)
     message = "Session restored" if session.loaded else "New session"
     print(f"[{message}]\n")
 
@@ -121,7 +121,7 @@ async def main() -> None:
         if text.lower() in {"exit", "quit"}:
             break
         if text.lower() == "new":
-            session.delete()
+            await session.delete()
             print("New session.\n")
             continue
         if not text:
@@ -168,7 +168,7 @@ async def main() -> None:
                 else:
                     print("\n(failed to assemble an answer)")
 
-        session.save()
+        await session.save()
 
 
 if __name__ == "__main__":

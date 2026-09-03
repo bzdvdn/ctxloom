@@ -147,7 +147,7 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
         from examples.repair.models import Project
         from examples.repair.services.estimate import estimate_to_csv
 
-        session = store.open(session_id)
+        session = await store.open(session_id)
         context = session.context if session.loaded else None
         project = (
             context.list_artifacts(Project)[0].data

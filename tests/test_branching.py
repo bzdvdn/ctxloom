@@ -1,5 +1,7 @@
 """Branching & merge (§39-§40): fork, three-way conflict detection, BranchStore."""
 
+import asyncio
+
 from ctxloom import (
     BranchStore,
     Context,
@@ -113,22 +115,30 @@ def test_merge_unifies_relations():
 
 
 def test_branch_store_roundtrip_persists_fork_base(tmp_path):
+    asyncio.run(_test_branch_store_roundtrip_persists_fork_base(tmp_path))
+
+
+async def _test_branch_store_roundtrip_persists_fork_base(tmp_path):
     backend = SQLiteKVBackend(str(tmp_path / "branches.sqlite3"))
     store = BranchStore(backend)
     fork = _base_context().branch(name="hypo-a")
     fork.create(Note(text="finding"), id="finding:1")
 
-    store.save_branch(fork, session_id="demo", name="hypo-a")
-    restored = store.load_branch("demo", "hypo-a")
+    await store.save_branch(fork, session_id="demo", name="hypo-a")
+    restored = await store.load_branch("demo", "hypo-a")
     assert restored is not None
     assert restored.get("finding:1").data.text == "finding"  # type: ignore[union-attr]
     assert restored._base is not None  # fork base survived serialization
-    assert store.list_branches("demo") == ["hypo-a"]
-    store.delete_branch("demo", "hypo-a")
-    assert store.load_branch("demo", "hypo-a") is None
+    assert await store.list_branches("demo") == ["hypo-a"]
+    await store.delete_branch("demo", "hypo-a")
+    assert await store.load_branch("demo", "hypo-a") is None
 
 
 def test_branch_merge_works_after_persistence(tmp_path):
+    asyncio.run(_test_branch_merge_works_after_persistence(tmp_path))
+
+
+async def _test_branch_merge_works_after_persistence(tmp_path):
     backend = SQLiteKVBackend(str(tmp_path / "branches.sqlite3"))
     store = BranchStore(backend)
 
@@ -137,11 +147,11 @@ def test_branch_merge_works_after_persistence(tmp_path):
     b = base.branch(name="b")
     a.create(Note(text="a-finding"), id="f:a")
     b.create(Note(text="b-finding"), id="f:b")
-    store.save_branch(a, session_id="demo", name="a")
-    store.save_branch(b, session_id="demo", name="b")
+    await store.save_branch(a, session_id="demo", name="a")
+    await store.save_branch(b, session_id="demo", name="b")
 
-    a2 = store.load_branch("demo", "a")
-    b2 = store.load_branch("demo", "b")
+    a2 = await store.load_branch("demo", "a")
+    b2 = await store.load_branch("demo", "b")
     assert a2 is not None and b2 is not None
     a2.merge(b2)  # three-way against the persisted fork base — no conflict
     assert a2.get("f:a") is not None

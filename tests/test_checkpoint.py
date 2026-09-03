@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 
@@ -14,6 +15,10 @@ class Doc(BaseModel):
 
 
 def test_checkpoint_roundtrip():
+    asyncio.run(_test_checkpoint_roundtrip())
+
+
+async def _test_checkpoint_roundtrip():
     ws = Context()
     doc = ws.create(Doc(title="Test", content="Hello"))
     # update the artifact
@@ -28,10 +33,10 @@ def test_checkpoint_roundtrip():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "checkpoint.json")
-        ws.save_checkpoint(path)
+        await ws.save_checkpoint(path)
 
         # load into a new Context
-        ws2 = Context.load_checkpoint(path)
+        ws2 = await Context.load_checkpoint(path)
 
     # verify that the artifact was restored
     assert len(ws2.list_artifacts(Doc)) == 1
@@ -60,19 +65,26 @@ def test_postgres_kv_requires_dsn_and_lazy_driver():
     """
     import os
 
-    from ctxloom import PostgreSQLKVBackend
-
     dsn = os.environ.get("TEST_PG_DSN")
     if not dsn:
         pytest.skip("TEST_PG_DSN not set — skipping Postgres KV integration")
     import psycopg  # noqa: F401  (ensure the extra is installed)
 
+    asyncio.run(_test_postgres_kv_roundtrip(dsn))
+
+
+async def _test_postgres_kv_roundtrip(dsn: str) -> None:
+    from ctxloom import PostgreSQLKVBackend
+
     backend = PostgreSQLKVBackend(dsn)
-    backend.set("k1", {"hello": "world"})
-    assert backend.get("k1") == {"hello": "world"}
-    assert backend.keys() == ["k1"]
-    backend.delete("k1")
-    assert backend.get("k1") is None
+    try:
+        await backend.set("k1", {"hello": "world"})
+        assert await backend.get("k1") == {"hello": "world"}
+        assert await backend.keys() == ["k1"]
+        await backend.delete("k1")
+        assert await backend.get("k1") is None
+    finally:
+        await backend.aclose()
 
 
 def test_require_extra_readable_error():
