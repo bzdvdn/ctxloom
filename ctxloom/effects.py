@@ -93,10 +93,46 @@ class Effects:
         return self
 
     def create(self, data: Any, *, id: str | None = None) -> Handle:
-        """Plans a new artifact; returns a linkable/updatable handle (§38)."""
+        """Plans a new artifact; returns a linkable/updatable handle (§38).
+
+        If `id` names an artifact that already exists when this effect is
+        applied, the runtime treats it as a refresh (a new version of the
+        same logical entity, §42/§43) rather than creating a duplicate — the
+        same rule `Runtime._apply_patch` documents. Use `upsert` at the call
+        site when that "may already exist" intent should be explicit instead
+        of implicit in a plain `create(..., id=...)`.
+        """
         artifact_id = id or _auto_id(type(data).__name__)
         self.operations.append(Create(data, id=artifact_id))
         return Handle(self, artifact_id, data)
+
+    def create_once(self, data: Any, *, id: str) -> Handle | None:
+        """Idempotent create (§42): `None` if `id` already exists in the
+        context, otherwise the same as `create(data, id=id)`.
+
+        Folds the "already done" guard every produce needs for a re-derived
+        id (`f"answer:{qid}"`) into the call itself:
+
+            handle = self.effects.create_once(Answer(...), id=f"answer:{qid}")
+            if handle is None:
+                return None  # already answered — nothing to do
+
+        instead of a separate `if context.get(f"answer:{qid}") is not None:
+        return None` above the call — one less place to get the id string
+        wrong between the guard and the create.
+        """
+        if self._context.get(id) is not None:
+            return None
+        return self.create(data, id=id)
+
+    def upsert(self, data: Any, *, id: str) -> Handle:
+        """Explicit create-or-refresh: same effect as `create(data, id=id)`.
+
+        Prefer this over `create(..., id=...)` when the artifact may already
+        exist (e.g. a re-derived id like `f"answer:{qid}"`) — it says at the
+        call site that an update is an expected outcome, not a surprise.
+        """
+        return self.create(data, id=id)
 
     def update(self, artifact: Artifact[Any], **fields: Any) -> Effects:
         """Bumps fields of an *existing* artifact (a new version)."""

@@ -18,6 +18,22 @@ entry when the version is bumped:
 2. group them as `Added` / `Changed` / `Removed` (deprecations too);
 3. mark breaking changes explicitly, even in `rc`s.
 
+## Upgrading
+
+There's no separate migration doc — `CHANGELOG.md` is the source of truth for
+what changed between versions, and breaking entries are marked per the rule
+above. Two changes worth knowing if you're crossing them:
+
+- **0.4.0-rc1** — `LLMRequest.temperature` changed from a hard-coded `0.7` to
+  `float | None`; `None` now means "omit → provider default" instead of "use
+  `0.7`". Same call shape, different generation behavior, no error raised —
+  pass `temperature=0.7` explicitly (per-call or on the provider) if your code
+  relied on the old implicit default.
+- **0.1.0-rc1** — `Produce` no longer returns a `Patch`; it writes
+  `self.effects.create/update/link/ask/resume` and returns `None` (see
+  [effects](effects.md)). `InterruptPatch`, `Patch.merge_existing_patch` and
+  `Patch.to_dict` were removed.
+
 ## The release loop
 
 ```bash

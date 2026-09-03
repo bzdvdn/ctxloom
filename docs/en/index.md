@@ -137,3 +137,6 @@ on that loop.
 - [Recipes](recipes.md) — ready-made search fan-out, ref materialization,
   lifecycle state machines.
 - [Examples](examples.md) — five working applications you can run.
+- [Design notes](design-notes/adaptive.md) — deeper rationale for the
+  adaptive [scheduler](design-notes/adaptive.md) and the
+  [effects → Patch](design-notes/patches.md) compilation model.

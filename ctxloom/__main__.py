@@ -8,7 +8,7 @@ Subcommands:
 
 Examples:
 
-    python -m ctxloom graph examples.knowledge.agents:KnowledgeFlow
+    python -m ctxloom graph examples.knowledge.agents
     python -m ctxloom context examples/knowledge/sessions/traces.sqlite3
     python -m ctxloom trace traces.db
 
@@ -33,7 +33,14 @@ if TYPE_CHECKING:
 
 def _load_agents(spec: str) -> list[Agent]:
     module_name, has_attr, attr = spec.partition(":")
-    module = importlib.import_module(module_name)
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        raise SystemExit(
+            f"could not import {module_name!r}: {exc}. If this is a local "
+            "module (not installed as a package), run via "
+            f"`uv run python -m ctxloom graph {spec}` instead."
+        ) from exc
     if has_attr:
         obj = getattr(module, attr)
         if isinstance(obj, Agent):
@@ -85,10 +92,16 @@ def cmd_graph(args: argparse.Namespace) -> int:
 
 
 def cmd_context(args: argparse.Namespace) -> int:
+    import sqlite3
+
     from .session import SessionStore
 
-    store = SessionStore(_open_store(args.path, args.backend))
-    sessions = store.list_sessions()
+    try:
+        store = SessionStore(_open_store(args.path, args.backend))
+        sessions = store.list_sessions()
+    except sqlite3.OperationalError:
+        print(f"no session store found at {args.path!r}")
+        return 1
     if not sessions:
         print("no sessions found")
         return 1
@@ -103,6 +116,7 @@ def cmd_context(args: argparse.Namespace) -> int:
 
 def cmd_trace(args: argparse.Namespace) -> int:
     import asyncio
+    import sqlite3
 
     from .tracing import TraceStore
 
@@ -110,13 +124,17 @@ def cmd_trace(args: argparse.Namespace) -> int:
 
     async def _run() -> int:
         trace_id = args.run_id
-        if trace_id is None:
-            result = await store.query(limit=1)
-            if not result["items"]:
-                print("no traces found")
-                return 1
-            trace_id = result["items"][0]["id"]
-        trace = await store.get(trace_id)
+        try:
+            if trace_id is None:
+                result = await store.query(limit=1)
+                if not result["items"]:
+                    print("no traces found")
+                    return 1
+                trace_id = result["items"][0]["id"]
+            trace = await store.get(trace_id)
+        except sqlite3.OperationalError:
+            print(f"no trace store found at {args.path!r}")
+            return 1
         if trace is None:
             print(f"trace {trace_id!r} not found")
             return 1
@@ -127,11 +145,17 @@ def cmd_trace(args: argparse.Namespace) -> int:
 
 
 def cmd_replay(args: argparse.Namespace) -> int:
+    import sqlite3
+
     from .replay import replay_context, replay_summary
     from .session import SessionStore
 
-    store = SessionStore(_open_store(args.path, args.backend))
-    sessions = store.list_sessions()
+    try:
+        store = SessionStore(_open_store(args.path, args.backend))
+        sessions = store.list_sessions()
+    except sqlite3.OperationalError:
+        print(f"no session store found at {args.path!r}")
+        return 1
     if not sessions:
         print("no sessions found")
         return 1
@@ -215,9 +239,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
 
     p_graph = sub.add_parser("graph", help="static agent blueprint")
-    p_graph.add_argument(
-        "agents", help='module path, e.g. "examples.knowledge.agents:KnowledgeFlow"'
-    )
+    p_graph.add_argument("agents", help='module path, e.g. "examples.knowledge.agents"')
     p_graph.add_argument("--title", default="ctxloom blueprint")
     p_graph.set_defaults(func=cmd_graph)
 
@@ -284,6 +306,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Make local modules importable the same way `python -m ctxloom` does —
+    # the installed console-script entry point doesn't prepend cwd on its own.
+    if "" not in sys.path:
+        sys.path.insert(0, "")
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command is None:

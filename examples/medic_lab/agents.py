@@ -35,7 +35,7 @@ class GeneratorAgent(Agent):
 
 class InvestigatorAgent(Agent):
     name = "investigator"
-    consumes = [Consume(Hypothesis, condition=lambda a: a.data.status == "open")]
+    consumes = [Consume.by_status(Hypothesis, "open")]
     produces = [Investigator(), Produce(SearchDone)]
 
 

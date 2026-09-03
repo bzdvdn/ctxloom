@@ -166,6 +166,57 @@ def test_structured_llm_retries_on_network_error():
     assert llm.calls == 2
 
 
+class AlwaysFailsLLM(LLMProvider):
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        raise RuntimeError("provider is down")
+
+    async def stream(self, request):
+        yield LLMResponse(text="")  # pragma: no cover
+
+
+def test_on_error_distinguishes_no_provider_from_provider_failure():
+    reasons: list[tuple[str, Exception | None]] = []
+
+    def record(reason, exc):
+        reasons.append((reason, exc))
+
+    ctx_no_provider = Context()
+    result = asyncio.run(
+        structured_llm(
+            ctx_no_provider, schema=Summary, user="x", on_error=record, attempts=1
+        )
+    )
+    assert result is None
+    assert reasons == [("no_provider", None)]
+
+    reasons.clear()
+    ctx_down = Context(resources=RuntimeResources(llm=AlwaysFailsLLM()))
+    result = asyncio.run(
+        structured_llm(ctx_down, schema=Summary, user="x", on_error=record, attempts=1)
+    )
+    assert result is None
+    assert len(reasons) == 1
+    assert reasons[0][0] == "provider_error"
+    assert isinstance(reasons[0][1], RuntimeError)
+
+
+def test_on_error_reports_parse_error():
+    reasons: list[tuple[str, Exception | None]] = []
+    llm = ScriptedLLM(["мусор", "ещё мусор"])
+    ctx = Context(resources=RuntimeResources(llm=llm))
+    result = asyncio.run(
+        structured_llm(
+            ctx,
+            schema=Summary,
+            user="итог",
+            attempts=2,
+            on_error=lambda reason, exc: reasons.append((reason, exc)),
+        )
+    )
+    assert result is None
+    assert reasons == [("parse_error", None)]
+
+
 def test_prompt_binds_system_and_schema():
     from ctxloom import StructuredLLM
 

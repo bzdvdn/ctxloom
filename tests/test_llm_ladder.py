@@ -46,7 +46,7 @@ def test_level1_offline_falls_back_honestly():
     ctx = run_l1(question="three states of water?")
     answers = ctx.list_artifacts(L1Answer)
     assert len(answers) == 1
-    assert "(offline)" in answers[0].data.text
+    assert "(no answer)" in answers[0].data.text
 
 
 def test_level1_with_model_uses_the_answer():

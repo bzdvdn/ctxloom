@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 Minor release — provider-level generation defaults + explicit provider wiring.
 
+### Breaking
+
+- `LLMRequest.temperature` no longer defaults to `0.7` — a `None` now means
+  "omit the field, let the provider apply its own default" instead of
+  "use `0.7`". Same call shape, different generation behavior, no error
+  raised. Pass `temperature=0.7` explicitly (per-call or on the provider) if
+  your code relied on the old implicit default. See "Upgrading" in
+  [docs/en/release.md](docs/en/release.md).
+
 ### Added
 
 - **Provider-level `temperature` / `max_tokens`** — the defaults live on the

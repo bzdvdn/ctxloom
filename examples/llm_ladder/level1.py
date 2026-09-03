@@ -109,7 +109,10 @@ async def structured_reply(context: Context, question: Artifact[Question]) -> st
     )
     if body is not None:
         return body.text
-    return f"(offline) No model configured — the question was: {question.data.text}"
+    return (
+        "(no answer) — the model is not configured or the call failed; check logs "
+        f"— the question was: {question.data.text}"
+    )
 
 
 class OneTurnAgent(Agent):

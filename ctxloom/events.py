@@ -8,6 +8,7 @@ class EventType(StrEnum):
     ARTIFACT_CREATED = "artifact_created"
     ARTIFACT_UPDATED = "artifact_updated"
     ARTIFACT_DELETED = "artifact_deleted"
+    ARTIFACT_STALE = "artifact_stale"
 
 
 class Event:

@@ -73,6 +73,60 @@ def test_effects_update_bumps_existing_artifact():
     assert updates[0].new_data.text == "v2"
 
 
+def test_create_once_creates_when_absent():
+    ctx = Context(resources=RuntimeResources())
+    effects = Effects(ctx)
+    handle = effects.create_once(Note(text="v1"), id="note:1")
+    assert handle is not None
+    assert handle.id == "note:1"
+    creates = [op for op in effects.operations if isinstance(op, Create)]
+    assert len(creates) == 1
+
+
+def test_create_once_is_none_when_already_present():
+    ctx = Context(resources=RuntimeResources())
+    ctx.create(Note(text="v1"), id="note:1")
+    effects = Effects(ctx)
+    handle = effects.create_once(Note(text="v2"), id="note:1")
+    assert handle is None
+    assert effects.operations == []
+
+
+def test_effects_upsert_is_explicit_create_or_refresh():
+    """`upsert` compiles to the same Create op as `create(..., id=...)` — it
+    only makes the "may already exist" intent explicit at the call site."""
+    effects = Effects(Context(resources=RuntimeResources()))
+    handle = effects.upsert(Note(text="v2"), id="note:1")
+    assert handle.id == "note:1"
+    creates = [op for op in effects.operations if isinstance(op, Create)]
+    assert len(creates) == 1
+    assert creates[0].id == "note:1"
+
+
+def test_upsert_refreshes_existing_artifact_via_runtime():
+    class Refresh(Produce[Note]):
+        artifact_type = Note
+
+        async def produce(self, context, inputs, event=None):
+            self.effects.upsert(Note(text="v2"), id="note:1")
+            return None
+
+    class Refresher(Agent):
+        consumes = [Consume(Doc)]
+        produces = [Refresh()]
+
+    ctx = Context(resources=RuntimeResources())
+    ctx.create(Note(text="v1"), id="note:1")
+    runtime = Runtime(ctx, agents=[Refresher()])
+    ctx.create(Doc(text="trigger"), id="doc:1")
+    asyncio.run(runtime.arun())
+
+    note = ctx.get("note:1")
+    assert note is not None
+    assert note.data.text == "v2"
+    assert note.version == 1  # refreshed, not duplicated
+
+
 def test_current_effects_none_outside_produce():
     assert current_effects() is None
 

@@ -36,3 +36,6 @@ class RunStats:
     iterations: int
     outcome: RunOutcome
     duration: float
+    #: Agent executions that raised and were isolated (`Runtime(isolate_errors=True)`).
+    #: Always 0 when isolation is off — an exception propagates instead (§69).
+    errors: int = 0

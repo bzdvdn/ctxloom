@@ -10,7 +10,7 @@ from typing import Any, TypeVar, cast, overload
 from pydantic import BaseModel
 
 from .artifacts import Artifact
-from .checkpoints import CheckpointBackend, FileBackend
+from .checkpoints import CheckpointBackend, FileBackend, KVBackend
 from .commit import Commit
 from .events import Event, EventType
 from .interrupt import PendingQuestion
@@ -158,6 +158,14 @@ class Context:
                 artifact_id=artifact.id,
             )
         )
+        for dependent in self._dependents_of(artifact_id):
+            self._events.append(
+                Event(
+                    type=EventType.ARTIFACT_STALE,
+                    artifact_type=type(dependent.data),
+                    artifact_id=dependent.id,
+                )
+            )
         return artifact
 
     def delete(self, artifact_id: str) -> bool:
@@ -604,6 +612,29 @@ class Context:
                     return commit
         return None
 
+    def _dependents_of(self, artifact_id: str) -> list[Artifact[Any]]:
+        """Artifacts whose producing commit read `artifact_id` at an older version.
+
+        Same scan as `stale_artifacts()`, scoped to one artifact — used right
+        after that artifact's version bumps to emit `ARTIFACT_STALE` reactively
+        instead of waiting for a `stale_artifacts()` poll.
+        """
+        current = self._artifacts.get(artifact_id)
+        if current is None:
+            return []
+        dependents: list[Artifact[Any]] = []
+        for aid, artifact in self._artifacts.items():
+            if aid == artifact_id:
+                continue
+            commit = self._producing_commit(aid)
+            if commit is None:
+                continue
+            for read in commit.reads:
+                if read.artifact_id == artifact_id and read.version < current.version:
+                    dependents.append(artifact)
+                    break
+        return dependents
+
     def stale_artifacts(self) -> list[Artifact[Any]]:
         """Artifacts whose parents (reads in the producing commit) are now newer versions.
 
@@ -717,6 +748,22 @@ class Context:
             backend = backend_or_path
         data = backend.load()
         return cls.from_dict(data)
+
+    def to_kv(self, backend: KVBackend, key: str) -> None:
+        """Serializes and stores this context under `key` in a KV backend.
+
+        The one `to_dict()` round-trip shared by `SessionStore`/`BranchStore`
+        (session_id / branch keys are just a naming convention over the same
+        backend, §39) — call this instead of hand-rolling `backend.set(key,
+        context.to_dict())`.
+        """
+        backend.set(key, self.to_dict())
+
+    @classmethod
+    def from_kv(cls, backend: KVBackend, key: str) -> Context | None:
+        """Loads a context previously stored with `to_kv`, or None if absent."""
+        data = backend.get(key)
+        return cls.from_dict(data) if data is not None else None
 
     def __repr__(self) -> str:
         return f"<Context artifacts={len(self._artifacts)} pending_events={len(self._events)}>"

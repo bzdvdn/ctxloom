@@ -4,7 +4,7 @@ Pure functions returning Mermaid source strings (no rendering dependency).
 Render them anywhere Mermaid works (GitHub, Notion, mermaid.live), or view the
 trace diagram directly in the dashboard and the CLI:
 
-    python -m ctxloom graph examples.knowledge.agents:KnowledgeFlow
+    python -m ctxloom graph examples.knowledge.agents
     python -m ctxloom context <sessions-db>
     python -m ctxloom trace traces.db [run_id]
 

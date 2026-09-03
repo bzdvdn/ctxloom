@@ -195,6 +195,36 @@ def claim_verification(
     return good / len(claims)
 
 
+def confidence_calibration(
+    expected_key: str = "claim_correctness",
+) -> Callable[[Context, Mapping[str, Any] | None], float | None]:
+    """How well `Claim.confidence` predicts actual correctness (Brier score, §56).
+
+    `expected[expected_key]` maps claim artifact id -> bool (was the claim
+    actually correct). Score is `1 - mean((confidence - label) ** 2)` over
+    claims with ground truth, so 1.0 is perfectly calibrated. This is
+    distinct from `claim_verification`: a claim can have `status="verified"`
+    with a poorly-calibrated confidence and still pass that metric.
+    """
+
+    def _score(context: Context, expected: Mapping[str, Any] | None) -> float | None:
+        if expected is None or expected.get(expected_key) is None:
+            return None
+        labels: Mapping[str, bool] = expected[expected_key]
+        claims = _named(context, "Claim")
+        scored = [
+            (float(getattr(c.data, "confidence", 0.0)), 1.0 if labels[c.id] else 0.0)
+            for c in claims
+            if c.id in labels
+        ]
+        if not scored:
+            return None
+        brier = sum((conf - label) ** 2 for conf, label in scored) / len(scored)
+        return 1.0 - brier
+
+    return _score
+
+
 def answer_coverage(
     expected_key: str = "answer",
 ) -> Callable[[Context, Mapping[str, Any] | None], float | None]:
@@ -279,6 +309,7 @@ __all__ = [
     "answer_present",
     "calculation_correctness",
     "claim_verification",
+    "confidence_calibration",
     "core_metrics",
     "evidence_quality",
     "provenance_grounded",

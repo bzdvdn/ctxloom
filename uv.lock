@@ -135,13 +135,13 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
-    { name = "pytest" },
     { name = "python-dotenv" },
 ]
 
 [package.optional-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "pytest" },
     { name = "ruff" },
 ]
 pg = [
@@ -155,6 +155,7 @@ web = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "pytest" },
     { name = "ruff" },
 ]
 pg = [
@@ -172,7 +173,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'pg'", specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'", specifier = ">=0.30" },
@@ -182,6 +183,7 @@ provides-extras = ["dev", "web", "pg"]
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.11" },
+    { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.8" },
 ]
 pg = [{ name = "psycopg", extras = ["binary"], specifier = ">=3.2" }]

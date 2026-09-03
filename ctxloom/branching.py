@@ -32,12 +32,11 @@ class BranchStore:
 
     def save_branch(self, context: Context, *, session_id: str, name: str) -> None:
         """Saves a branch (including its fork base snapshot, §40)."""
-        self.backend.set(self._key(session_id, name), context.to_dict())
+        context.to_kv(self.backend, self._key(session_id, name))
 
     def load_branch(self, session_id: str, name: str) -> Context | None:
         """Loads a branch, or None if it does not exist."""
-        data = self.backend.get(self._key(session_id, name))
-        return Context.from_dict(data) if data is not None else None
+        return Context.from_kv(self.backend, self._key(session_id, name))
 
     def list_branches(self, session_id: str) -> list[str]:
         prefix = f"branch:{session_id}:"

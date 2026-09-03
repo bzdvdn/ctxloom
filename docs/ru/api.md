@@ -36,6 +36,7 @@
 | `ToolUse`, `ToolUseHITL` | produce цикла инструментов; HITL-вариант ждёт одобрения перед исполнением |
 | `Tool`, `FunctionTool`, `tool`, `ToolOutput` | абстракция и регистрация инструментов |
 | `ToolAnswer`, `Observation` | результаты инструментов и наблюдения модели (протокол цикла) |
+| `PendingQuestion` | HITL-примитив: приостановленный вопрос, ждущий ответа человека, возобновляется через `self.effects.resume(...)` |
 
 ## Runtime
 
@@ -43,8 +44,10 @@
 | --- | --- |
 | `Runtime` | будит агентов по событиям; `run` / `arun` / `astream`; бюджет и параллельность |
 | `Budget`, `RunOutcome`, `RunStats` | лимиты запуска и итог/статистика |
-| `Event`, `EventType` | проводной формат «что-то изменилось» |
+| `Event`, `EventType` | проводной формат «что-то изменилось» — `ARTIFACT_CREATED`/`UPDATED`/`DELETED`/`STALE` |
 | `EventHub`, `ProgressEvent` | канал прогресса/announce, который потребляют web-UI |
+| `Scheduler` | политика выбора агента filter → rank → LLM tie-break, вызывается рантаймом на каждой итерации (см. [design notes](../en/design-notes/adaptive.md), пока только на английском) |
+| `uncertainty_policy(...)` | собирает встроенную гибридную политику `Scheduler` (filter → rank → LLM tie-break → top-k) |
 
 ## Чат-слой (ctxloom.chat + ctxloom.web)
 
@@ -93,7 +96,7 @@
 | `run_suite(cases, metrics)` / `run_case(case, metrics)` | выполнить кейсы и скорить итоговые контексты |
 | `EvalCase` / `EvalResult` / `EvalReport` / `Metric` | структуры кейс/скор/отчёт (`overall()`, `render()`, `to_dict()`) |
 | `core_metrics` | четыре не генеративные метрики (answer/provenance/evidence/claim) |
-| `answer_coverage()` · `calculation_correctness(values=…)` · `source_coverage()` | фабрики с грёд-трусом (skip при отсутствии `expected`) |
+| `answer_coverage()` · `calculation_correctness(values=…)` · `source_coverage()` · `confidence_calibration()` | фабрики с грёд-трусом (skip при отсутствии `expected`) |
 
 ## Структурный вывод
 
@@ -131,6 +134,7 @@
 | `OpenAICompatProvider`, `OpenAICompatEmbedder` + вендорные фабрики (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ чат/эмбеддинг-бэкендов |
 | `Message`, `Role` | одно сообщение чата; `role` — закрытый `Literal` + фабрики `Message.system/user/assistant/tool` |
 | `LLMRequest` | одна генерация: `messages` + `temperature`/`max_tokens` — `None` = дефолт провайдера (вызов перекрывает провайдера, провайдер `None` = поле не отправляется) |
+| `LLMResponse`, `LLMResponseChunk` | результат одной генерации / один поточный чанк, возвращаемые провайдером |
 | `*_from_env(**overrides)` | подключение из `.env`; возвращает `None`, если не настроено |
 | `FakeLLM`, `FakeEmbedder` | детерминированные заглушки для тестов/демо |
 

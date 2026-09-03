@@ -24,6 +24,7 @@ from .eval import (
     answer_present,
     calculation_correctness,
     claim_verification,
+    confidence_calibration,
     core_metrics,
     evidence_quality,
     provenance_grounded,

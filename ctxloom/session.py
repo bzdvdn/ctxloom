@@ -38,17 +38,16 @@ class SessionStore:
         self.backend = backend
 
     def save_session(self, session_id: str, context: Context) -> None:
-        self.backend.set(session_id, context.to_dict())
+        context.to_kv(self.backend, session_id)
 
     def load_session(
         self,
         session_id: str,
         resources: RuntimeResources | None = None,
     ) -> Context | None:
-        data = self.backend.get(session_id)
-        if data is None:
+        context = Context.from_kv(self.backend, session_id)
+        if context is None:
             return None
-        context = Context.from_dict(data)
         context.resources = resources or RuntimeResources()
         return context
 

@@ -1,6 +1,7 @@
 import asyncio
 
 from ctxloom import Agent, Consume, Context, Patch, Runtime
+from ctxloom.events import EventType
 from pydantic import BaseModel
 
 
@@ -11,6 +12,10 @@ class Document(BaseModel):
 
 class DerivedSummary(BaseModel):
     text: str
+
+
+class StalenessNotice(BaseModel):
+    watched_id: str
 
 
 class Summarizer(Agent):
@@ -34,6 +39,20 @@ def build_doc_pipeline():
     doc = ctx.create(Document(title="T", content="hello world"))
     asyncio.run(runtime.arun())
     return ctx, runtime, doc
+
+
+class StaleWatcher(Agent):
+    """Reacts specifically to ARTIFACT_STALE — proves staleness is a live event,
+    not just a `stale_artifacts()` poll."""
+
+    consumes = [Consume(DerivedSummary, event_types=[EventType.ARTIFACT_STALE])]
+    produces = []
+
+    async def run(self, event, context):
+        return Patch().create(
+            StalenessNotice(watched_id=event.artifact_id),
+            id=f"notice:{event.artifact_id}",
+        )
 
 
 def test_derived_artifact_and_reads_provenance():
@@ -91,3 +110,18 @@ def test_staleness_survives_session_restart(tmp_path):
     assert session2.context.has_stale()
     stale_ids = [a.id for a in session2.context.stale_artifacts()]
     assert stale_ids and stale_ids[0].startswith("summary:")
+
+
+def test_stale_event_is_reactive():
+    ctx = Context()
+    runtime = Runtime(ctx, agents=[Summarizer(), StaleWatcher()])
+    doc = ctx.create(Document(title="T", content="hello world"))
+    asyncio.run(runtime.arun())
+    summary = ctx.list_artifacts(DerivedSummary)[0]
+    assert not ctx.list_artifacts(StalenessNotice)
+
+    ctx.update(doc.id, Document(title="T", content="new content"))
+    asyncio.run(runtime.arun())
+
+    notices = ctx.list_artifacts(StalenessNotice)
+    assert any(n.data.watched_id == summary.id for n in notices)

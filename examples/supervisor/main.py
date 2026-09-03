@@ -243,21 +243,9 @@ def run(
 
     pending = [q for q in ctx.pending_questions() if q.data.kind == "approval"]
     if pending:
-        # simulate the human answer: mark the pending question answered (§60)
-        from datetime import UTC, datetime
-
-        q = pending[0]
-        ctx.update(
-            q.id,
-            PendingQuestion(
-                question=q.data.question,
-                kind=q.data.kind,
-                notes=q.data.notes,
-                answered=True,
-                resolution="yes",
-                resolved_at=datetime.now(UTC),
-            ),
-        )
+        # simulate the human answer: `Context.resume` is the one-line HITL
+        # idiom (same as `effects.resume` inside a produce, §60).
+        ctx.resume(pending[0].id, "yes")
         _arun(Runtime(ctx, agents=[Flow()]))
     return ctx
 

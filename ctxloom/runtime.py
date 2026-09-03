@@ -1,9 +1,10 @@
 import asyncio
 import json
+import logging
 import sys
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -20,8 +21,14 @@ from .streaming import ProgressEvent
 from .tracing.models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from .tracing.tracer import CompositeTracer, RecordingLLM, Tracer, _clip
 
+logger = logging.getLogger(__name__)
+
 #: A scheduled patch with its trigger reads and (optional) trace span.
 PatchWork = tuple[Patch, Agent, list[Read], AgentSpan | None]
+#: One agent execution result: patch (if any), the agent/event/reads that
+#: produced it, latency, and the exception if the produce raised and
+#: `isolate_errors` was set.
+AgentResult = tuple[Patch | None, Agent, Event, list[Read], float, BaseException | None]
 
 
 class Runtime:
@@ -34,6 +41,8 @@ class Runtime:
         budget: Budget | None = None,
         tracer: Tracer | list[Tracer] | None = None,
         scheduler: Scheduler | None = None,
+        isolate_errors: bool = False,
+        on_agent_error: Callable[[Agent, Event, BaseException], None] | None = None,
     ):
         self.context = context
         self.agents = agents or []
@@ -41,6 +50,11 @@ class Runtime:
         self.session = session
         self.budget = budget
         self.scheduler = scheduler
+        # §69 "make illegal states visible" default: an agent's exception still
+        # propagates out of arun()/astream() unless isolate_errors=True — opt in
+        # to resilience explicitly rather than silently swallowing bugs.
+        self.isolate_errors = isolate_errors
+        self.on_agent_error = on_agent_error
         self.tracer: Tracer | CompositeTracer | None = (
             tracer
             if isinstance(tracer, Tracer) or tracer is None
@@ -65,6 +79,7 @@ class Runtime:
         self._run_id = ""
         self._spans: list[AgentSpan] = []
         self._no_runs_warned = False
+        self._errors_used = 0
         # Memo: (artifact_id, version) → serialized data for one turn.
         self._trace_data_cache: dict[tuple[str, int], str] = {}
 
@@ -156,6 +171,7 @@ class Runtime:
 
     def _begin_turn(self, budget: Budget | None) -> None:
         self._runs_used = 0
+        self._errors_used = 0
         self.outcome = RunOutcome.COMPLETED
         self._deadline = None
         self._turn_started_at = time.monotonic()
@@ -249,10 +265,12 @@ class Runtime:
 
         results = await self._dispatch(work)
         patches_to_apply, runs = self._get_patches_to_apply(results)
-        self._commit_patches_to_apply(patches_to_apply)
+        await self._commit_patches_to_apply(patches_to_apply)
         return runs
 
-    async def _dispatch(self, work: list[tuple[Agent, Event, list[Read]]]) -> list[Any]:
+    async def _dispatch(
+        self, work: list[tuple[Agent, Event, list[Read]]]
+    ) -> list[AgentResult]:
         """Runs the generation's workers.
 
         Sequential when there is nothing to parallelize (no runtime cap and no
@@ -279,7 +297,7 @@ class Runtime:
         )
         limit_semaphores = {limit: asyncio.Semaphore(limit) for limit in limiters}
 
-        async def _worker(item: tuple[Agent, Event, list[Read]]) -> Any:
+        async def _worker(item: tuple[Agent, Event, list[Read]]) -> AgentResult:
             agent = item[0]
             acquired: list[asyncio.Semaphore] = []
             tier = agent.concurrency_limit
@@ -297,7 +315,9 @@ class Runtime:
 
         return await asyncio.gather(*(_worker(item) for item in work))
 
-    def _get_patches_to_apply(self, results: list[Any]) -> tuple[list[PatchWork], int]:
+    def _get_patches_to_apply(
+        self, results: list[AgentResult]
+    ) -> tuple[list[PatchWork], int]:
         """Turns agent results into the patches to apply (+ the run count).
 
         Executions that changed nothing are not applied and not traced (a
@@ -306,28 +326,34 @@ class Runtime:
         """
         patches_to_apply: list[PatchWork] = []
         runs = 0
-        for patch, agent, event, reads, latency in results:
+        for patch, agent, event, reads, latency, error in results:
+            span: AgentSpan | None = None
             if self._budget_exhausted():
                 break
             runs += 1
             self._runs_used += 1
+            if error is not None:
+                self._errors_used += 1
+                if self.tracer is not None:
+                    span = AgentSpan(
+                        agent=agent.name,
+                        event_type=event.type.value,
+                        reads=self._read_refs(reads),
+                        latency_ms=latency,
+                        llm_calls=self._pending_llm.pop(agent.name, []),
+                        error=f"{type(error).__name__}: {error}",
+                        started_at=datetime.now(UTC),
+                    )
+                    self._spans.append(span)
+                    self.tracer.on_span(span)
+                continue
             if patch is None or patch.is_empty():
                 continue
-            span: AgentSpan | None = None
             if self.tracer is not None:
-                read_refs = [
-                    self._artifact_ref(
-                        read.artifact_id,
-                        read.version,
-                        "read",
-                        self._artifact_data(read.artifact_id),
-                    )
-                    for read in reads
-                ]
                 span = AgentSpan(
                     agent=agent.name,
                     event_type=event.type.value,
-                    reads=read_refs,
+                    reads=self._read_refs(reads),
                     latency_ms=latency,
                     llm_calls=self._pending_llm.pop(agent.name, []),
                     started_at=datetime.now(UTC),
@@ -338,7 +364,18 @@ class Runtime:
             patches_to_apply.append((patch, agent, reads, span))
         return patches_to_apply, runs
 
-    def _commit_patches_to_apply(self, patches_to_apply: list[PatchWork]) -> None:
+    def _read_refs(self, reads: list[Read]) -> list[ArtifactRef]:
+        return [
+            self._artifact_ref(
+                read.artifact_id,
+                read.version,
+                "read",
+                self._artifact_data(read.artifact_id),
+            )
+            for read in reads
+        ]
+
+    async def _commit_patches_to_apply(self, patches_to_apply: list[PatchWork]) -> None:
         """Applies each patch as a commit: provenance, span writes, persistence."""
         for patch, agent, reads, span in patches_to_apply:
             commit = Commit(
@@ -354,8 +391,10 @@ class Runtime:
             self.context.log_commit(commit)
             if self.session is not None:
                 # git-like persist after each commit: the session survives a crash
-                # at the boundary of any agent generation
-                self.session.save()
+                # at the boundary of any agent generation. Session backends are
+                # sync (checkpoints.py) — offload so a slow file/SQLite write
+                # doesn't block the event loop for concurrent agent runs.
+                await asyncio.to_thread(self.session.save)
 
     def _collect_reads(self, agent: Agent, event: Event) -> list[Read]:
         """Records consumed artifacts: the trigger event + inputs per consumes.
@@ -379,12 +418,19 @@ class Runtime:
         self,
         item: tuple[Agent, Event, list[Read]],
         semaphore: asyncio.Semaphore | None = None,
-    ) -> tuple[Patch | None, Agent, Event, list[Read], float]:
+    ) -> AgentResult:
         """Runs a single agent (parallel section of a generation).
 
         Agents in the same generation work on the same snapshot:
         patches are applied only after all runs finish, so a parallel
         fan-out is safe for provenance (§42, §34).
+
+        By default an exception raised by a produce propagates out of this
+        call (and from `arun`/`astream`) — a bug in one agent is not hidden.
+        With `isolate_errors=True`, the exception is caught here instead: the
+        agent contributes no patch this generation, `on_agent_error` (if set)
+        is called, and the run continues so unrelated agents still make
+        progress.
         """
         agent, event, reads = item
         started = time.monotonic()
@@ -393,17 +439,34 @@ class Runtime:
             self._agent_by_task[task] = agent.name
         effects_token = set_effects(Effects(self.context))
         slot: Effects | None = None
+        patch: Patch | None = None
+        error: BaseException | None = None
         try:
-            if semaphore is not None:
-                async with semaphore:
+            try:
+                if semaphore is not None:
+                    async with semaphore:
+                        patch = await agent.run(event, self.context)
+                else:
                     patch = await agent.run(event, self.context)
-            else:
-                patch = await agent.run(event, self.context)
-            slot = current_effects()
+                slot = current_effects()
+            except Exception as exc:
+                if not self.isolate_errors:
+                    raise
+                error = exc
+                logger.warning(
+                    "Agent %r raised %r; isolated (isolate_errors=True)",
+                    agent.name,
+                    exc,
+                )
+                if self.on_agent_error is not None:
+                    self.on_agent_error(agent, event, exc)
         finally:
             reset_effects(effects_token)
             if task is not None and task in self._agent_by_task:
                 del self._agent_by_task[task]
+        latency = (time.monotonic() - started) * 1000
+        if error is not None:
+            return None, agent, event, reads, latency, error
         # Effects authored in produce() compile to the patch. A produce's own
         # effects happen *after* its returned patch (produce order), so an
         # update that captured the pre-effect state cannot regress later effects.
@@ -413,7 +476,7 @@ class Runtime:
                 combined.merge(patch)
             combined.merge(slot.to_patch())
             patch = combined
-        return patch, agent, event, reads, (time.monotonic() - started) * 1000
+        return patch, agent, event, reads, latency, None
 
     async def arun(
         self,
@@ -443,6 +506,7 @@ class Runtime:
             iterations=limit,
             outcome=self.outcome,
             duration=time.monotonic() - self._turn_started_at,
+            errors=self._errors_used,
         )
         if total_runs == 0:
             self._warn_no_runs()

@@ -174,7 +174,7 @@ class SQLiteBackend(CheckpointBackend):
         row = conn.execute("SELECT data FROM checkpoint WHERE id = 1").fetchone()
         conn.close()
         if row is None:
-            raise ValueError("Checkpoint not found in SQLite database")
+            raise ValueError(f"Checkpoint not found in SQLite database: {self.db_path}")
         return cast(dict[str, Any], json.loads(row[0]))
 
 

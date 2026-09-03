@@ -243,6 +243,11 @@ def llm_from_env(**overrides: Any) -> OpenAICompatProvider | None:
     OPENAI_AUTH_SCHEME (Bearer by default; set to "api-key", "OAuth" or an
     empty value for providers that want the raw key). Returns None if
     BASE_URL is not set — the app runs on its fallbacks.
+
+    Remaining overrides (`temperature`, `max_tokens`, `timeout`, `transport`,
+    `extra_headers`) pass straight through to `OpenAICompatProvider` — no
+    api_key is required, so this also covers unauthenticated local/self-hosted
+    endpoints (Ollama, vLLM, LM Studio).
     """
     import os
 
@@ -253,12 +258,23 @@ def llm_from_env(**overrides: Any) -> OpenAICompatProvider | None:
     if extra_body is None:
         raw = os.getenv("OPENAI_EXTRA_BODY")
         extra_body = json.loads(raw) if raw else None
+    consumed = {
+        "base_url",
+        "api_key",
+        "model",
+        "extra_body",
+        "proxy",
+        "auth_header",
+        "auth_scheme",
+    }
+    passthrough = {k: v for k, v in overrides.items() if k not in consumed}
     return OpenAICompatProvider(
         base_url=base_url,
         api_key=overrides.get("api_key") or os.getenv("OPENAI_API_KEY") or None,
         model=overrides.get("model") or os.getenv("OPENAI_MODEL") or None,
         extra_body=extra_body,
         **_network_knobs("OPENAI", overrides),
+        **passthrough,
     )
 
 

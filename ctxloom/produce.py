@@ -1,3 +1,24 @@
+"""ctxloom.produce — how a produce writes an artifact (§24).
+
+Two styles cover almost everything and are the ones this repo's examples use:
+
+- **Subclass + effects** — `class X(Produce[Model]): async def produce(self,
+  context, inputs, event=None): self.effects.create(...); return None`. Use
+  this whenever the produce has its own state-free logic worth naming as a
+  class (the common case in every example under `examples/`).
+- **`@produce(Model)` function with `effects`** — `@produce(Model)\\ndef f(context,
+  inputs, effects): effects.create(...)`. Same effects-first shape, no class
+  ceremony — pick this for a short, one-off produce.
+
+Everything else `Produce`/`produce()` also accept — a plain return-style
+`@produce` function (return a model / list / `Patch` / `None` instead of
+writing `effects`), or a two-argument `factory=` callable passed to the
+`Produce()` constructor — still works and is still tested
+(`tests/test_produce_styles.py`), kept for existing code and advanced cases
+(e.g. wrapping a function that predates `effects`). New code should reach for
+one of the two styles above first.
+"""
+
 from __future__ import annotations
 
 import asyncio

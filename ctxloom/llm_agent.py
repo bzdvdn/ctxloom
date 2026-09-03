@@ -29,10 +29,12 @@ from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
 from .tools import Tool
 
 
-def _require_consumes(cls_name: str, user_consumes: list[Any]) -> None:
+def _require_consumes(
+    cls_name: str, instance_name: str, user_consumes: list[Any]
+) -> None:
     if not user_consumes:
         raise ValueError(
-            f"{cls_name} '{cls_name}' has no consumes: the tool loop needs a "
+            f"{cls_name} {instance_name!r} has no consumes: the tool loop needs a "
             "trigger. Specify at least one Consume(<question artifact>), e.g. "
             "consumes=[Consume(Question)]."
         )
@@ -100,7 +102,7 @@ class LLMAgent(Agent):
     def __init__(self, *, name: str | None = None, **kwargs: Any):
         llm_name = name or self.name or self.__class__.__name__.lower()
         user_consumes = list(self.consumes) if self.consumes else []
-        _require_consumes(self.__class__.__name__, user_consumes)
+        _require_consumes(self.__class__.__name__, llm_name, user_consumes)
         self.consumes = [
             *user_consumes,
             Consume.by_field(ToolAnswer, "agent", llm_name),
@@ -140,7 +142,7 @@ class HITLLMAgent(Agent):
     def __init__(self, *, name: str | None = None, **kwargs: Any):
         llm_name = name or self.name or self.__class__.__name__.lower()
         user_consumes = list(self.consumes) if self.consumes else []
-        _require_consumes(self.__class__.__name__, user_consumes)
+        _require_consumes(self.__class__.__name__, llm_name, user_consumes)
         self.consumes = [
             *user_consumes,
             Consume.by_field(ToolAnswer, "agent", llm_name),

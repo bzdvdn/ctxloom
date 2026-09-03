@@ -191,6 +191,89 @@ def test_env_knobs_are_read(tmp_path):
     assert provider._headers["X-Api-Key"] == "Bearer sk-env"
 
 
+def test_llm_from_env_forwards_extra_overrides():
+    """`temperature`/`max_tokens` (and other OpenAICompatProvider kwargs) were
+    previously dropped silently by llm_from_env — now they pass through."""
+    import os
+
+    saved = os.environ.get("OPENAI_BASE_URL")
+    try:
+        os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
+        from ctxloom.providers import llm_from_env
+
+        provider = llm_from_env(temperature=0.2, max_tokens=256)
+    finally:
+        if saved is None:
+            os.environ.pop("OPENAI_BASE_URL", None)
+        else:
+            os.environ["OPENAI_BASE_URL"] = saved
+    assert provider is not None
+    assert provider.temperature == 0.2
+    assert provider.max_tokens == 256
+
+
+def test_from_env_prefers_openrouter_key():
+    import os
+
+    keys = ("OPENROUTER_API_KEY", "OPENAI_BASE_URL")
+    saved = {k: os.environ.get(k) for k in keys}
+    try:
+        os.environ["OPENROUTER_API_KEY"] = "or-key"
+        os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
+        from ctxloom.providers import from_env
+
+        provider = from_env(max_tokens=128)
+    finally:
+        for k in keys:
+            if saved[k] is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = saved[k]
+    assert provider is not None
+    assert provider.base_url == "https://openrouter.ai/api/v1"
+    assert provider.max_tokens == 128
+
+
+def test_from_env_falls_back_to_openai_base_url():
+    import os
+
+    keys = ("OPENROUTER_API_KEY", "OPENAI_BASE_URL")
+    saved = {k: os.environ.get(k) for k in keys}
+    try:
+        os.environ.pop("OPENROUTER_API_KEY", None)
+        os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
+        from ctxloom.providers import from_env
+
+        provider = from_env()
+    finally:
+        for k in keys:
+            if saved[k] is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = saved[k]
+    assert provider is not None
+    assert provider.base_url == "https://llm.example/v1"
+
+
+def test_from_env_none_when_unconfigured():
+    import os
+
+    keys = ("OPENROUTER_API_KEY", "OPENAI_BASE_URL")
+    saved = {k: os.environ.get(k) for k in keys}
+    try:
+        for k in keys:
+            os.environ.pop(k, None)
+        from ctxloom.providers import from_env
+
+        assert from_env() is None
+    finally:
+        for k in keys:
+            if saved[k] is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = saved[k]
+
+
 def test_env_auth_scheme_empty_is_raw_key():
     import os
 

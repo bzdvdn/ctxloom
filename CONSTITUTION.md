@@ -355,7 +355,7 @@ ConfluenceSpace
     └── Link
 ```
 
-Structure is preserved whenever practical.
+Structure is preserved whenever practical. Falling back to flattened text is acceptable only as a stopgap before a proper typed Artifact exists for a source — it must not become the permanent representation for a domain the framework already models structurally (GitLab, Confluence, Spreadsheets).
 
 ---
 
@@ -1683,6 +1683,8 @@ Merge conflict
 
 The framework must not silently choose.
 
+Today this is enforced directly: `Context.merge()` raises `MergeConflict` and applies nothing when branches touch the same field with different values; resolving it (picking a value, or writing a merge policy) is the caller's responsibility.
+
 A verifier or merge policy can resolve it.
 
 ---
@@ -1730,7 +1732,7 @@ Evidence #4
 
 for the same source.
 
-Artifacts should have stable identities where possible.
+Artifacts should have stable identities. In core, this is unconditional: `SourceRef.stable_id()` derives an id from `sha1(source_id:locator)`, so re-running a Source against the same locator resolves to the same Artifact rather than creating a duplicate.
 
 ---
 
@@ -2110,6 +2112,8 @@ Final answer: 0.89
 ---
 
 # 57. Security
+
+**Status: planned, not yet implemented.** The rules below describe the target design — no Artifact currently carries `owner`/`permissions`/`classification`, and Context views do not yet enforce access control.
 
 Artifacts may contain sensitive information.
 
@@ -3094,7 +3098,7 @@ Verification: 300 tests; mypy (strict) and ruff clean.
 | Structured-data calculation | §29, §33, §67 | implemented (`CSVSource → Spreadsheet → Calculation`) |
 | Confidence / contradictions as state | §35-§36 | implemented (deterministic, §67) |
 | Idempotency (stable ids, create-or-refresh) | §42 | implemented |
-| Staleness / invalidation from recorded reads | §43-§44 | implemented (`stale_artifacts`) |
+| Staleness / invalidation from recorded reads | §43-§44 | implemented (`stale_artifacts`; reactive via `EventType.ARTIFACT_STALE`, not just polling) |
                   Scheduler
                      │
                      ▼

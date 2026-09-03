@@ -166,7 +166,9 @@ Why this matters:
   on budget decline the runtime stops and reports the reason.
 - **`Event` / `EventType`** — the wire format of "something changed"; agents are
   woken by artifacts' create/update events, and the announce mechanism emits
-  `status` events on the way to the UI.
+  `status` events on the way to the UI. `ARTIFACT_STALE` fires automatically
+  when an artifact's recorded dependency (§43-44) gets a newer version — opt
+  in with `Consume(Type, event_types=[EventType.ARTIFACT_STALE])`.
 - **`Trigger`** — secondary enter conditions for a produce (e.g. a periodic or
   timer-based wake), independent of the artifact consums.
 - **`Session` / `SessionStore`** — durable, per-chat working memory across

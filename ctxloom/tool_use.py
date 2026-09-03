@@ -70,14 +70,63 @@ class _FinalAnswer(BaseModel):
     text: str = ""
 
 
-class ToolUse(Produce[ToolAnswer]):
+class _ToolLoopBase(Produce[ToolAnswer]):
+    """Shared plumbing for `ToolUse`/`ToolUseHITL`: tool registry + `_run_tool`.
+
+    Both loops offer the same tool set the same way and execute a tool call
+    identically (unknown tool / destructive / exception → a text result the
+    LLM sees, never an exception out of the produce). Everything that differs
+    between the two — the decision schema, the prompt rules, how history is
+    represented, whether a clarifying question can be asked — stays on the
+    subclass; this base only holds what is genuinely identical.
+    """
+
+    artifact_type = ToolAnswer
+
+    def __init__(
+        self,
+        system: str,
+        tools: Sequence[Tool] | dict[str, Tool],
+        *,
+        name: str = "llm",
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ):
+        self.name = name
+        self.system = system
+        self.tools = (
+            {t.name: t for t in tools} if not isinstance(tools, dict) else dict(tools)
+        )
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        super().__init__()
+
+    async def _run_tool(
+        self, context: Context, tool_id: str, args: dict[str, Any]
+    ) -> str:
+        tool = self.tools.get(tool_id)
+        if tool is None:
+            available = ", ".join(self.tools)
+            return f"Unknown tool '{tool_id}'. Available: {available}"
+        if tool.destructive:
+            return f"Tool '{tool_id}' is destructive and not offered to the LLM."
+        try:
+            output = await tool.execute(args)
+        except Exception as exc:  # noqa: BLE001 — tool failure is returned to the LLM
+            return f"Tool '{tool_id}' failed: {exc}"
+        if output.error:
+            return output.error
+        return (
+            output.text if output.text else json.dumps(output.data, ensure_ascii=False)
+        )
+
+
+class ToolUse(_ToolLoopBase):
     """Blocking loop \"LLM decides → tool → … → answer\" in a single produce.
 
     Simple, no HITL: the LLM either calls a tool or answers. The logic lives here,
     not in the container agent. Destructive tools are not offered to the LLM.
     """
-
-    artifact_type = ToolAnswer
 
     def __init__(
         self,
@@ -89,15 +138,10 @@ class ToolUse(Produce[ToolAnswer]):
         temperature: float | None = None,
         max_tokens: int | None = None,
     ):
-        self.name = name
-        self.system = system
-        self.tools = (
-            {t.name: t for t in tools} if not isinstance(tools, dict) else dict(tools)
+        super().__init__(
+            system, tools, name=name, temperature=temperature, max_tokens=max_tokens
         )
         self.max_steps = max_steps
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        super().__init__()
 
     async def produce(
         self,
@@ -191,35 +235,14 @@ class ToolUse(Produce[ToolAnswer]):
         results = "\n\n".join(history)
         return f"Goal: {goal}\n\nTool results so far:\n{results or '—'}"
 
-    async def _run_tool(
-        self, context: Context, tool_id: str, args: dict[str, Any]
-    ) -> str:
-        tool = self.tools.get(tool_id)
-        if tool is None:
-            available = ", ".join(self.tools)
-            return f"Unknown tool '{tool_id}'. Available: {available}"
-        if tool.destructive:
-            return f"Tool '{tool_id}' is destructive and not offered to the LLM."
-        try:
-            output = await tool.execute(args)
-        except Exception as exc:  # noqa: BLE001 — tool failure is returned to the LLM
-            return f"Tool '{tool_id}' failed: {exc}"
-        if output.error:
-            return output.error
-        return (
-            output.text if output.text else json.dumps(output.data, ensure_ascii=False)
-        )
 
-
-class ToolUseHITL(Produce[ToolAnswer]):
+class ToolUseHITL(_ToolLoopBase):
     """Reactive loop: step by step, can ask the human (HITL, §60).
 
     The LLM may answer (`answer`), call a tool (`tool_call`, result goes into an
     `Observation`), or ask a clarifying question (`ask` → `PendingQuestion`).
     The human answer comes back into the loop as `Observation(source="user")`.
     """
-
-    artifact_type = ToolAnswer
 
     def __init__(
         self,
@@ -233,18 +256,13 @@ class ToolUseHITL(Produce[ToolAnswer]):
         temperature: float | None = None,
         max_tokens: int | None = None,
     ):
-        self.name = name
-        self.system = system
-        self.tools = (
-            {t.name: t for t in tools} if not isinstance(tools, dict) else dict(tools)
+        super().__init__(
+            system, tools, name=name, temperature=temperature, max_tokens=max_tokens
         )
         self.max_steps = max_steps
         self.max_asks = max_asks
-        self.temperature = temperature
-        self.max_tokens = max_tokens
         # App callback: human answer → status message (kind="status").
         self.resume_announce = resume_announce
-        super().__init__()
 
     async def produce(
         self,
@@ -485,22 +503,3 @@ class ToolUseHITL(Produce[ToolAnswer]):
             for o in history
         ]
         return f"Goal: {goal}\n\nContext so far:\n" + ("\n".join(parts) or "—")
-
-    async def _run_tool(
-        self, context: Context, tool_id: str, args: dict[str, Any]
-    ) -> str:
-        tool = self.tools.get(tool_id)
-        if tool is None:
-            available = ", ".join(self.tools)
-            return f"Unknown tool '{tool_id}'. Available: {available}"
-        if tool.destructive:
-            return f"Tool '{tool_id}' is destructive and not offered to the LLM."
-        try:
-            output = await tool.execute(args)
-        except Exception as exc:  # noqa: BLE001 — tool failure is returned to the LLM
-            return f"Tool '{tool_id}' failed: {exc}"
-        if output.error:
-            return output.error
-        return (
-            output.text if output.text else json.dumps(output.data, ensure_ascii=False)
-        )

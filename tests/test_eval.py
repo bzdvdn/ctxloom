@@ -10,6 +10,7 @@ from ctxloom.eval import (
     answer_present,
     calculation_correctness,
     claim_verification,
+    confidence_calibration,
     core_metrics,
     evidence_quality,
     provenance_grounded,
@@ -105,6 +106,29 @@ def test_generative_metrics_with_ground_truth():
     }
     assert metrics["answer_coverage"](context, bad) < 1.0
     assert metrics["calc"](context, bad) == 0.0
+
+
+def test_confidence_calibration_scores():
+    ctx = Context(resources=RuntimeResources())
+    ctx.create(Claim(query_id="q", text="a", confidence=0.95), id="c:right-high")
+    ctx.create(Claim(query_id="q", text="b", confidence=0.05), id="c:wrong-low")
+
+    metric = confidence_calibration()
+    well_calibrated = metric(
+        ctx, {"claim_correctness": {"c:right-high": True, "c:wrong-low": False}}
+    )
+    assert well_calibrated is not None
+    assert well_calibrated > 0.9
+
+    # same claims, ground truth flipped: confidence now points the wrong way
+    badly_calibrated = metric(
+        ctx, {"claim_correctness": {"c:right-high": False, "c:wrong-low": True}}
+    )
+    assert badly_calibrated is not None
+    assert badly_calibrated < 0.1
+
+    assert metric(ctx, None) is None
+    assert metric(ctx, {}) is None
 
 
 def test_skipped_metrics_when_no_ground_truth():

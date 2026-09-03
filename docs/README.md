@@ -30,6 +30,8 @@ reference.
 | [port-matrix](en/port-matrix.md) | how canonical patterns (LangGraph/LangChain/CrewAI/…) map to our idioms + `examples/` |
 | [release](en/release.md) | versioning, changelog, build/verify/publish |
 | [api](en/api.md) | Public API reference (top-level symbols) |
+| [design-notes/adaptive](en/design-notes/adaptive.md) | Design notes for the adaptive scheduler (`Scheduler`, `uncertainty_policy`, §24/§26) — English only |
+| [design-notes/patches](en/design-notes/patches.md) | Design notes for the effects → Patch compilation model (§12-§13) — English only |
 
 ## Русский
 
@@ -52,3 +54,5 @@ reference.
 | [port-matrix](ru/port-matrix.md) | как канонические паттерны (LangGraph/LangChain/CrewAI/…) мапятся на наши идиомы + `examples/` |
 | [release](ru/release.md) | версионирование, чейджлог, сборка/проверка/публикация |
 | [api](ru/api.md) | Справочник публичного API (символы верхнего уровня) |
+| [design-notes/adaptive](en/design-notes/adaptive.md) | Design-заметки об адаптивном планировщике (`Scheduler`, `uncertainty_policy`, §24/§26) — только на английском |
+| [design-notes/patches](en/design-notes/patches.md) | Design-заметки о компиляции effects → Patch (§12-§13) — только на английском |

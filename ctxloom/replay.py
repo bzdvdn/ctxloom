@@ -137,7 +137,9 @@ class ReplayLLM(LLMProvider):
         if entry is None:
             logger.warning("replay miss for %r", key)
             raise ReplayMiss(
-                "the run diverged from the recording — a call was not recorded"
+                "the run diverged from the recording — a call was not recorded. "
+                "Re-record with mode='record', or check whether the prompt "
+                "changed since the recording was made."
             )
         response = entry["response"]
         return LLMResponse(

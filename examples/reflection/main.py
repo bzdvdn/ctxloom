@@ -221,7 +221,11 @@ class _Reply(BaseModel):
 
 async def _call(context: Context, *, schema: type[Any], system: str, user: str) -> str:
     body = await structured_llm(context, schema=schema, system=system, user=user)
-    return body.text if body is not None else f"(offline) {user[:80]}"
+    return (
+        body.text
+        if body is not None
+        else f"(not configured or call failed) {user[:80]}"
+    )
 
 
 class Flow(Agent):

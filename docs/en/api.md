@@ -37,6 +37,7 @@ modules.
 | `ToolUse`, `ToolUseHITL` | the tool-loop produce; HITL variant waits for approval on execution |
 | `Tool`, `FunctionTool`, `tool`, `ToolOutput` | tool abstraction and registration |
 | `ToolAnswer`, `Observation` | tool results and model observations (loop protocol) |
+| `PendingQuestion` | HITL primitive: a paused ask waiting for a human answer, resumed via `self.effects.resume(...)` |
 
 ## Runtime
 
@@ -44,8 +45,10 @@ modules.
 | --- | --- |
 | `Runtime` | wakes agents on events; `run` / `arun` / `astream`; budget & concurrency |
 | `Budget`, `RunOutcome`, `RunStats` | run limits and the final outcome/stats |
-| `Event`, `EventType` | the wire format of "something changed" |
+| `Event`, `EventType` | the wire format of "something changed" — `ARTIFACT_CREATED`/`UPDATED`/`DELETED`/`STALE` |
 | `EventHub`, `ProgressEvent` | progress/announce channel consumed by web UIs |
+| `Scheduler` | filter → rank → LLM tie-break agent-selection policy, callable from the runtime each iteration (see [design notes](design-notes/adaptive.md)) |
+| `uncertainty_policy(...)` | builds the built-in hybrid `Scheduler` (filter → rank → LLM tie-break → top-k) |
 
 ## Chat layer (ctxloom.chat + ctxloom.web)
 
@@ -94,7 +97,7 @@ modules.
 | `run_suite(cases, metrics)` / `run_case(case, metrics)` | execute cases and score the final contexts |
 | `EvalCase` / `EvalResult` / `EvalReport` / `Metric` | case/score/report structures (`overall()`, `render()`, `to_dict()`) |
 | `core_metrics` | the four non-generative metrics (answer/provenance/evidence/claim) |
-| `answer_coverage()` · `calculation_correctness(values=…)` · `source_coverage()` | ground-truth factories (skip when `expected` is missing) |
+| `answer_coverage()` · `calculation_correctness(values=…)` · `source_coverage()` · `confidence_calibration()` | ground-truth factories (skip when `expected` is missing) |
 
 ## Structured output
 
@@ -132,6 +135,7 @@ modules.
 | `OpenAICompatProvider`, `OpenAICompatEmbedder` + vendor factories (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ chat/embedder backends |
 | `Message`, `Role` | one chat message; `role` is a closed `Literal` + `Message.system/user/assistant/tool` factories |
 | `LLMRequest` | one completion: `messages` + `temperature`/`max_tokens` — `None` = provider default (call overrides provider, provider `None` = field omitted) |
+| `LLMResponse`, `LLMResponseChunk` | one completion result / one streamed chunk returned by a provider |
 | `*_from_env(**overrides)` | `.env`-driven wiring that returns `None` when unconfigured |
 | `FakeLLM`, `FakeEmbedder` | deterministic stand-ins for tests/demos |
 

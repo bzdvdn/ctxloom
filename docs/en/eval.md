@@ -3,8 +3,9 @@
 Because state is structured, evaluation is **multi-level** — not just
 `answer == expected`:
 
-> Evidence quality · Claim verification · Provenance grounding ·
-> Calculation correctness · Answer coverage · Source coverage
+> Evidence quality · Claim verification · Confidence calibration ·
+> Provenance grounding · Calculation correctness · Answer coverage ·
+> Source coverage
 
 `ctxloom.eval` is the deterministic, LLM-free harness that scores a run's final
 **state**. Each metric is a pure function over the resulting `Context` (+
@@ -56,6 +57,7 @@ harness needs no domain imports — the domain stays out of the framework.
 | `provenance_grounded` | is every answer backed by an existing `supported_by` (§34)? | plain fn |
 | `evidence_quality(threshold=0.5)` | share of evidence scoring at/above the bar | plain fn |
 | `claim_verification(valid=("verified",))` | share of claims that passed verification (§35) | plain fn |
+| `confidence_calibration()` | Brier score of `Claim.confidence` against actual correctness (§56) | factory (needs `expected.claim_correctness`) |
 | `answer_coverage()` | coverage of the expected answer text by the answer | factory (needs `expected.answer`) |
 | `calculation_correctness(values=…)` | share of calculations matching ground truth (§67) | factory |
 | `source_coverage()` | share of the answer's sources matched by markers | factory (needs `expected.sources`) |

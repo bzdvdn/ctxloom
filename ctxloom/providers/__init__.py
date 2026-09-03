@@ -6,6 +6,8 @@ the core public API (`ctxloom`) exports only contracts.
 
 from __future__ import annotations
 
+from typing import Any
+
 from .anthropic import AnthropicProvider, anthropic_llm
 from .azure import azure_llm
 from .cerebras import cerebras_llm
@@ -64,6 +66,21 @@ from .video import (
 from .xai import xai_llm
 from .zai import zai_llm
 
+
+def from_env(**overrides: Any) -> LLMProvider | None:
+    """One-call provider selection: `OPENROUTER_API_KEY` first, else a local
+    OpenAI-compatible endpoint via `OPENAI_BASE_URL`, else `None` (offline).
+
+    This is the exact two-branch selection every example in this repo hand-
+    rolls as a local `build_llm()` (deliberately, per example, so a reader
+    sees the wiring — see `examples/*/main.py`); use this instead when you
+    just want the common default in your own app without copying that block.
+    Overrides (`model`, `max_tokens`, `temperature`, ...) are forwarded to
+    whichever provider ends up selected.
+    """
+    return openrouter_llm(**overrides) or llm_from_env(**overrides)
+
+
 __all__ = [
     "AnthropicProvider",
     "EmbeddingProvider",
@@ -98,6 +115,7 @@ __all__ = [
     "deepseek_llm",
     "embedder_from_env",
     "fireworks_llm",
+    "from_env",
     "gemini_image",
     "gemini_llm",
     "github_models_llm",

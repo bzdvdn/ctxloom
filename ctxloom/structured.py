@@ -4,7 +4,8 @@ import asyncio
 import json
 import logging
 import re
-from typing import Generic, TypeVar
+from collections.abc import Callable
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -14,6 +15,16 @@ from .providers import LLMRequest, Message
 logger = logging.getLogger(__name__)
 
 TModel = TypeVar("TModel", bound=BaseModel)
+
+#: Why `structured_llm` returned None — passed to an `on_error` hook so a
+#: caller can tell "no provider configured" (offline/misconfigured) apart
+#: from "the provider was called and failed" (network/rate-limit/outage) and
+#: "the model replied but not with valid JSON" — all three collapse to the
+#: same `None` return (the honest-fallback contract, §67), but a caller that
+#: needs to alert on real outages can now distinguish them without changing
+#: how it handles the `None`.
+StructuredLLMFailure = Literal["no_provider", "provider_error", "parse_error"]
+OnStructuredError = Callable[[StructuredLLMFailure, BaseException | None], None]
 
 SYSTEM_STRUCTURED = (
     "You produce structured output. Reply with a single JSON object only, "
@@ -81,6 +92,7 @@ async def structured_llm(
     attempts: int = 2,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    on_error: OnStructuredError | None = None,
 ) -> TModel | None:
     """Single LLM call against a schema: JSON + tolerant parse + retry.
 
@@ -89,9 +101,16 @@ async def structured_llm(
 
     `temperature`/`max_tokens`: `None` uses the provider default; pass a value
     for a per-call override.
+
+    `on_error`, if given, is called right before returning None with *why*
+    ("no_provider" | "provider_error" | "parse_error") and the exception when
+    there is one — for callers that want to distinguish "offline" from "the
+    provider is down" (e.g. to alert) without changing how they handle `None`.
     """
     llm = context.resources.llm
     if llm is None:
+        if on_error is not None:
+            on_error("no_provider", None)
         return None
     instruction = f"Reply with a single JSON object matching this schema:\n{schema.model_json_schema()}"
 
@@ -111,7 +130,13 @@ async def structured_llm(
     for attempt in range(total):
         try:
             response = await llm.complete(request)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "structured_llm: provider call failed (attempt %s/%s): %r",
+                attempt + 1,
+                total,
+                exc,
+            )
             if attempt + 1 < total:
                 await asyncio.sleep(0.4 * (attempt + 1))  # backoff on network failures
                 request = _request(
@@ -119,6 +144,8 @@ async def structured_llm(
                     "The previous request failed. Return a single strict JSON object only."
                 )
                 continue
+            if on_error is not None:
+                on_error("provider_error", exc)
             return None  # provider/network failed — honest fallback
         parsed = parse_structured(response.text, schema)
         if parsed is not None:
@@ -133,6 +160,8 @@ async def structured_llm(
                 f"{instruction}\n\n{user}\n\n"
                 "Previous reply was not valid JSON. Return a single strict JSON object only."
             )
+    if on_error is not None:
+        on_error("parse_error", None)
     return None
 
 
@@ -144,6 +173,7 @@ async def llm_reply(
     attempts: int = 2,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    on_error: OnStructuredError | None = None,
 ) -> str | None:
     """A *plain-text* chat completion → `str`, or `None` on an honest failure.
 
@@ -153,6 +183,8 @@ async def llm_reply(
 
     It sends exactly **one** system message (the wire format is not a place for
     multiple system blocks — extra context belongs in artifacts/views, §28).
+
+    `on_error`: see `structured_llm`.
     """
     body = await structured_llm(
         context,
@@ -162,6 +194,7 @@ async def llm_reply(
         attempts=attempts,
         temperature=temperature,
         max_tokens=max_tokens,
+        on_error=on_error,
     )
     return body.text if body is not None else None
 
@@ -190,12 +223,14 @@ class StructuredLLM(Generic[TModel]):
         attempts: int = 2,
         temperature: float = 0.0,
         max_tokens: int = 2048,
+        on_error: OnStructuredError | None = None,
     ):
         self.schema = schema
         self.system = system
         self.attempts = attempts
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.on_error = on_error
 
     async def call(self, context: Context, user: str) -> TModel | None:
         return await structured_llm(
@@ -206,4 +241,5 @@ class StructuredLLM(Generic[TModel]):
             attempts=self.attempts,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
+            on_error=self.on_error,
         )

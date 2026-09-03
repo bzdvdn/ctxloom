@@ -68,13 +68,15 @@ class Agent(ABC):  # noqa: B024 — interface without abstract methods, run() ha
             for c in self.consumes:
                 if not isinstance(c, Consume):
                     raise TypeError(
-                        f"consumes must contain Consume instances, got {type(c)}"
+                        f"Agent {self.name!r}: consumes must contain Consume "
+                        f"instances, got {type(c)}"
                     )
         if self.produces is not None:
             for p in self.produces:
                 if not isinstance(p, Produce):
                     raise TypeError(
-                        f"produces must contain Produce instances, got {type(p)}"
+                        f"Agent {self.name!r}: produces must contain Produce "
+                        f"instances, got {type(p)}"
                     )
 
     def matches(self, event: Event, context: Context | None = None) -> bool:

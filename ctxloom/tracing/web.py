@@ -44,6 +44,10 @@ def create_trace_router(
     """
     import secrets
 
+    from .._extras import require_extra
+
+    require_extra("tracing.web.create_trace_router", "fastapi", "web")
+
     from fastapi import APIRouter, Depends, HTTPException, Query
     from fastapi.responses import HTMLResponse
     from fastapi.security import HTTPBasic, HTTPBasicCredentials

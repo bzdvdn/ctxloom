@@ -251,20 +251,10 @@ def run(
 
     questions = [q for q in ctx.pending_questions() if q.data.kind == "approval"]
     if questions:
-        from datetime import UTC, datetime
-
-        q = questions[0]
-        ctx.update(
-            q.id,
-            PendingQuestion(
-                question=q.data.question,
-                kind=q.data.kind,
-                notes=q.data.notes,
-                answered=True,
-                resolution="yes",
-                resolved_at=datetime.now(UTC),
-            ),
-        )
+        # Simulates the human answering: `Context.resume` is the one-line HITL
+        # idiom (same as `effects.resume` inside a produce, §60) — it does the
+        # `answered/resolution/resolved_at` update for you.
+        ctx.resume(questions[0].id, "yes")
         _arun(Runtime(ctx, agents=agents, scheduler=scheduler))
     _ = task
     return ctx

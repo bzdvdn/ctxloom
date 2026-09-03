@@ -134,7 +134,11 @@ class Summarize(Produce[ChunkSummary]):
             system=_SUMMARIZE.render(index=chunk.data.index, text=chunk.data.text),
             user=chunk.data.text,
         )
-        text = body.text if body is not None else f"(offline) {chunk.data.text[:120]}"
+        text = (
+            body.text
+            if body is not None
+            else f"(no summary — not configured or call failed) {chunk.data.text[:120]}"
+        )
         s = self.effects.create(
             ChunkSummary(index=chunk.data.index, text=text),
             id=f"summary:{chunk.id}",
