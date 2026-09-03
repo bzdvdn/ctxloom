@@ -124,6 +124,54 @@ stem_words("Ремонт комнаты и kitchen")  # {"ремонт", "ком
 - `use_stems=True` включает небольшой русский стеммер окончаний, поэтому
   «аутентификацию» совпадает с «аутентификация» без модели.
 
+## Skills — инструкции, подгружаемые по ситуации (§67)
+
+**Skill** — тот же формат, что у Claude Skills: markdown-файл с
+фронтматтером `name`/`description` и телом процедурных инструкций. Это не
+`Source` — `Source` извлекается, чтобы ответить фактами; skill загружается,
+чтобы изменить *как именно* делается LLM-вызов текущего хода (правило,
+формат), когда его описание совпадает с ситуацией:
+
+```python
+from ctxloom.recipes import load_skills, match_skills
+
+# --- один раз, при старте ---
+skills = load_skills("skills/")   # каждый *.md-файл, разобранный по фронтматтеру
+
+# --- на каждом ходу, только там, где применимо ---
+situation = "reporting an answer backed by a number computed from structured storage"
+for skill in match_skills(skills, situation):
+    prompt += f"\n\nInstruction ({skill.name}): {skill.body}"
+```
+
+Файл skill:
+
+```markdown
+---
+name: cost-reporting
+description: How to report a number computed from structured storage. Use when the answer is backed by a deterministic calculation.
+---
+State the exact computed value explicitly, and say plainly it was computed,
+not estimated — name the source and column it came from.
+```
+
+- `situation` — короткое описание происходящего, **написанное кодом**, не
+  обязательно сырой вопрос пользователя: вызывающий код характеризует момент,
+  так же как `description` самого skill характеризует, когда его применять.
+  Это сохраняет триггер реактивным (§8): skill срабатывает из-за того, какое
+  состояние существует (например, артефакт `Calculation`), а не потому что
+  код разбирает формулировку пользователя.
+- Сопоставление — `keyword_score` (детерминированно, без эмбеддингов) по
+  `name + description`; возвращаются только совпадения не ниже `threshold`
+  (по умолчанию `0.34`), не больше `limit` (по умолчанию `1`) — skill должен
+  быть точным триггером, а не фолбэком, срабатывающим на каждом ходу.
+- Это намеренно **не** новый core-примитив (§61): `body` подобранного skill —
+  обычная строка, которую вы добавляете в промпт `structured_llm`/
+  `llm_reply`. Skill `cost-reporting` из демо `knowledge`
+  (`examples/knowledge/skills/`) — канонический пример — см. его
+  [README](../../examples/knowledge/README.md#skills--instructions-loaded-by-the-situation-not-the-graph)
+  (на английском).
+
 ## `changed_fields` / `earliest_stage` / `downstream_fields` — «изменить → пересобрать»
 
 Длинные многоэтапные потоки иногда должны *откатываться*: пользователь правит

@@ -21,26 +21,17 @@ from ctxloom import (
     SessionStore,
 )
 from ctxloom.providers import openai_llm, openrouter_llm
-from ctxloom.recipes import keyword_score
+from ctxloom.recipes import keyword_score, load_skills
 from ctxloom.sources import CSVSource, FileSystemSource
 from dotenv import load_dotenv
-from examples.knowledge.agents import (
-    AnswerBuilder,
-    CalculatorAgent,
-    EvidenceBuilder,
-    Planner,
-    ProgressEvaluator,
-    ResolverAgent,
-    SearchScout,
-    TableResolver,
-    VerifierAgent,
-)
+from examples.knowledge.agents import AGENTS
 from examples.knowledge.models import Answer, ChatReply, ResearchTurn, UserQuery
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 KNOWLEDGE_DOCS = ROOT / "docs"
+KNOWLEDGE_SKILLS = ROOT / "skills"
 
 #: Sentinel: resolve the LLM from the environment (the demo default).
 _UNSET = object()
@@ -69,7 +60,7 @@ def build_resources(llm: Any = _UNSET) -> RuntimeResources:
     pass an explicit provider or `None` for hermetic tests/fallbacks."""
     if llm is _UNSET:
         llm = build_llm()
-    return RuntimeResources(
+    resources = RuntimeResources(
         llm=llm,
         sources={
             "guide": FileSystemSource(
@@ -85,6 +76,10 @@ def build_resources(llm: Any = _UNSET) -> RuntimeResources:
             "costs": CSVSource(str(KNOWLEDGE_DOCS / "costs"), source_id="costs"),
         },
     )
+    # Skills (§67, ctxloom.recipes.skills): loaded once, matched per-turn in
+    # BuildAnswer against the situation, not the raw question.
+    resources.set("skills", load_skills(KNOWLEDGE_SKILLS))
+    return resources
 
 
 async def main() -> None:
@@ -100,17 +95,7 @@ async def main() -> None:
 
     runtime = Runtime(
         session.context,
-        agents=[
-            Planner(),
-            SearchScout(),
-            ResolverAgent(),
-            TableResolver(),
-            EvidenceBuilder(),
-            VerifierAgent(),
-            CalculatorAgent(),
-            ProgressEvaluator(),
-            AnswerBuilder(),
-        ],
+        agents=AGENTS,
         session=session,
         budget=Budget(max_runs=80),
         max_concurrency=4,

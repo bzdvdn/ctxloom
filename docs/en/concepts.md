@@ -1,7 +1,7 @@
 # Concepts
 
 The full design rationale lives in
-[CONSTITUTION.md](../../CONSTITUTION.md). This page is the operative overview:
+[constitution.md](../constitution.md). This page is the operative overview:
 the six building blocks and how they interact.
 
 ## 1. Context

@@ -1,4 +1,4 @@
-service,month,cost_usd,gpu_cost_usd
+service,month,cost usd,gpu cost usd
 inference,2024-04,1200,850
 inference,2024-05,2150,1700
 training,2024-04,980,420

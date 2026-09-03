@@ -123,6 +123,54 @@ stem_words("Ремонт комнаты и kitchen")  # {"ремонт", "ком
 - `use_stems=True` applies a small Russian inflectional stemmer, so
   «аутентификацию» matches «аутентификация» without a model.
 
+## Skills — keyword-triggered instruction snippets (§67)
+
+A **skill** is the same shape popularized by Claude's Skills: a markdown file
+with a `name`/`description` frontmatter and a body of procedural
+instructions. It is not a `Source` — a `Source` is retrieved to answer a
+question with facts; a skill is loaded to change *how* an LLM call for the
+current turn is made (a rule to follow, a format to use) once its description
+matches the situation:
+
+```python
+from ctxloom.recipes import load_skills, match_skills
+
+# --- once, at startup ---
+skills = load_skills("skills/")   # every *.md file, parsed by frontmatter
+
+# --- per turn, only where it applies ---
+situation = "reporting an answer backed by a number computed from structured storage"
+for skill in match_skills(skills, situation):
+    prompt += f"\n\nInstruction ({skill.name}): {skill.body}"
+```
+
+A skill file:
+
+```markdown
+---
+name: cost-reporting
+description: How to report a number computed from structured storage. Use when the answer is backed by a deterministic calculation.
+---
+State the exact computed value explicitly, and say plainly it was computed,
+not estimated — name the source and column it came from.
+```
+
+- `situation` is a short, **code-written** description of what is currently
+  happening, not necessarily the user's raw question — the caller
+  characterizes the moment, the same way the skill's own `description`
+  characterizes when to use it. This keeps triggering reactive (§8): a skill
+  fires because of what state exists (e.g. a `Calculation` artifact), not
+  because the code parses the user's phrasing.
+- Matching is `keyword_score` (deterministic, no embeddings) over
+  `name + description`; only matches at or above `threshold` (default
+  `0.34`) are returned, capped at `limit` (default `1`) — a skill should be a
+  precise trigger, not a fallback that fires on every turn.
+- This is deliberately **not** a new core primitive (§61): a matched skill's
+  `body` is just a string you prepend to a `structured_llm`/`llm_reply`
+  prompt. The `knowledge` demo's `cost-reporting` skill
+  (`examples/knowledge/skills/`) is the canonical instance — see its
+  [README](../../examples/knowledge/README.md#skills--instructions-loaded-by-the-situation-not-the-graph).
+
 ## `changed_fields` / `earliest_stage` / `downstream_fields` — change → rebuild
 
 Long multi-stage flows occasionally have to *go back*: the user edits a fact,

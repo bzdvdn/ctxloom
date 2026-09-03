@@ -1,6 +1,6 @@
 """Demo-assistant agents — thin containers (§46, §48).
 
-Logic lives in the Produce classes (`examples/assistant_produce.py`);
+Logic lives in the Produce classes (`examples/knowledge/produce/`);
 here we only declare the consumes/produces contracts.
 """
 
@@ -117,3 +117,19 @@ class AnswerBuilder(Agent):
     name = "answer_builder"
     consumes = [Consume.by_field(ResearchTurn, "status", "answerable")]
     produces = [BuildAnswer()]
+
+
+#: The full pipeline, in no particular order — the runtime schedules by
+#: reaction to state changes, not by this list's order. Shared by chat.py
+#: (console) and web.py (SSE) so the two transports can never drift apart.
+AGENTS: list[Agent] = [
+    Planner(),
+    SearchScout(),
+    ResolverAgent(),
+    TableResolver(),
+    EvidenceBuilder(),
+    VerifierAgent(),
+    CalculatorAgent(),
+    ProgressEvaluator(),
+    AnswerBuilder(),
+]

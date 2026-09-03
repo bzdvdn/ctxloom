@@ -16,6 +16,12 @@ ctxloom flips the model. You describe **what artifacts exist and what agents can
 do with them**; the runtime derives what runs next from **state changes**. Agents
 react to events — there is no graph, no node pipeline.
 
+```bash
+pip install ctxloom
+```
+
+Runs offline, no API key needed — paste this straight into a `.py` file:
+
 ```python
 from pydantic import BaseModel
 
@@ -107,7 +113,8 @@ Reactive. Deterministic. Accountable.
 - **Web layer** — `ChatAssistant` + `create_chat_router` mount a canonical SSE
   chat on *your* FastAPI app; errors degrade to a logged fallback, never a 500.
 - **Recipes** — `fan_out_sources`, `materialize_doc`, `StatusMachine`, change→rebuild
-  rollback helpers — pure, LLM-free.
+  rollback helpers, `Skill`/`match_skills` (Claude-Skills-shaped instructions,
+  keyword-triggered) — pure, LLM-free.
 - **Viz & CLI** — Mermaid `blueprint`/`context_to_mermaid`/`trace_to_mermaid`;
   `ctxloom` with `graph`/`context`/`trace`/`replay`/`branch`.
 
@@ -142,7 +149,7 @@ Classic-pattern ports run as one-liners too:
   providers, recipes, patterns, observability, eval, branching, replay, viz/CLI, API.
 - [Why ctxloom](docs/en/why-ctxloom.md) — the *design argument*: why effects, why no graph, why determinism.
 - [Tutorial · llm-ladder](docs/en/index.md#llm-ladder) — learn the workflow.
-- [CONSTITUTION.md](CONSTITUTION.md) — the full design rationale and invariants.
+- [docs/constitution.md](docs/constitution.md) — the full design rationale and invariants.
 
 ## Development
 

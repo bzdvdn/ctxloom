@@ -12,6 +12,7 @@ from .common import (
     source_doc_of,
     split_sentences,
     token_support,
+    truncate_at_word,
 )
 
 
@@ -40,7 +41,11 @@ class ExtractEvidence(Produce[Evidence]):
             schema=AnswerBody,
             user=f"Extract a short factual digest from the document:\n{doc.content}",
         )
-        text = body.text.strip() if body else " ".join(doc.content.split())[:200]
+        text = (
+            body.text.strip()
+            if body
+            else truncate_at_word(" ".join(doc.content.split()), 200)
+        )
         evidence_id = f"evidence:{doc.query_id}:{doc.path}"
         # provenance (§34): Evidence —extracted_from→ TypedDoc
         evidence = self.effects.create(

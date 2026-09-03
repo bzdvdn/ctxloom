@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.recipes import StatusMachine
+from ctxloom.recipes import StatusMachine, match_skills
 from ctxloom.sources import SourceRef
 from ctxloom.structured import structured_llm
 
@@ -143,6 +143,14 @@ class BuildAnswer(Produce[Answer]):
         )
         conversation = conversation_text(context, query_id)
         prompt = "Assemble a coherent answer to the question based on the facts."
+        if calculations:
+            # Skills (§67): a matched skill's body is a rule to follow for
+            # *this* turn, chosen by what's happening (a computed total is
+            # in play), not by parsing the user's raw wording.
+            skills = context.resources.get("skills") or []
+            situation = "reporting an answer backed by a number computed from structured storage (a spreadsheet/CSV table)"
+            for skill in match_skills(skills, situation):
+                prompt += f"\n\nInstruction ({skill.name}): {skill.body}"
         if conversation:
             prompt += f"\n\n{conversation}"
         prompt += f"\nQuestion: {question}\nFacts:\n{material_lines}"
@@ -168,7 +176,7 @@ class BuildAnswer(Produce[Answer]):
                     parts.append(f"• {meta}: {mtext}")
             calc_note = (
                 (
-                    " Also: "
+                    "\n\nAlso: "
                     + "; ".join(
                         f"{c.data.description} = {c.data.value}" for c in calculations
                     )

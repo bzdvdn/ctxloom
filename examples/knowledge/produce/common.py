@@ -22,16 +22,13 @@ FALLBACK_TOPN = 3
 CONVERSATION_LIMIT = 8
 
 GREETING_RE = re.compile(
-    r"^(привет|здравств|добры[йе].*день|добрый вечер|hello|hi|hey|"
-    r"good (morning|afternoon|evening))\b",
+    r"^(hello|hi|hey|good (morning|afternoon|evening))\b",
     re.IGNORECASE,
 )
 RESEARCH_RE = re.compile(
-    r"(как|почему|сколько|стоит|цена|настроить|установить|изменить|"
-    r"аутентификац|платформ|инструкц|план|ошибк|каталог|token|gpu|"
-    r"how\b|how (much|many)|why\b|what\b|cost|price|configure|install|"
-    r"change|authenticat|platform|method|rest|api|pay|invoic|bill\w*|"
-    r"monitor|alert|enable|set up|deploy|instruct|plan|error|catalog)",
+    r"(token|gpu|how\b|how (much|many)|why\b|what\b|cost|price|configure|"
+    r"install|change|authenticat|platform|method|rest|api|pay|invoic|"
+    r"bill\w*|monitor|alert|enable|set up|deploy|instruct|plan|error|catalog)",
     re.IGNORECASE,
 )
 GREETING_TEXT = (
@@ -40,45 +37,6 @@ GREETING_TEXT = (
 )
 
 _STOPWORDS = {
-    "и",
-    "или",
-    "в",
-    "во",
-    "на",
-    "с",
-    "со",
-    "по",
-    "для",
-    "при",
-    "о",
-    "об",
-    "к",
-    "ко",
-    "у",
-    "то",
-    "что",
-    "как",
-    "это",
-    "его",
-    "ее",
-    "ей",
-    "их",
-    "он",
-    "она",
-    "мы",
-    "вы",
-    "не",
-    "же",
-    "бы",
-    "да",
-    "нет",
-    "а",
-    "но",
-    "который",
-    "которая",
-    "которые",
-    "так",
-    "чтобы",
     "the",
     "and",
     "or",
@@ -133,21 +91,15 @@ _STOPWORDS = {
     "as",
 }
 _NEGATIONS = (
-    "не",
-    "никогда",
-    "нельзя",
-    "против",
-    "без",
-    "вопреки",
     "no",
     "not",
     "never",
     "without",
     "against",
 )
-_SENT_SPLIT_RE = re.compile(r"[.!?。]+\s+|\n+")
+_SENT_SPLIT_RE = re.compile(r"[.!?]+\s+|\n+")
 _INTERESTING_COL_RE = re.compile(
-    r"(cost|price|spend|amount|usage|gpu_cost|стоим|цена|трат|расход|gpu)",
+    r"(cost|price|spend|amount|usage|gpu)",
     re.IGNORECASE,
 )
 
@@ -176,6 +128,15 @@ def conversation_text(context: Context, current_query_id: str) -> str:
     return "Conversation:\n" + "\n".join(lines)
 
 
+def truncate_at_word(text: str, limit: int) -> str:
+    """Hard cap at `limit` chars, cut back to the last whitespace so the
+    deterministic (no-LLM) fallback doesn't end mid-word."""
+    if len(text) <= limit:
+        return text
+    cut = text.rfind(" ", 0, limit)
+    return text[: cut if cut > 0 else limit].rstrip()
+
+
 def user_query(context: Context, event: Event | None) -> UserQuery | None:
     artifact = context.get(event.artifact_id) if event is not None else None
     if artifact is not None and isinstance(artifact.data, UserQuery):
@@ -187,7 +148,7 @@ def user_query(context: Context, event: Event | None) -> UserQuery | None:
 
 
 def claim_tokens(text: str) -> set[str]:
-    return set(re.findall(r"[а-яёa-z]{2,}", text.casefold())) - _STOPWORDS
+    return set(re.findall(r"[a-z]{2,}", text.casefold())) - _STOPWORDS
 
 
 def token_support(claim: str, source: str) -> float:

@@ -3,7 +3,7 @@
 This is the *design argument*, not a feature list. If you already know what
 ctxloom does, this page explains the *why*: why effects instead of graphs,
 why versioned state, why determinism is a philosophy rather than an option.
-The invariants behind every claim live in [CONSTITUTION.md](../../CONSTITUTION.md).
+The invariants behind every claim live in [constitution.md](../constitution.md).
 
 ## The problem with "agent = a graph you draw"
 

@@ -29,8 +29,8 @@ Run the same gates CI and the release process run:
 
 ## Design principles
 
-New code should be consistent with [CONSTITUTION.md](CONSTITUTION.md) — the
-project's design rationale and invariants (state over execution, artifacts
+New code should be consistent with [docs/constitution.md](docs/constitution.md) —
+the project's design rationale and invariants (state over execution, artifacts
 over strings, provenance, determinism where possible). If a change conflicts
 with a stated principle, say so in the PR description rather than silently
 working around it.
@@ -38,4 +38,4 @@ working around it.
 ## Scope
 
 Domain-specific connectors (GitLab, Confluence, S3, etc.) belong in
-`examples/`, not in `ctxloom/` core — see CONSTITUTION.md §61.
+`examples/`, not in `ctxloom/` core — see docs/constitution.md §61.

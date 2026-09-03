@@ -10,9 +10,7 @@ from ..models import Calculation, ResearchTurn, Spreadsheet
 from .common import interesting_column_re
 
 _CALC_INTENT_RE = re.compile(
-    r"(суммарн\w*|сумма\w*|итого|сколько[^\n]{0,20}стоит|"
-    r"средн\w*|максим\w*|миним\w*|"
-    r"sum|total|average|avg|mean|how much[^\n]{0,20}(cost|spend)|"
+    r"(sum|total|average|avg|mean|how much[^\n]{0,20}(cost|spend)|"
     r"max|maximum|min|minimum)",
     re.IGNORECASE,
 )
@@ -26,22 +24,13 @@ def aggregate_intent(question: str) -> str | None:
     if matched is None:
         return None
     token = matched.group(0).casefold()
-    if (
-        "суммарн" in token
-        or "сумма" in token
-        or "итого" in token
-        or "стоит" in token
-        or "sum" in token
-        or "total" in token
-        or "cost" in token
-        or "spend" in token
-    ):
+    if "sum" in token or "total" in token or "cost" in token or "spend" in token:
         return "sum"
-    if "средн" in token or "average" in token or "avg" in token or "mean" in token:
+    if "average" in token or "avg" in token or "mean" in token:
         return "mean"
-    if "максим" in token or "max" in token:
+    if "max" in token:
         return "max"
-    if "миним" in token or "min" in token:
+    if "min" in token:
         return "min"
     return None
 

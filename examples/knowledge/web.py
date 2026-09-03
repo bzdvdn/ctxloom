@@ -30,17 +30,7 @@ from ctxloom import (
 )
 from ctxloom.web import create_chat_router
 from dotenv import load_dotenv
-from examples.knowledge.agents import (
-    AnswerBuilder,
-    CalculatorAgent,
-    EvidenceBuilder,
-    Planner,
-    ProgressEvaluator,
-    ResolverAgent,
-    SearchScout,
-    TableResolver,
-    VerifierAgent,
-)
+from examples.knowledge.agents import AGENTS
 from examples.knowledge.chat import _UNSET, build_resources
 from examples.knowledge.models import (
     Answer,
@@ -56,18 +46,6 @@ ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 FALLBACK_REPLY = "Failed to assemble an answer. Try rephrasing the question."
-
-AGENTS = [
-    Planner(),
-    SearchScout(),
-    ResolverAgent(),
-    TableResolver(),
-    EvidenceBuilder(),
-    VerifierAgent(),
-    CalculatorAgent(),
-    ProgressEvaluator(),
-    AnswerBuilder(),
-]
 
 
 def terminal_reply(ctx: Any, msg_id: str) -> dict:

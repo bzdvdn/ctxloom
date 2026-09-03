@@ -95,7 +95,7 @@ ignore = [
 "run_example.py" = ["E402"] # пакет-реэксорт: импорты — публичный API
 
 [tool.ruff.format]
-# Документы (CONSTITUTION.md и пр.) не трогаем форматером
+# Документы (docs/constitution.md и пр.) не трогаем форматером
 exclude = ["*.md"]
 
 [tool.mypy]

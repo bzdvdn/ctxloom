@@ -240,7 +240,7 @@ def test_csv_source_preserves_structure():
     import asyncio as _asyncio
 
     payload = _asyncio.run(src.resolve(refs[0]))
-    assert payload["columns"] == ["service", "month", "cost_usd", "gpu_cost_usd"]
+    assert payload["columns"] == ["service", "month", "cost usd", "gpu cost usd"]
     assert len(payload["rows"]) == 4
     assert ["inference", "2024-05", "2150", "1700"] in payload["rows"]
 
@@ -261,7 +261,7 @@ def test_calculation_from_csv_source():
     assert len(sheets) == 1
     assert type(sheets[0].data) is Spreadsheet
     # Spreadsheet carries structure (schema+rows), not text (§29)
-    assert sheets[0].data.columns == ["service", "month", "cost_usd", "gpu_cost_usd"]
+    assert sheets[0].data.columns == ["service", "month", "cost usd", "gpu cost usd"]
     assert len(sheets[0].data.rows) == 4
     # Answer is also built with the calculation: the source is a table
     answer = next(a for a in ctx.list_artifacts(Answer) if a.data.query_id == query.id)

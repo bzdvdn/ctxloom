@@ -14,7 +14,11 @@ keep reappearing across agent codebases and the bundled examples:
 - `keyword_score` / `stem_words` — deterministic text scoring without
   embedders (English and Russian) — see `recipes.text`;
 - `changed_fields` / `earliest_stage` / `downstream_fields` — the
-  "change → rebuild" model for multi-stage flows — see `recipes.rollback`.
+  "change → rebuild" model for multi-stage flows — see `recipes.rollback`;
+- `Skill` / `load_skills` / `match_skills` — keyword-triggered instruction
+  snippets (Claude-Skills-shaped: name/description frontmatter + body) loaded
+  into a prompt when their description matches the situation — see
+  `recipes.skills`.
 
 Deterministic where it can be, LLM-free by design; expose the domain hook.
 Extend by adding a module here (the package stays import-surface-flat).
@@ -25,17 +29,21 @@ from __future__ import annotations
 from .resolve import materialize_doc
 from .rollback import changed_fields, downstream_fields, earliest_stage
 from .search import fan_out_sources
+from .skills import Skill, load_skills, match_skills
 from .status import StatusMachine
 from .text import EN_STOPWORDS, keyword_score, stem, stem_words
 
 __all__ = [
     "EN_STOPWORDS",
+    "Skill",
     "StatusMachine",
     "changed_fields",
     "downstream_fields",
     "earliest_stage",
     "fan_out_sources",
     "keyword_score",
+    "load_skills",
+    "match_skills",
     "materialize_doc",
     "stem",
     "stem_words",

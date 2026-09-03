@@ -69,7 +69,7 @@ def _token_overlap_score(text: str, query: str) -> float:
 
     Exact term overlap (unicode alphanumeric words). Language normalization
     (stemming, synonyms) is the app's concern: its scorer is passed
-    to `FileSystemSource(scorer=...)`.
+    to `FileSystemSource(scorer=...)` or `CSVSource(scorer=...)`.
     """
     words = set(re.findall(r"\w{2,}", text.casefold()))
     query_terms = [
@@ -260,6 +260,11 @@ class CSVSource(Source):
     the structure is preserved (schema + rows), the agent computes over it
     deterministically (§67). Refs are marked `metadata.structured` so the
     materializer knows: it is a table, not text (§64).
+
+    Matching is exact term overlap by default (no stemming/plurals — see
+    `_token_overlap_score`); pass `scorer=` (same signature as
+    `FileSystemSource`) for language-aware matching, e.g. headers like
+    `cost_usd` won't match a query for "costs" without one.
     """
 
     def __init__(
@@ -267,10 +272,12 @@ class CSVSource(Source):
         root: str,
         source_id: str = "csv",
         extensions: tuple[str, ...] = (".csv",),
+        scorer: Callable[[str, str], float] | None = None,
     ):
         super().__init__(source_id=source_id)
         self.root = Path(root)
         self.extensions = extensions
+        self.scorer = scorer or _token_overlap_score
 
     @staticmethod
     def _read(path: Path) -> list[list[str]]:
@@ -297,7 +304,7 @@ class CSVSource(Source):
                 + " "
                 + " ".join(" ".join(cell for cell in row) for row in sample)
             )
-            score = _token_overlap_score(f"{path.name} {flat}", query)
+            score = self.scorer(f"{path.name} {flat}", query)
             if score <= 0:
                 continue
             excerpt = " | ".join(sample[0]) if sample else " | ".join(header)
