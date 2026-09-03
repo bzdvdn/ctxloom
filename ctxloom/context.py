@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -12,6 +11,7 @@ from pydantic import BaseModel
 from .artifacts import Artifact
 from .checkpoints import CheckpointBackend, FileBackend, KVBackend
 from .commit import Commit
+from .commit_log import CommitLog
 from .events import Event, EventType
 from .interrupt import PendingQuestion
 from .patches import (
@@ -20,9 +20,9 @@ from .patches import (
     Link,
     Operation,
     Relation,
-    Unlink,
     Update,
 )
+from .relations import RelationGraph
 from .resources import RuntimeResources
 from .streaming import EventHub, ProgressEvent, QueueEvent
 
@@ -83,12 +83,10 @@ class Context:
     def __init__(self, resources: RuntimeResources | None = None):
         self._artifacts: dict[str, Artifact[Any]] = {}
         self._events: list[Event] = []
-        self._commits: list[Commit] = []
-        self._version: int = 0
-        self._head_id: str | None = None
+        self._log = CommitLog()
         self.resources = resources or RuntimeResources()
         self._hub = EventHub()
-        self._relations: dict[tuple[str, str, str], Relation] = {}
+        self._relations = RelationGraph()
         self._base: Context | None = None
         self._fork_name: str = ""
 
@@ -245,9 +243,7 @@ class Context:
 
     def link(self, source_id: str, relation: str, target_id: str) -> Relation:
         """Establishes a link `source_id —relation→ target_id` (idempotently, §42)."""
-        rel = Relation(source_id=source_id, relation=relation, target_id=target_id)
-        self._relations[(rel.source_id, rel.relation, rel.target_id)] = rel
-        return rel
+        return self._relations.link(source_id, relation, target_id)
 
     def unlink(
         self,
@@ -256,15 +252,7 @@ class Context:
         target_id: str | None = None,
     ) -> int:
         """Removes links; `relation`/`target_id` = None mean "any"."""
-        removed = 0
-        for key in [k for k in self._relations if k[0] == source_id]:
-            if relation is not None and key[1] != relation:
-                continue
-            if target_id is not None and key[2] != target_id:
-                continue
-            del self._relations[key]
-            removed += 1
-        return removed
+        return self._relations.unlink(source_id, relation, target_id)
 
     def relations(
         self,
@@ -273,16 +261,7 @@ class Context:
         target_id: str | None = None,
     ) -> list[Relation]:
         """All links, optionally filtered by any edge component."""
-        result: list[Relation] = []
-        for rel in self._relations.values():
-            if source_id is not None and rel.source_id != source_id:
-                continue
-            if relation is not None and rel.relation != relation:
-                continue
-            if target_id is not None and rel.target_id != target_id:
-                continue
-            result.append(rel)
-        return result
+        return self._relations.relations(source_id, relation, target_id)
 
     def incoming(self, target_id: str, relation: str | None = None) -> list[Relation]:
         """Links pointing at `target_id` (for provenance: who references what)."""
@@ -374,10 +353,8 @@ class Context:
             new_artifact.created_at = artifact.created_at
             new_artifact.updated_at = artifact.updated_at
             new_ws._artifacts[artifact.id] = new_artifact
-        new_ws._version = self._version
-        new_ws._head_id = self._head_id
-        new_ws._commits = copy.deepcopy(self._commits)
-        new_ws._relations = dict(self._relations)
+        new_ws._log = self._log.copy()
+        new_ws._relations = self._relations.copy()
         return new_ws
 
     def merge_from(self, other: Context) -> None:
@@ -515,62 +492,24 @@ class Context:
 
     def log_commit(self, commit: Commit) -> None:
         """Applies the commit to the repository: fills in parent/version, moves head."""
-        commit.parent_id = self._head_id
-        commit.context_version = self._version + 1
-        self._commits.append(commit)
-        self._head_id = commit.id
-        self._version += 1
+        self._log.append(commit)
 
     def commit_log(self) -> list[Commit]:
-        return list(self._commits)
+        return self._log.history()
 
     @property
     def version(self) -> int:
         """Current Context version (number of applied commits)."""
-        return self._version
+        return self._log.version
 
     @property
     def head_id(self) -> str | None:
         """Id of the last commit (HEAD)."""
-        return self._head_id
+        return self._log.head_id
 
     def history(self) -> list[Commit]:
         """History: an ordered chain of commits from the oldest to head."""
-        return list(self._commits)
-
-    def _replay_state(self, upto_version: int) -> dict[str, Any]:
-        """Replays the artifact state by applying commits up to and including the version."""
-        state: dict[str, Any] = {}
-        for commit in self._commits[:upto_version]:
-            for op in commit.operations:
-                if isinstance(op, Create) and op.artifact_id is not None:
-                    state[op.artifact_id] = op.data.model_copy(deep=True)
-                elif isinstance(op, Update):
-                    state[op.artifact_id] = op.new_data.model_copy(deep=True)
-                elif isinstance(op, Delete):
-                    state.pop(op.artifact_id, None)
-        return state
-
-    def _replay_relations(
-        self, upto_version: int
-    ) -> dict[tuple[str, str, str], Relation]:
-        """Replays the link graph from commits up to and including the version."""
-        relations: dict[tuple[str, str, str], Relation] = {}
-        for commit in self._commits[:upto_version]:
-            for op in commit.operations:
-                if isinstance(op, Link):
-                    key = (op.artifact_id, op.relation, op.target_id)
-                    relations[key] = Relation(*key)
-                elif isinstance(op, Unlink):
-                    for key in list(relations.keys()):
-                        if key[0] != op.artifact_id:
-                            continue
-                        if op.relation is not None and key[1] != op.relation:
-                            continue
-                        if op.target_id is not None and key[2] != op.target_id:
-                            continue
-                        del relations[key]
-        return relations
+        return self._log.history()
 
     def diff(self, version_a: int, version_b: int) -> dict[str, Any]:
         """State delta between two Context versions.
@@ -579,12 +518,12 @@ class Context:
         The diff compares the versioned state (commits); artifacts created directly
         outside commits (the "working tree") do not participate.
         """
-        if not (0 <= version_a <= version_b <= self._version):
+        if not (0 <= version_a <= version_b <= self._log.version):
             raise ValueError(
-                f"Invalid versions: {version_a}..{version_b} (head={self._version})"
+                f"Invalid versions: {version_a}..{version_b} (head={self._log.version})"
             )
-        snap_a = self._replay_state(version_a)
-        snap_b = self._replay_state(version_b)
+        snap_a = self._log.replay_state(version_a)
+        snap_b = self._log.replay_state(version_b)
         result: dict[str, Any] = {"added": {}, "removed": {}, "changed": {}}
         for aid in snap_b.keys() - snap_a.keys():
             result["added"][aid] = snap_b[aid].model_dump()
@@ -606,11 +545,7 @@ class Context:
 
     def _producing_commit(self, artifact_id: str) -> Commit | None:
         """The last commit that wrote the artifact (create or update)."""
-        for commit in reversed(self._commits):
-            for write in commit.writes:
-                if write.artifact_id == artifact_id:
-                    return commit
-        return None
+        return self._log.producing_commit(artifact_id)
 
     def _dependents_of(self, artifact_id: str) -> list[Artifact[Any]]:
         """Artifacts whose producing commit read `artifact_id` at an older version.
@@ -659,7 +594,7 @@ class Context:
     def _rebuild_artifacts_from_commits(
         self, upto_version: int
     ) -> dict[str, Artifact[Any]]:
-        state = self._replay_state(upto_version)
+        state = self._log.replay_state(upto_version)
         return {aid: Artifact(data=data, id=aid) for aid, data in state.items()}
 
     def checkout(self, version: int) -> None:
@@ -668,12 +603,12 @@ class Context:
         Artifacts not part of the versioned history (created directly outside
         commits — the "working tree") are preserved.
         """
-        if not (0 <= version <= self._version):
+        if not (0 <= version <= self._log.version):
             raise ValueError(
-                f"Invalid checkout version: {version} (head={self._version})"
+                f"Invalid checkout version: {version} (head={self._log.version})"
             )
         touched: set[str] = set()
-        for commit in self._commits[version:]:
+        for commit in self._log.commits_from(version):
             for op in commit.operations:
                 if isinstance(op, (Create, Update, Delete)) and op.artifact_id:
                     touched.add(op.artifact_id)
@@ -686,27 +621,24 @@ class Context:
         # Relations: those committed up to `version` plus the "working tree"
         # (created directly outside commits) are kept, as with artifacts. Links
         # introduced by commits in the [version:] range are rolled back.
-        committed_now = self._replay_relations(self._version)
+        committed_now = self._log.replay_relations(self._log.version)
         working_tree_rels = {
             key: rel for key, rel in self._relations.items() if key not in committed_now
         }
-        self._relations = {**self._replay_relations(version), **working_tree_rels}
+        self._relations = RelationGraph.from_mapping(
+            {**self._log.replay_relations(version), **working_tree_rels}
+        )
 
         self._events = []
-        if version == 0:
-            self._head_id = None
-        else:
-            self._head_id = self._commits[version - 1].id
-        del self._commits[version:]
-        self._version = version
+        self._log.truncate(version)
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "version": self._version,
-            "head_id": self._head_id,
+            "version": self._log.version,
+            "head_id": self._log.head_id,
             "artifacts": {aid: art.to_dict() for aid, art in self._artifacts.items()},
-            "relations": [rel.to_dict() for rel in self._relations.values()],
-            "commits": [c.to_dict() for c in self._commits],
+            "relations": self._relations.to_dict(),
+            "commits": self._log.to_dict(),
             "fork_name": self._fork_name,
             "base": self._base.to_dict() if self._base is not None else None,
         }
@@ -717,16 +649,10 @@ class Context:
         for aid, art_dict in d["artifacts"].items():
             artifact = Artifact.from_dict(art_dict)
             ws._artifacts[aid] = artifact
-        for rel_dict in d.get("relations", []):
-            rel = Relation.from_dict(rel_dict)
-            ws._relations[(rel.source_id, rel.relation, rel.target_id)] = rel
-        ws._commits = [Commit.from_dict(cd) for cd in d["commits"]]
-        ws._version = d.get("version", 0)
-        if ws._version is None:
-            ws._version = len(ws._commits)
-        ws._head_id = d.get("head_id")
-        if ws._head_id is None and ws._commits:
-            ws._head_id = ws._commits[-1].id
+        ws._relations = RelationGraph.from_dict(d.get("relations", []))
+        ws._log = CommitLog.from_dict(
+            d["commits"], version=d.get("version"), head_id=d.get("head_id")
+        )
         ws._fork_name = d.get("fork_name", "")
         ws._base = Context.from_dict(d["base"]) if d.get("base") is not None else None
         return ws
