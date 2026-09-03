@@ -313,7 +313,9 @@ def test_answer_degrades_honestly_when_llm_provider_fails(caplog):
     with caplog.at_level(logging.WARNING):
         asyncio.run(runtime.arun())
 
-    turn = next(t for t in ctx.list_artifacts(ResearchTurn) if t.data.query_id == query.id)
+    turn = next(
+        t for t in ctx.list_artifacts(ResearchTurn) if t.data.query_id == query.id
+    )
     assert turn.data.status == "answered"
     answer = next(a for a in ctx.list_artifacts(Answer) if a.data.query_id == query.id)
     assert answer.data.text.strip()
@@ -332,6 +334,8 @@ def test_unrelated_question_is_insufficient_regardless_of_llm():
     query = ctx.create(UserQuery(text="what is the weather today?"))
     asyncio.run(runtime.arun())
 
-    turn = next(t for t in ctx.list_artifacts(ResearchTurn) if t.data.query_id == query.id)
+    turn = next(
+        t for t in ctx.list_artifacts(ResearchTurn) if t.data.query_id == query.id
+    )
     assert turn.data.status == "insufficient"
     assert ctx.list_artifacts(Answer) == []

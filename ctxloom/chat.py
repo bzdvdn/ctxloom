@@ -284,8 +284,7 @@ class ChatAssistant:
                     await session.context.resources.aclose()
                 except Exception:
                     logger.exception(
-                        "chat.ChatAssistant: failed to close per-turn "
-                        "resources %r",
+                        "chat.ChatAssistant: failed to close per-turn resources %r",
                         session_id,
                     )
 

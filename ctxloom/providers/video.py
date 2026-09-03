@@ -191,9 +191,7 @@ class SoraVideoProvider(_HttpVideoProvider):
 
     async def fetch(self, task_id: str) -> VideoResult:
         async def _call() -> VideoResult:
-            response = await self._get_client().get(
-                f"{self.base_url}/videos/{task_id}"
-            )
+            response = await self._get_client().get(f"{self.base_url}/videos/{task_id}")
             response.raise_for_status()
             data = response.json()
             out = data.get("output") or {}
@@ -297,9 +295,7 @@ class LumaVideoProvider(_HttpVideoProvider):
             assets = data.get("assets") or {}
             return VideoResult(
                 id=task_id,
-                status=STATUS_MAP.get(
-                    str(data.get("state", "")).lower(), "processing"
-                ),
+                status=STATUS_MAP.get(str(data.get("state", "")).lower(), "processing"),
                 url=assets.get("video"),
                 error=data.get("failure_reason"),
                 extra=data,

@@ -45,9 +45,7 @@ def test_history_and_len():
 
 def test_commits_from_and_upto():
     log = CommitLog()
-    ops = [
-        Commit(author="a", message=str(i), operations=[]) for i in range(3)
-    ]
+    ops = [Commit(author="a", message=str(i), operations=[]) for i in range(3)]
     for c in ops:
         log.append(c)
     assert log.commits_upto(2) == ops[:2]
@@ -136,9 +134,15 @@ def test_copy_is_independent():
 
 def test_to_dict_from_dict_roundtrip():
     log = CommitLog()
-    log.append(Commit(author="a", message="c1", operations=[Create(Note(text="1"), id="n1")]))
-    log.append(Commit(author="a", message="c2", operations=[Update("n1", Note(text="2"))]))
-    restored = CommitLog.from_dict(log.to_dict(), version=log.version, head_id=log.head_id)
+    log.append(
+        Commit(author="a", message="c1", operations=[Create(Note(text="1"), id="n1")])
+    )
+    log.append(
+        Commit(author="a", message="c2", operations=[Update("n1", Note(text="2"))])
+    )
+    restored = CommitLog.from_dict(
+        log.to_dict(), version=log.version, head_id=log.head_id
+    )
     assert restored.version == log.version
     assert restored.head_id == log.head_id
     assert len(restored.history()) == 2

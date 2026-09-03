@@ -50,9 +50,7 @@ def test_chat_complete_retries_transient_error(monkeypatch):
     )
     from ctxloom.providers import LLMRequest, Message
 
-    response = asyncio.run(
-        provider.complete(LLMRequest(messages=[Message.user("hi")]))
-    )
+    response = asyncio.run(provider.complete(LLMRequest(messages=[Message.user("hi")])))
     assert response.text == "ok"
     assert transport.calls["n"] == 2  # type: ignore[attr-defined]
 
@@ -62,7 +60,9 @@ def test_embed_retries_transient_error(monkeypatch):
     transport = _fail_once_then(
         httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1, 0.2]}]})
     )
-    embedder = OpenAICompatEmbedder(base_url="https://e.example/v1", transport=transport)
+    embedder = OpenAICompatEmbedder(
+        base_url="https://e.example/v1", transport=transport
+    )
     vectors = asyncio.run(embedder.embed(["hi"]))
     assert vectors == [[0.1, 0.2]]
     assert transport.calls["n"] == 2  # type: ignore[attr-defined]
@@ -101,7 +101,9 @@ def test_image_generate_retries_transient_error(monkeypatch):
 def test_speech_synthesize_retries_transient_error(monkeypatch):
     _no_sleep(monkeypatch)
     transport = _fail_once_then(httpx.Response(200, content=b"\x00audio"))
-    provider = OpenAICompatSpeech(base_url="https://tts.example/v1", transport=transport)
+    provider = OpenAICompatSpeech(
+        base_url="https://tts.example/v1", transport=transport
+    )
     audio = asyncio.run(provider.synthesize("hello"))
     assert audio == b"\x00audio"
     assert transport.calls["n"] == 2  # type: ignore[attr-defined]
@@ -157,9 +159,7 @@ def test_poll_survives_transient_fetch_failures_within_timeout(monkeypatch):
             },
         )
 
-    provider = SoraVideoProvider(
-        api_key="sk", transport=httpx.MockTransport(handler)
-    )
+    provider = SoraVideoProvider(api_key="sk", transport=httpx.MockTransport(handler))
     result = asyncio.run(provider.poll("v1", timeout=100, interval=0))
     assert result.status == "completed"
     assert calls["n"] > 4  # outlasted fetch()'s own internal retry budget

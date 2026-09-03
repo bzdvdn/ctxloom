@@ -103,4 +103,6 @@ def test_isolate_errors_default_still_propagates():
     except RuntimeError:
         pass
     else:
-        raise AssertionError("expected the agent's RuntimeError to propagate by default")
+        raise AssertionError(
+            "expected the agent's RuntimeError to propagate by default"
+        )

@@ -247,9 +247,7 @@ def _network_knobs(
     return knobs
 
 
-def _resolve_env_api_key(
-    explicit: str | None, key_vars: tuple[str, ...]
-) -> str | None:
+def _resolve_env_api_key(explicit: str | None, key_vars: tuple[str, ...]) -> str | None:
     """`explicit` if given, else the first of `key_vars` that's set in env."""
     if explicit is not None:
         return explicit

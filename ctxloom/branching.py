@@ -30,7 +30,9 @@ class BranchStore:
     def _key(session_id: str, name: str) -> str:
         return f"branch:{session_id}:{name}"
 
-    async def save_branch(self, context: Context, *, session_id: str, name: str) -> None:
+    async def save_branch(
+        self, context: Context, *, session_id: str, name: str
+    ) -> None:
         """Saves a branch (including its fork base snapshot, §40)."""
         await context.to_kv(self.backend, self._key(session_id, name))
 

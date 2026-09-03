@@ -111,7 +111,9 @@ def test_sqlite_kv_roundtrip(tmp_path):
 
 
 async def _test_sqlite_kv_roundtrip(tmp_path):
-    session, runtime, store = await make_session(tmp_path, "carol", backend_kind="sqlite")
+    session, runtime, store = await make_session(
+        tmp_path, "carol", backend_kind="sqlite"
+    )
 
     session.context.create(Question(text="sqlite"))
     await runtime.arun()
