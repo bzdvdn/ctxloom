@@ -4,6 +4,110 @@ All notable changes to **ctxloom** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
+## [Unreleased]
+
+Work since 0.4.0-rc1 — internal cleanup, dedupe, and an async-native
+checkpoint/session/branch layer.
+
+### Breaking
+
+- `Produce(Model, factory=fn)` is deprecated (`DeprecationWarning` on
+  construction): it predates `@produce`, only supports `(context, inputs[,
+  event]) -> Model | list | Patch | None`, and cannot see the effects slot.
+  Still works for existing code; the canonical styles going forward are the
+  `Produce` subclass and the `@produce` function.
+- Sessions, branches and checkpoints are now **async**: `Session.save`/
+  `.delete`, `SessionStore.{save_session,load_session,has_session,
+  list_sessions,delete_session,open}`, `BranchStore.{save_branch,load_branch,
+  list_branches,delete_branch}`, `Context.{save_checkpoint,load_checkpoint,
+  to_kv,from_kv}`, and `replay_context` are all `async def` — call them with
+  `await`. `KVBackend`/`CheckpointBackend` and every implementation
+  (`File*`, `SQLite*`, `PostgreSQLKVBackend`) follow the same interface
+  change; a new `aclose()` releases held connections.
+
+### Added
+
+- **Async checkpoint backends**: `FileKVBackend`/`FileBackend` offload
+  blocking file I/O via `asyncio.to_thread`; `SQLiteKVBackend`/
+  `SQLiteBackend` share one persistent connection (WAL + `busy_timeout=5000`)
+  serialized by an `asyncio.Lock` instead of reconnecting on every call;
+  `PostgreSQLKVBackend` moves to psycopg's native `AsyncConnection`. Fixes
+  the connection-per-operation overhead and the missing lock-wait timeout
+  that could raise `sqlite3.OperationalError: database is locked` under
+  concurrent writers.
+- `ctxloom/cli/` package: `graph`/`context`/`trace`/`replay`/`branch` are now
+  one module each (`add_parser()` + handler) instead of living in a single
+  334-line `__main__.py`, which is now a thin entry point.
+- `_openai_compat_llm()`/`_openai_compat_embedder()`/
+  `_openai_compat_speech()`/`_openai_compat_transcriber()` factory builders
+  (`providers/chat.py`, `providers/speech.py`) — the one implementation
+  behind every OpenAI-compatible vendor. New vendor coverage verified
+  against each vendor's docs: `openrouter_embedder`, `openrouter_speech`,
+  `groq_transcriber`, `together_embedder`, `fireworks_embedder`,
+  `qwen_embedder`, `nvidia_embedder`. `mistral_llm`/`mistral_embedder` now
+  use the same factory instead of hand-rolled env/auth resolution — all 13
+  OpenAI-compatible vendors are consistent.
+- Retry/backoff (`providers/_retry.py`, `with_retry()`): 429/5xx and
+  transport errors now retry with exponential backoff on every network call
+  across the package (chat, embeddings, image generation + its URL-fetch
+  fallback, TTS, transcription, all four video providers). 4xx is never
+  retried; streaming calls are not retried (can't replay already-yielded
+  chunks).
+- `Runtime(isolate_errors=True, on_agent_error=...)`: one agent's exception
+  can skip that agent's patch instead of aborting the whole `arun()`/
+  `astream()` — default stays fail-loud. Isolated errors get a traced
+  `AgentSpan(error=...)` and count toward `RunStats.errors`.
+- `on_error(reason, exc)` hook on `structured_llm`/`llm_reply`/
+  `StructuredLLM`, called right before the honest `None` fallback — lets
+  callers distinguish "offline" from "the provider is down" without
+  changing the `None`-returning contract.
+- `effects.upsert(data, id=...)` and `effects.create_once(data, id=...)` —
+  explicit names for create-or-refresh and the "already done" idempotency
+  guard every `produce` used to hand-roll. `effects.ask(...)` gained an
+  optional `id=`.
+- `RuntimeResources.aclose()` (duck-typed, closes `llm`/`embedder` if they
+  support it) — fixes a real leak where `ChatAssistant` with a callable
+  `resources=` built a fresh provider + HTTP client every turn and never
+  closed the previous one.
+- `providers.from_env(**overrides)`: the `OPENROUTER_API_KEY` → else
+  `OPENAI_BASE_URL` → else `None` selection every example hand-rolled as a
+  local `build_llm()`.
+
+### Changed
+
+- `Context` split: `RelationGraph` (`ctxloom/relations.py`) and `CommitLog`
+  (`ctxloom/commit_log.py`) extracted out of the 754-line `Context` god
+  object — same public API and behavior, verified against the full suite
+  and forklab's branch/merge/conflict path byte-for-byte.
+- `SessionStore`/`BranchStore` no longer hand-roll their own
+  `to_dict()`/`from_dict()` round-trip over a `KVBackend` — both delegate to
+  `Context.to_kv`/`from_kv`.
+- `tool_use.py`: `ToolUse`/`ToolUseHITL` extracted a shared `_ToolLoopBase`,
+  removing a byte-for-byte duplicated `_run_tool` and init boilerplate.
+- Examples: explicit `build_llm()` instead of `llm_from_env()`; manual
+  `PendingQuestion` reconstruction replaced by `ctx.resume()`;
+  `medic_lab`'s `Consume(condition=...)` replaced by
+  `Consume.by_status(Hypothesis, "open")` for consistency with sibling
+  examples.
+- Docs (EN+RU) synced: `Runtime(isolate_errors, on_agent_error)`, `on_error`,
+  `RuntimeResources.aclose()`, `effects.create_once`/`upsert`,
+  `providers.from_env`, `retry_attempts`, the new vendor factories, the
+  async session/branch/checkpoint API, and produce-style guidance.
+
+### Fixed
+
+- `llm_from_env()`/`embedder_from_env()` silently dropped
+  `temperature`/`max_tokens`/`timeout`/`transport`/... overrides instead of
+  forwarding them to the provider.
+- `VideoProvider.poll()` no longer aborts a multi-minute job on a single
+  transient `fetch()` failure — it waits for the next interval and returns
+  an honest failed `VideoResult` only once the deadline passes.
+- `session.save()`/`store.open()`/`assistant.history()`/
+  `store.delete_session()` were being called synchronously from inside
+  already-`async` chat/web request handlers (`chat.py`, `web.py`, the
+  `medic_lab` example router) — silently blocking the event loop on every
+  turn. Now real `await` calls against the async session API.
+
 ## [0.4.0-rc1] — 2026-09-02
 
 Minor release — provider-level generation defaults + explicit provider wiring.
