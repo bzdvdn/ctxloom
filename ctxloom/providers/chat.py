@@ -4,11 +4,12 @@ Mistral, OpenRouter) and factories from env."""
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import httpx
 
+from ._retry import with_retry
 from .contracts import (
     EmbeddingProvider,
     LLMProvider,
@@ -43,6 +44,7 @@ class OpenAICompatProvider(LLMProvider):
         auth_scheme: str | None = "Bearer",
         temperature: float | None = None,
         max_tokens: int | None = None,
+        retry_attempts: int = 3,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -56,6 +58,9 @@ class OpenAICompatProvider(LLMProvider):
         self._proxy = proxy
         self.temperature = temperature
         self.max_tokens = max_tokens
+        #: complete()-only retry budget for transient failures (429/5xx/
+        #: connection errors, see providers/_retry.py); 1 disables retrying.
+        self.retry_attempts = retry_attempts
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -102,20 +107,23 @@ class OpenAICompatProvider(LLMProvider):
         return payload
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
-        response = await self._get_client().post(
-            f"{self.base_url}/chat/completions",
-            json=self._payload(request, stream=False),
-        )
-        response.raise_for_status()
-        data = response.json()
-        choice = data["choices"][0]
-        content = choice.get("message", {}).get("content") or ""
-        return LLMResponse(
-            text=content,
-            raw=data,
-            finish_reason=choice.get("finish_reason"),
-            usage=data.get("usage", {}),
-        )
+        async def _call() -> LLMResponse:
+            response = await self._get_client().post(
+                f"{self.base_url}/chat/completions",
+                json=self._payload(request, stream=False),
+            )
+            response.raise_for_status()
+            data = response.json()
+            choice = data["choices"][0]
+            content = choice.get("message", {}).get("content") or ""
+            return LLMResponse(
+                text=content,
+                raw=data,
+                finish_reason=choice.get("finish_reason"),
+                usage=data.get("usage", {}),
+            )
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def stream(self, request: LLMRequest) -> AsyncIterator[LLMResponseChunk]:
         async with self._get_client().stream(
@@ -157,6 +165,7 @@ class OpenAICompatEmbedder(EmbeddingProvider):
         proxy: str | None = None,
         auth_header: str = "Authorization",
         auth_scheme: str | None = "Bearer",
+        retry_attempts: int = 3,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -167,6 +176,7 @@ class OpenAICompatEmbedder(EmbeddingProvider):
             self._headers[auth_header] = auth_value(api_key, auth_scheme)
         self._transport = transport
         self._proxy = proxy
+        self.retry_attempts = retry_attempts
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -180,17 +190,20 @@ class OpenAICompatEmbedder(EmbeddingProvider):
         return self._client
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        response = await self._get_client().post(
-            f"{self.base_url}/embeddings",
-            json={"model": self.model, "input": texts},
-        )
-        response.raise_for_status()
-        data = response.json()
-        rows = sorted(data["data"], key=lambda item: item["index"])
-        embeddings = [row["embedding"] for row in rows]
-        if len(embeddings) != len(texts):
-            return []  # API returned fewer rows than requested — honestly empty
-        return embeddings
+        async def _call() -> list[list[float]]:
+            response = await self._get_client().post(
+                f"{self.base_url}/embeddings",
+                json={"model": self.model, "input": texts},
+            )
+            response.raise_for_status()
+            data = response.json()
+            rows = sorted(data["data"], key=lambda item: item["index"])
+            embeddings = [row["embedding"] for row in rows]
+            if len(embeddings) != len(texts):
+                return []  # fewer rows than requested — honestly empty
+            return embeddings
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -232,6 +245,109 @@ def _network_knobs(
         knobs["auth_scheme"] = None if scheme == "" else scheme
 
     return knobs
+
+
+def _resolve_env_api_key(
+    explicit: str | None, key_vars: tuple[str, ...]
+) -> str | None:
+    """`explicit` if given, else the first of `key_vars` that's set in env."""
+    if explicit is not None:
+        return explicit
+    import os
+
+    for var in key_vars:
+        value = os.getenv(var)
+        if value:
+            return value
+    return None
+
+
+def _openai_compat_llm(
+    *,
+    env_prefix: str,
+    default_model: str,
+    default_base_url: str,
+    env_api_key_vars: tuple[str, ...] | None = None,
+    name: str | None = None,
+    doc: str = "",
+) -> Callable[..., OpenAICompatProvider]:
+    """Builds a `<vendor>_llm(model=..., base_url=..., api_key=None, **kwargs)`
+    factory for a vendor whose API is OpenAI-compatible end to end.
+
+    This is the one implementation behind every same-shaped vendor factory in
+    this package (Cerebras, DeepSeek, Fireworks, GitHub Models, Groq, NVIDIA
+    NIM, Perplexity, Qwen, Together, xAI, z.ai — see their one-line modules):
+    each only differs in `env_prefix`/`default_model`/`default_base_url`, so
+    duplicating the body 11 times just means 11 places to fix the same bug in
+    (as `llm_from_env`'s dropped-overrides bug was, before it had one home).
+
+    `env_api_key_vars` overrides the single `<PREFIX>_API_KEY` default when a
+    vendor's key comes from a differently-named variable (or falls back
+    through more than one, e.g. GitHub Models' `GITHUB_TOKEN`/`GITHUB_API_KEY`).
+    `name` overrides the `<prefix>_llm` default when the public function name
+    doesn't match the prefix (`nvidia_nim_llm`, `github_models_llm`).
+    """
+    key_vars = env_api_key_vars or (f"{env_prefix}_API_KEY",)
+
+    def factory(
+        model: str = default_model,
+        base_url: str = default_base_url,
+        api_key: str | None = None,
+        **kwargs: Any,
+    ) -> OpenAICompatProvider:
+        merged = {**_network_knobs(env_prefix, kwargs), **kwargs}
+        return OpenAICompatProvider(
+            base_url=base_url,
+            api_key=_resolve_env_api_key(api_key, key_vars),
+            model=model,
+            **merged,
+        )
+
+    factory.__name__ = name or f"{env_prefix.lower()}_llm"
+    factory.__qualname__ = factory.__name__
+    factory.__doc__ = doc or (
+        f"{env_prefix.title()} — OpenAI-compatible chat "
+        f"(key from {' or '.join(key_vars)})."
+    )
+    return factory
+
+
+def _openai_compat_embedder(
+    *,
+    env_prefix: str,
+    default_model: str,
+    default_base_url: str,
+    env_api_key_vars: tuple[str, ...] | None = None,
+    name: str | None = None,
+    doc: str = "",
+) -> Callable[..., OpenAICompatEmbedder]:
+    """Builds a `<vendor>_embedder(model=..., base_url=..., api_key=None,
+    **kwargs)` factory — the embedder counterpart of `_openai_compat_llm`,
+    for a vendor whose `/embeddings` endpoint is OpenAI-compatible.
+    """
+    key_vars = env_api_key_vars or (f"{env_prefix}_API_KEY",)
+
+    def factory(
+        model: str = default_model,
+        base_url: str = default_base_url,
+        api_key: str | None = None,
+        **kwargs: Any,
+    ) -> OpenAICompatEmbedder:
+        merged = {**_network_knobs(env_prefix, kwargs), **kwargs}
+        return OpenAICompatEmbedder(
+            base_url=base_url,
+            api_key=_resolve_env_api_key(api_key, key_vars),
+            model=model,
+            **merged,
+        )
+
+    factory.__name__ = name or f"{env_prefix.lower()}_embedder"
+    factory.__qualname__ = factory.__name__
+    factory.__doc__ = doc or (
+        f"{env_prefix.title()} — OpenAI-compatible embeddings "
+        f"(key from {' or '.join(key_vars)})."
+    )
+    return factory
 
 
 def llm_from_env(**overrides: Any) -> OpenAICompatProvider | None:
@@ -282,6 +398,8 @@ def embedder_from_env(**overrides: Any) -> OpenAICompatEmbedder | None:
     """Builds an embedder from EMBEDDER_BASE_URL/EMBEDDER_API_KEY/EMBEDDER_MODEL.
 
     Optional knobs: EMBEDDER_PROXY, EMBEDDER_AUTH_HEADER, EMBEDDER_AUTH_SCHEME.
+    Remaining overrides (`timeout`, `transport`, `retry_attempts`, ...) pass
+    straight through to `OpenAICompatEmbedder`.
     """
     import os
 
@@ -290,9 +408,12 @@ def embedder_from_env(**overrides: Any) -> OpenAICompatEmbedder | None:
         return None
     api_key = overrides.get("api_key") or os.getenv("EMBEDDER_API_KEY")
     model = overrides.get("model") or os.getenv("EMBEDDER_MODEL")
+    consumed = {"base_url", "api_key", "model", "proxy", "auth_header", "auth_scheme"}
+    passthrough = {k: v for k, v in overrides.items() if k not in consumed}
     return OpenAICompatEmbedder(
         base_url=base_url,
         api_key=api_key,
         model=model if isinstance(model, str) else "text-embedding-3-small",
         **_network_knobs("EMBEDDER", overrides),
+        **passthrough,
     )

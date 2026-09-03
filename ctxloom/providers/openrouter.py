@@ -1,11 +1,17 @@
-"""OpenRouter — model router: chat (fast mode by default) and images."""
+"""OpenRouter — model router: chat (fast mode by default), images,
+embeddings, and text-to-speech. Video lives in `ctxloom.providers.video`
+(`OpenRouterVideoProvider`, alongside the other video vendors). Speech-to-
+text is *not* offered here: OpenRouter's `/audio/transcriptions` takes a
+base64-JSON body, not the multipart file upload every other transcriber in
+this package expects — a real API difference, not an oversight."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from .chat import OpenAICompatProvider, _network_knobs
+from .chat import OpenAICompatProvider, _network_knobs, _openai_compat_embedder
 from .image import OpenAICompatImageProvider
+from .speech import _openai_compat_speech
 
 
 def openrouter_llm(
@@ -48,3 +54,17 @@ def openrouter_image(
     return OpenAICompatImageProvider(
         base_url=base_url, api_key=api_key, model=model, **merged
     )
+
+
+openrouter_embedder = _openai_compat_embedder(
+    env_prefix="OPENROUTER",
+    default_model="openai/text-embedding-3-small",
+    default_base_url="https://openrouter.ai/api/v1",
+)
+
+openrouter_speech = _openai_compat_speech(
+    env_prefix="OPENROUTER",
+    default_model="openai/gpt-4o-mini-tts",
+    default_voice="alloy",
+    default_base_url="https://openrouter.ai/api/v1",
+)

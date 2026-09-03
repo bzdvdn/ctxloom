@@ -2,22 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from .chat import _openai_compat_llm
 
-from .chat import OpenAICompatProvider, _network_knobs
-
-
-def deepseek_llm(
-    model: str = "deepseek-chat",
-    base_url: str = "https://api.deepseek.com",
-    api_key: str | None = None,
-    **kwargs: Any,
-) -> OpenAICompatProvider:
-    if api_key is None:
-        import os
-
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-    merged = {**_network_knobs("DEEPSEEK", kwargs), **kwargs}
-    return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **merged
-    )
+deepseek_llm = _openai_compat_llm(
+    env_prefix="DEEPSEEK",
+    default_model="deepseek-chat",
+    default_base_url="https://api.deepseek.com",
+)

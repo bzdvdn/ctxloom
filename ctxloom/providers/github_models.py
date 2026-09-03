@@ -2,22 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from .chat import _openai_compat_llm
 
-from .chat import OpenAICompatProvider, _network_knobs
-
-
-def github_models_llm(
-    model: str = "gpt-4o-mini",
-    base_url: str = "https://models.github.ai/v1",
-    api_key: str | None = None,
-    **kwargs: Any,
-) -> OpenAICompatProvider:
-    if api_key is None:
-        import os
-
-        api_key = os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_API_KEY")
-    merged = {**_network_knobs("GITHUB", kwargs), **kwargs}
-    return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **merged
-    )
+github_models_llm = _openai_compat_llm(
+    env_prefix="GITHUB",
+    default_model="gpt-4o-mini",
+    default_base_url="https://models.github.ai/v1",
+    env_api_key_vars=("GITHUB_TOKEN", "GITHUB_API_KEY"),
+    name="github_models_llm",
+)

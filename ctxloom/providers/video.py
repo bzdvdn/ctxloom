@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from ._retry import with_retry
 from .chat import _network_knobs
 from .contracts import auth_value
 
@@ -66,14 +67,36 @@ class VideoProvider(ABC):
     async def poll(
         self, task_id: str, timeout: float = 600.0, interval: float = 5.0
     ) -> VideoResult:
-        """Polls until completed/failed or the timeout elapses (best effort)."""
+        """Polls until completed/failed or the timeout elapses (best effort).
+
+        A `fetch()` that still raises after its own internal retry (a longer
+        outage, not a single blip) does not abort the poll — a several-
+        minute video job in progress is not worth abandoning over a
+        transient network problem, so the loop just waits for the next
+        interval and tries again. Only running out of `timeout` while every
+        recent fetch failed gives up, with an honest `status="failed"`
+        result rather than raising out of a best-effort poll.
+        """
         deadline = time.monotonic() + timeout
+        last_result: VideoResult | None = None
+        last_error: str | None = None
         while True:
-            result = await self.fetch(task_id)
-            if result.status in ("completed", "failed"):
-                return result
+            try:
+                last_result = await self.fetch(task_id)
+                last_error = None
+            except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+                last_error = str(exc)
+            else:
+                if last_result.status in ("completed", "failed"):
+                    return last_result
             if time.monotonic() >= deadline:
-                return result
+                if last_result is not None and last_error is None:
+                    return last_result
+                return VideoResult(
+                    id=task_id,
+                    status="failed",
+                    error=f"polling timed out after repeated fetch failures: {last_error}",
+                )
             await asyncio.sleep(interval)
 
     async def download(self, result: VideoResult) -> bytes | None:
@@ -100,6 +123,7 @@ class _HttpVideoProvider(VideoProvider):
         auth_header: str = "Authorization",
         auth_scheme: str | None = "Bearer",
         extra_headers: dict[str, str] | None = None,
+        retry_attempts: int = 3,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -110,6 +134,7 @@ class _HttpVideoProvider(VideoProvider):
             self._headers.setdefault(auth_header, auth_value(api_key, auth_scheme))
         self._transport = transport
         self._proxy = proxy
+        self.retry_attempts = retry_attempts
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -127,9 +152,14 @@ class _HttpVideoProvider(VideoProvider):
             return result.data
         if not result.url:
             return None
-        response = await self._get_client().get(result.url)
-        response.raise_for_status()
-        return response.content
+        url = result.url
+
+        async def _call() -> bytes:
+            response = await self._get_client().get(url)
+            response.raise_for_status()
+            return response.content
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
 
 class SoraVideoProvider(_HttpVideoProvider):
@@ -149,25 +179,35 @@ class SoraVideoProvider(_HttpVideoProvider):
         for key in ("size", "duration", "quality"):
             if params.get(key):
                 payload[key] = params[key]
-        response = await self._get_client().post(
-            f"{self.base_url}/videos", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return str(data["id"])
+
+        async def _call() -> str:
+            response = await self._get_client().post(
+                f"{self.base_url}/videos", json=payload
+            )
+            response.raise_for_status()
+            return str(response.json()["id"])
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def fetch(self, task_id: str) -> VideoResult:
-        response = await self._get_client().get(f"{self.base_url}/videos/{task_id}")
-        response.raise_for_status()
-        data = response.json()
-        out = data.get("output") or {}
-        return VideoResult(
-            id=task_id,
-            status=STATUS_MAP.get(str(data.get("status", "")).lower(), "processing"),
-            url=out.get("url"),
-            error=out.get("error") or data.get("error"),
-            extra=data,
-        )
+        async def _call() -> VideoResult:
+            response = await self._get_client().get(
+                f"{self.base_url}/videos/{task_id}"
+            )
+            response.raise_for_status()
+            data = response.json()
+            out = data.get("output") or {}
+            return VideoResult(
+                id=task_id,
+                status=STATUS_MAP.get(
+                    str(data.get("status", "")).lower(), "processing"
+                ),
+                url=out.get("url"),
+                error=out.get("error") or data.get("error"),
+                extra=data,
+            )
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
 
 class RunwayVideoProvider(_HttpVideoProvider):
@@ -188,25 +228,35 @@ class RunwayVideoProvider(_HttpVideoProvider):
             payload["promptImage"] = params["image"]
         if params.get("ratio"):
             payload["ratio"] = params["ratio"]
-        response = await self._get_client().post(
-            f"{self.base_url}/v1/videos", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return str(data["id"])
+
+        async def _call() -> str:
+            response = await self._get_client().post(
+                f"{self.base_url}/v1/videos", json=payload
+            )
+            response.raise_for_status()
+            return str(response.json()["id"])
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def fetch(self, task_id: str) -> VideoResult:
-        response = await self._get_client().get(f"{self.base_url}/v1/videos/{task_id}")
-        response.raise_for_status()
-        data = response.json()
-        output = data.get("output") or {}
-        return VideoResult(
-            id=task_id,
-            status=STATUS_MAP.get(str(data.get("status", "")).lower(), "processing"),
-            url=output.get("url"),
-            error=output.get("error"),
-            extra=data,
-        )
+        async def _call() -> VideoResult:
+            response = await self._get_client().get(
+                f"{self.base_url}/v1/videos/{task_id}"
+            )
+            response.raise_for_status()
+            data = response.json()
+            output = data.get("output") or {}
+            return VideoResult(
+                id=task_id,
+                status=STATUS_MAP.get(
+                    str(data.get("status", "")).lower(), "processing"
+                ),
+                url=output.get("url"),
+                error=output.get("error"),
+                extra=data,
+            )
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
 
 class LumaVideoProvider(_HttpVideoProvider):
@@ -227,27 +277,35 @@ class LumaVideoProvider(_HttpVideoProvider):
             payload["promptImage"] = params["image"]
         if params.get("duration"):
             payload["duration"] = params["duration"]
-        response = await self._get_client().post(
-            f"{self.base_url}/generations", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return str(data["id"])
+
+        async def _call() -> str:
+            response = await self._get_client().post(
+                f"{self.base_url}/generations", json=payload
+            )
+            response.raise_for_status()
+            return str(response.json()["id"])
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def fetch(self, task_id: str) -> VideoResult:
-        response = await self._get_client().get(
-            f"{self.base_url}/generations/{task_id}"
-        )
-        response.raise_for_status()
-        data = response.json()
-        assets = data.get("assets") or {}
-        return VideoResult(
-            id=task_id,
-            status=STATUS_MAP.get(str(data.get("state", "")).lower(), "processing"),
-            url=assets.get("video"),
-            error=data.get("failure_reason"),
-            extra=data,
-        )
+        async def _call() -> VideoResult:
+            response = await self._get_client().get(
+                f"{self.base_url}/generations/{task_id}"
+            )
+            response.raise_for_status()
+            data = response.json()
+            assets = data.get("assets") or {}
+            return VideoResult(
+                id=task_id,
+                status=STATUS_MAP.get(
+                    str(data.get("state", "")).lower(), "processing"
+                ),
+                url=assets.get("video"),
+                error=data.get("failure_reason"),
+                extra=data,
+            )
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
 
 class OpenRouterVideoProvider(_HttpVideoProvider):
@@ -270,27 +328,35 @@ class OpenRouterVideoProvider(_HttpVideoProvider):
         for key in ("negative_prompt", "height", "width", "guidance_scale"):
             if params.get(key):
                 payload[key] = params[key]
-        response = await self._get_client().post(
-            f"{self.base_url}/generations", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return str(data["id"])
+
+        async def _call() -> str:
+            response = await self._get_client().post(
+                f"{self.base_url}/generations", json=payload
+            )
+            response.raise_for_status()
+            return str(response.json()["id"])
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def fetch(self, task_id: str) -> VideoResult:
-        response = await self._get_client().get(
-            f"{self.base_url}/generations/{task_id}"
-        )
-        response.raise_for_status()
-        data = response.json()
-        out = data.get("out") or []
-        if out:
-            first = out[0]
-            url = first.get("video_url") or first.get("url")
-            return VideoResult(id=task_id, status="completed", url=url, extra=data)
-        if data.get("error"):
-            return VideoResult(id=task_id, status="failed", error=str(data["error"]))
-        return VideoResult(id=task_id, status="processing", extra=data)
+        async def _call() -> VideoResult:
+            response = await self._get_client().get(
+                f"{self.base_url}/generations/{task_id}"
+            )
+            response.raise_for_status()
+            data = response.json()
+            out = data.get("out") or []
+            if out:
+                first = out[0]
+                url = first.get("video_url") or first.get("url")
+                return VideoResult(id=task_id, status="completed", url=url, extra=data)
+            if data.get("error"):
+                return VideoResult(
+                    id=task_id, status="failed", error=str(data["error"])
+                )
+            return VideoResult(id=task_id, status="processing", extra=data)
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
 
 def video_from_env(**overrides: Any) -> VideoProvider | None:

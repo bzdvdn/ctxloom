@@ -12,6 +12,18 @@ The wire contract is the canonical chat (owned by `ctxloom.chat`):
 ``session`` → ``status``… → ``message`` over Server-Sent Events, plus the
 standard runs (list) / deletion endpoints.
 
+If your `ChatAssistant` was built with a *shared* `resources=` instance (not
+a callable — see its docstring), that instance's provider owns an HTTP
+client for the app's lifetime; close it in your own FastAPI shutdown, since
+this module owns only the router, not the app:
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        await resources.aclose()
+
+    app = FastAPI(lifespan=lifespan)
+
 FastAPI is imported lazily (via `ctxloom._extras`): the module imports without
 fastapi installed, and only `create_chat_router` requires the `web` extra —
 `pip install "ctxloom[web]"`.

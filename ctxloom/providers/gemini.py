@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 
+from ._retry import with_retry
 from .chat import _network_knobs
 from .contracts import (
     LLMProvider,
@@ -55,6 +56,7 @@ class GeminiProvider(LLMProvider):
         auth_scheme: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        retry_attempts: int = 3,
     ):
         self.api_key = api_key
         self.model = model
@@ -62,6 +64,7 @@ class GeminiProvider(LLMProvider):
         self._timeout = timeout
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.retry_attempts = retry_attempts
         self._headers = {"Content-Type": "application/json"}
         self._headers[auth_header] = auth_value(api_key, auth_scheme)
         self._transport = transport
@@ -129,12 +132,16 @@ class GeminiProvider(LLMProvider):
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
         model = request.extra.get("model") or self.model
-        response = await self._get_client().post(
-            f"{self.base_url}/{_model_path(model)}:generateContent",
-            json=self._payload(request, stream=False),
-        )
-        response.raise_for_status()
-        return self._parse(response.json())
+
+        async def _call() -> LLMResponse:
+            response = await self._get_client().post(
+                f"{self.base_url}/{_model_path(model)}:generateContent",
+                json=self._payload(request, stream=False),
+            )
+            response.raise_for_status()
+            return self._parse(response.json())
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def stream(self, request: LLMRequest) -> AsyncIterator[LLMResponseChunk]:
         model = request.extra.get("model") or self.model
@@ -211,12 +218,16 @@ class GeminiImageProvider(ImageProvider):
             payload["generationConfig"]["imageConfig"] = {
                 "aspectRatio": params["aspect_ratio"]
             }
-        response = await self._chat._get_client().post(
-            f"{self.base_url}/{_model_path(self.model)}:generateContent",
-            json=payload,
-        )
-        response.raise_for_status()
-        data = response.json()
+
+        async def _call() -> dict[str, Any]:
+            response = await self._chat._get_client().post(
+                f"{self.base_url}/{_model_path(self.model)}:generateContent",
+                json=payload,
+            )
+            response.raise_for_status()
+            return dict(response.json())
+
+        data = await with_retry(_call, attempts=self._chat.retry_attempts)
         parts = (data.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
         for part in parts:
             inline = part.get("inlineData") or {}

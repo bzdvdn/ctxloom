@@ -171,6 +171,14 @@ class ChatAssistant:
     history. `agents`/`resources` accept values or callables (resolved per
     request, so a fresh `RuntimeResources` can replace providers).
 
+    A callable `resources=` is assumed to build a fresh, turn-scoped
+    `RuntimeResources` each call (e.g. `resources=lambda: build_resources()`)
+    — `stream()` closes it (`RuntimeResources.aclose()`) after every turn, so
+    its provider's HTTP client doesn't leak. Pass a plain `RuntimeResources`
+    instance instead when you want one shared, long-lived provider across
+    turns/sessions — that instance is never closed automatically; close it
+    yourself at real shutdown.
+
     Base usage:
 
         assistant = ChatAssistant(
@@ -266,6 +274,20 @@ class ChatAssistant:
                 logger.exception(
                     "chat.ChatAssistant: failed to save session %r", session_id
                 )
+            if callable(self._resources):
+                # A callable `resources=` builds a fresh RuntimeResources (and
+                # typically a fresh provider + HTTP client) on every turn —
+                # nothing else will ever reference this instance again, so
+                # it's this turn's job to close it. A shared instance passed
+                # directly is not touched here: it must outlive this turn.
+                try:
+                    await session.context.resources.aclose()
+                except Exception:
+                    logger.exception(
+                        "chat.ChatAssistant: failed to close per-turn "
+                        "resources %r",
+                        session_id,
+                    )
 
     async def invoke(self, text: str, session_id: str = "") -> dict[str, Any]:
         """Run one turn and return the terminal reply (aggregated stream)."""

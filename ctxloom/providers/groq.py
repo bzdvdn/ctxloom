@@ -1,23 +1,18 @@
-"""Groq — fast inference (OpenAI-compatible)."""
+"""Groq — fast inference (OpenAI-compatible), plus Whisper transcription."""
 
 from __future__ import annotations
 
-from typing import Any
+from .chat import _openai_compat_llm
+from .speech import _openai_compat_transcriber
 
-from .chat import OpenAICompatProvider, _network_knobs
+groq_llm = _openai_compat_llm(
+    env_prefix="GROQ",
+    default_model="llama-3.3-70b-versatile",
+    default_base_url="https://api.groq.com/openai/v1",
+)
 
-
-def groq_llm(
-    model: str = "llama-3.3-70b-versatile",
-    base_url: str = "https://api.groq.com/openai/v1",
-    api_key: str | None = None,
-    **kwargs: Any,
-) -> OpenAICompatProvider:
-    if api_key is None:
-        import os
-
-        api_key = os.getenv("GROQ_API_KEY")
-    merged = {**_network_knobs("GROQ", kwargs), **kwargs}
-    return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **merged
-    )
+groq_transcriber = _openai_compat_transcriber(
+    env_prefix="GROQ",
+    default_model="whisper-large-v3-turbo",
+    default_base_url="https://api.groq.com/openai/v1",
+)

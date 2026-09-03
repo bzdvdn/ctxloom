@@ -1,23 +1,17 @@
-"""Qwen (Alibaba DashScope) — chat (OpenAI-compatible)."""
+"""Qwen (Alibaba DashScope) — chat (OpenAI-compatible), plus embeddings."""
 
 from __future__ import annotations
 
-from typing import Any
+from .chat import _openai_compat_embedder, _openai_compat_llm
 
-from .chat import OpenAICompatProvider, _network_knobs
+qwen_llm = _openai_compat_llm(
+    env_prefix="QWEN",
+    default_model="qwen-plus",
+    default_base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
 
-
-def qwen_llm(
-    model: str = "qwen-plus",
-    base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    api_key: str | None = None,
-    **kwargs: Any,
-) -> OpenAICompatProvider:
-    if api_key is None:
-        import os
-
-        api_key = os.getenv("QWEN_API_KEY")
-    merged = {**_network_knobs("QWEN", kwargs), **kwargs}
-    return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **merged
-    )
+qwen_embedder = _openai_compat_embedder(
+    env_prefix="QWEN",
+    default_model="text-embedding-v2",
+    default_base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)

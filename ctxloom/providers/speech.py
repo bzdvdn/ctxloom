@@ -9,11 +9,13 @@ and proxy are configurable like every other provider.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import Any
 
 import httpx
 
-from .chat import _network_knobs
+from ._retry import with_retry
+from .chat import _network_knobs, _resolve_env_api_key
 from .contracts import auth_value
 
 
@@ -73,6 +75,7 @@ class OpenAICompatSpeech(SpeechProvider):
         auth_header: str = "Authorization",
         auth_scheme: str | None = "Bearer",
         extra_params: dict[str, Any] | None = None,
+        retry_attempts: int = 3,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -84,6 +87,7 @@ class OpenAICompatSpeech(SpeechProvider):
         self._proxy = proxy
         self._auth_header = auth_header
         self._auth_scheme = auth_scheme
+        self.retry_attempts = retry_attempts
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -108,11 +112,15 @@ class OpenAICompatSpeech(SpeechProvider):
             if params.get(key):
                 payload[key] = params[key]
         payload.update(self._extra)
-        response = await self._get_client().post(
-            f"{self.base_url}/audio/speech", json=payload
-        )
-        response.raise_for_status()
-        return response.content
+
+        async def _call() -> bytes:
+            response = await self._get_client().post(
+                f"{self.base_url}/audio/speech", json=payload
+            )
+            response.raise_for_status()
+            return response.content
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -135,6 +143,7 @@ class OpenAICompatTranscriber(TranscriberProvider):
         auth_scheme: str | None = "Bearer",
         mime_type: str = "audio/webm",
         filename: str = "audio.webm",
+        retry_attempts: int = 3,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -146,6 +155,7 @@ class OpenAICompatTranscriber(TranscriberProvider):
         self._auth_scheme = auth_scheme
         self._mime_type = mime_type
         self._filename = filename
+        self.retry_attempts = retry_attempts
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -169,16 +179,20 @@ class OpenAICompatTranscriber(TranscriberProvider):
         for key in ("language", "prompt", "response_format"):
             if params.get(key):
                 data[key] = str(params[key])
-        response = await self._get_client().post(
-            f"{self.base_url}/audio/transcriptions",
-            files=files,
-            data=data,
-        )
-        response.raise_for_status()
-        body = response.json()
-        if isinstance(body, dict):
-            return str(body.get("text", ""))
-        return str(body)
+
+        async def _call() -> str:
+            response = await self._get_client().post(
+                f"{self.base_url}/audio/transcriptions",
+                files=files,
+                data=data,
+            )
+            response.raise_for_status()
+            body = response.json()
+            if isinstance(body, dict):
+                return str(body.get("text", ""))
+            return str(body)
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -188,6 +202,88 @@ class OpenAICompatTranscriber(TranscriberProvider):
 
 def _factory_extra(overrides: dict[str, Any], skip: tuple[str, ...]) -> dict[str, Any]:
     return {k: v for k, v in overrides.items() if k not in skip}
+
+
+def _openai_compat_speech(
+    *,
+    env_prefix: str,
+    default_model: str,
+    default_voice: str,
+    default_base_url: str,
+    env_api_key_vars: tuple[str, ...] | None = None,
+    name: str | None = None,
+    doc: str = "",
+) -> Callable[..., OpenAICompatSpeech]:
+    """Builds a `<vendor>_speech(model=..., voice=..., base_url=...,
+    api_key=None, **kwargs)` TTS factory for a vendor whose `/audio/speech`
+    endpoint is OpenAI-compatible — the speech counterpart of
+    `_openai_compat_llm` (`ctxloom.providers.chat`).
+    """
+    key_vars = env_api_key_vars or (f"{env_prefix}_API_KEY",)
+
+    def factory(
+        model: str = default_model,
+        voice: str = default_voice,
+        base_url: str = default_base_url,
+        api_key: str | None = None,
+        **kwargs: Any,
+    ) -> OpenAICompatSpeech:
+        merged = {**_network_knobs(env_prefix, kwargs), **kwargs}
+        return OpenAICompatSpeech(
+            base_url=base_url,
+            api_key=_resolve_env_api_key(api_key, key_vars),
+            model=model,
+            voice=voice,
+            **merged,
+        )
+
+    factory.__name__ = name or f"{env_prefix.lower()}_speech"
+    factory.__qualname__ = factory.__name__
+    factory.__doc__ = doc or (
+        f"{env_prefix.title()} — OpenAI-compatible text-to-speech "
+        f"(key from {' or '.join(key_vars)})."
+    )
+    return factory
+
+
+def _openai_compat_transcriber(
+    *,
+    env_prefix: str,
+    default_model: str,
+    default_base_url: str,
+    env_api_key_vars: tuple[str, ...] | None = None,
+    name: str | None = None,
+    doc: str = "",
+) -> Callable[..., OpenAICompatTranscriber]:
+    """Builds a `<vendor>_transcriber(model=..., base_url=..., api_key=None,
+    **kwargs)` STT factory for a vendor whose `/audio/transcriptions`
+    endpoint takes the same multipart-file request OpenAI's Whisper API
+    does (not every "OpenAI-compatible" STT endpoint does — OpenRouter's,
+    for one, takes base64 JSON instead, so it does *not* use this factory).
+    """
+    key_vars = env_api_key_vars or (f"{env_prefix}_API_KEY",)
+
+    def factory(
+        model: str = default_model,
+        base_url: str = default_base_url,
+        api_key: str | None = None,
+        **kwargs: Any,
+    ) -> OpenAICompatTranscriber:
+        merged = {**_network_knobs(env_prefix, kwargs), **kwargs}
+        return OpenAICompatTranscriber(
+            base_url=base_url,
+            api_key=_resolve_env_api_key(api_key, key_vars),
+            model=model,
+            **merged,
+        )
+
+    factory.__name__ = name or f"{env_prefix.lower()}_transcriber"
+    factory.__qualname__ = factory.__name__
+    factory.__doc__ = doc or (
+        f"{env_prefix.title()} — OpenAI-compatible transcription "
+        f"(key from {' or '.join(key_vars)})."
+    )
+    return factory
 
 
 def speech_from_env(**overrides: Any) -> OpenAICompatSpeech | None:

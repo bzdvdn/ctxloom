@@ -202,6 +202,77 @@ def test_reply_hook_crash_degrades_to_fallback(tmp_path, caplog):
     assert events[-1].payload.get("error") is True
 
 
+class _SpyLLM:
+    """Minimal LLMProvider stand-in that tracks whether aclose() ran."""
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def complete(self, request):
+        from ctxloom.providers import LLMResponse
+
+        return LLMResponse(text="ok")
+
+    async def stream(self, request):
+        from ctxloom.providers import LLMResponseChunk
+
+        yield LLMResponseChunk(text="ok")
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+def test_callable_resources_closed_after_each_turn(tmp_path):
+    """resources= a callable is assumed turn-scoped: a fresh RuntimeResources
+    is built per turn, and its provider must be closed after that turn."""
+    from ctxloom import RuntimeResources
+
+    built: list[_SpyLLM] = []
+
+    def fresh_resources():
+        llm = _SpyLLM()
+        built.append(llm)
+        return RuntimeResources(llm=llm)
+
+    store = SessionStore(FileKVBackend(os.path.join(str(tmp_path), "sess")))
+    assistant = ChatAssistant(
+        store=store,
+        agents=[ANSWER_AGENT],
+        user_message=Q,
+        reply=lambda ctx, mid: {"reply": "ok", "waiting": False},
+        resources=fresh_resources,
+        max_concurrency=1,
+    )
+
+    _drain(assistant.stream("hi", session_id="s4"))
+    _drain(assistant.stream("hi again", session_id="s4"))
+
+    assert len(built) == 2  # a fresh RuntimeResources was built each turn
+    assert all(llm.closed for llm in built)
+
+
+def test_shared_resources_instance_not_closed(tmp_path):
+    """A plain (non-callable) resources= instance must survive the turn —
+    it's shared across future turns/sessions, not closed automatically."""
+    from ctxloom import RuntimeResources
+
+    llm = _SpyLLM()
+    shared = RuntimeResources(llm=llm)
+
+    store = SessionStore(FileKVBackend(os.path.join(str(tmp_path), "sess")))
+    assistant = ChatAssistant(
+        store=store,
+        agents=[ANSWER_AGENT],
+        user_message=Q,
+        reply=lambda ctx, mid: {"reply": "ok", "waiting": False},
+        resources=shared,
+        max_concurrency=1,
+    )
+
+    _drain(assistant.stream("hi", session_id="s5"))
+    assert llm.closed is False
+
+
 def test_session_open_crash_degrades_to_fallback(tmp_path, caplog):
     """A failing session open must degrade to a fallback message, not an exception."""
 

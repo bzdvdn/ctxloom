@@ -1,23 +1,17 @@
-"""Fireworks AI — production inference (OpenAI-compatible)."""
+"""Fireworks AI — production inference (OpenAI-compatible), plus embeddings."""
 
 from __future__ import annotations
 
-from typing import Any
+from .chat import _openai_compat_embedder, _openai_compat_llm
 
-from .chat import OpenAICompatProvider, _network_knobs
+fireworks_llm = _openai_compat_llm(
+    env_prefix="FIREWORKS",
+    default_model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+    default_base_url="https://api.fireworks.ai/inference/v1",
+)
 
-
-def fireworks_llm(
-    model: str = "accounts/fireworks/models/llama-v3p1-70b-instruct",
-    base_url: str = "https://api.fireworks.ai/inference/v1",
-    api_key: str | None = None,
-    **kwargs: Any,
-) -> OpenAICompatProvider:
-    if api_key is None:
-        import os
-
-        api_key = os.getenv("FIREWORKS_API_KEY")
-    merged = {**_network_knobs("FIREWORKS", kwargs), **kwargs}
-    return OpenAICompatProvider(
-        base_url=base_url, api_key=api_key, model=model, **merged
-    )
+fireworks_embedder = _openai_compat_embedder(
+    env_prefix="FIREWORKS",
+    default_model="nomic-ai/nomic-embed-text-v1.5",
+    default_base_url="https://api.fireworks.ai/inference/v1",
+)

@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 
+from ._retry import with_retry
 from .chat import _network_knobs
 from .contracts import auth_value
 
@@ -45,6 +46,7 @@ class OpenAICompatImageProvider(ImageProvider):
         n: int = 1,
         size: str | None = None,
         quality: str | None = None,
+        retry_attempts: int = 3,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -57,6 +59,7 @@ class OpenAICompatImageProvider(ImageProvider):
         self._proxy = proxy
         self._auth_header = auth_header
         self._auth_scheme = auth_scheme
+        self.retry_attempts = retry_attempts
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -97,11 +100,15 @@ class OpenAICompatImageProvider(ImageProvider):
         ):
             if key in params:
                 payload[key] = params[key]
-        response = await self._get_client().post(
-            f"{self.base_url}/images", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
+
+        async def _generate() -> dict[str, Any]:
+            response = await self._get_client().post(
+                f"{self.base_url}/images", json=payload
+            )
+            response.raise_for_status()
+            return dict(response.json())
+
+        data = await with_retry(_generate, attempts=self.retry_attempts)
         first = (data.get("data") or [None])[0]
         if not first:
             return None
@@ -109,9 +116,13 @@ class OpenAICompatImageProvider(ImageProvider):
             return base64.b64decode(first["b64_json"])
         url = first.get("url")
         if url:
-            fetched = await self._get_client().get(url)
-            fetched.raise_for_status()
-            return fetched.content
+
+            async def _fetch() -> bytes:
+                fetched = await self._get_client().get(url)
+                fetched.raise_for_status()
+                return fetched.content
+
+            return await with_retry(_fetch, attempts=self.retry_attempts)
         return None
 
     async def aclose(self) -> None:

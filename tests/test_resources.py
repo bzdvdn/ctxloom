@@ -1,3 +1,5 @@
+import asyncio
+
 from ctxloom.context import Context
 from ctxloom.providers import FakeEmbedder, FakeLLM
 from ctxloom.resources import RuntimeResources
@@ -28,3 +30,40 @@ def test_context_resources():
     resources = RuntimeResources(llm=llm)
     ws = Context(resources=resources)
     assert ws.resources.llm is llm
+
+
+class _SpyLLM(FakeLLM):
+    def __init__(self) -> None:
+        super().__init__()
+        self.closed = False
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+class _SpyEmbedder(FakeEmbedder):
+    def __init__(self) -> None:
+        super().__init__()
+        self.closed = False
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+def test_aclose_closes_llm_and_embedder_when_present():
+    llm = _SpyLLM()
+    embedder = _SpyEmbedder()
+    resources = RuntimeResources(llm=llm, embedder=embedder)
+    asyncio.run(resources.aclose())
+    assert llm.closed is True
+    assert embedder.closed is True
+
+
+def test_aclose_is_a_noop_without_aclose_support():
+    """FakeLLM/FakeEmbedder (and None) don't define aclose — duck-typed skip,
+    not an AttributeError."""
+    resources = RuntimeResources(llm=FakeLLM(), embedder=FakeEmbedder())
+    asyncio.run(resources.aclose())  # must not raise
+
+    empty = RuntimeResources()
+    asyncio.run(empty.aclose())  # must not raise

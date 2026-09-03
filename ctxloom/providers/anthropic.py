@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 
+from ._retry import with_retry
 from .contracts import (
     LLMProvider,
     LLMRequest,
@@ -39,6 +40,7 @@ class AnthropicProvider(LLMProvider):
         proxy: str | None = None,
         auth_header: str = "x-api-key",
         auth_scheme: str | None = None,
+        retry_attempts: int = 3,
     ):
         self.api_key = api_key
         self.model = model
@@ -48,6 +50,7 @@ class AnthropicProvider(LLMProvider):
         # default. Pass an explicit value to change it, or override per call.
         self.max_tokens = max_tokens if max_tokens is not None else 4096
         self.temperature = temperature
+        self.retry_attempts = retry_attempts
         self._headers = {
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
@@ -102,23 +105,26 @@ class AnthropicProvider(LLMProvider):
         return payload
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
-        response = await self._get_client().post(
-            f"{self.base_url}/messages",
-            json=self._payload(request, stream=False),
-        )
-        response.raise_for_status()
-        data = response.json()
-        text = "".join(
-            block.get("text", "")
-            for block in data.get("content", [])
-            if block.get("type") == "text"
-        )
-        return LLMResponse(
-            text=text,
-            raw=data,
-            finish_reason=data.get("stop_reason"),
-            usage=data.get("usage", {}),
-        )
+        async def _call() -> LLMResponse:
+            response = await self._get_client().post(
+                f"{self.base_url}/messages",
+                json=self._payload(request, stream=False),
+            )
+            response.raise_for_status()
+            data = response.json()
+            text = "".join(
+                block.get("text", "")
+                for block in data.get("content", [])
+                if block.get("type") == "text"
+            )
+            return LLMResponse(
+                text=text,
+                raw=data,
+                finish_reason=data.get("stop_reason"),
+                usage=data.get("usage", {}),
+            )
+
+        return await with_retry(_call, attempts=self.retry_attempts)
 
     async def stream(self, request: LLMRequest) -> AsyncIterator[LLMResponseChunk]:
         async with self._get_client().stream(

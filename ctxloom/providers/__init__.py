@@ -28,10 +28,10 @@ from .contracts import (
 )
 from .deepseek import deepseek_llm
 from .fake import FakeEmbedder, FakeLLM
-from .fireworks import fireworks_llm
+from .fireworks import fireworks_embedder, fireworks_llm
 from .gemini import GeminiImageProvider, GeminiProvider, gemini_image, gemini_llm
 from .github_models import github_models_llm
-from .groq import groq_llm
+from .groq import groq_llm, groq_transcriber
 from .image import (
     ImageProvider,
     OpenAICompatImageProvider,
@@ -39,12 +39,17 @@ from .image import (
     image_from_env,
 )
 from .mistral import mistral_embedder, mistral_llm
-from .nvidia import nvidia_nim_llm
+from .nvidia import nvidia_embedder, nvidia_nim_llm
 from .ollama import ollama_llm
 from .openai import openai_embedder, openai_llm
-from .openrouter import openrouter_image, openrouter_llm
+from .openrouter import (
+    openrouter_embedder,
+    openrouter_image,
+    openrouter_llm,
+    openrouter_speech,
+)
 from .perplexity import perplexity_llm
-from .qwen import qwen_llm
+from .qwen import qwen_embedder, qwen_llm
 from .speech import (
     OpenAICompatSpeech,
     OpenAICompatTranscriber,
@@ -53,7 +58,7 @@ from .speech import (
     speech_from_env,
     transcriber_from_env,
 )
-from .together import together_llm
+from .together import together_embedder, together_llm
 from .video import (
     LumaVideoProvider,
     OpenRouterVideoProvider,
@@ -114,25 +119,32 @@ __all__ = [
     "cerebras_llm",
     "deepseek_llm",
     "embedder_from_env",
+    "fireworks_embedder",
     "fireworks_llm",
     "from_env",
     "gemini_image",
     "gemini_llm",
     "github_models_llm",
     "groq_llm",
+    "groq_transcriber",
     "image_from_env",
     "llm_from_env",
     "mistral_embedder",
     "mistral_llm",
+    "nvidia_embedder",
     "nvidia_nim_llm",
     "ollama_llm",
     "openai_embedder",
     "openai_llm",
+    "openrouter_embedder",
     "openrouter_image",
     "openrouter_llm",
+    "openrouter_speech",
     "perplexity_llm",
+    "qwen_embedder",
     "qwen_llm",
     "speech_from_env",
+    "together_embedder",
     "together_llm",
     "transcriber_from_env",
     "video_from_env",
