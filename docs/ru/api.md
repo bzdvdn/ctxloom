@@ -9,7 +9,7 @@
 | --- | --- |
 | `Context` | версионируемое рабочее состояние; ресурсы; запросы; `latest(Model)`; announce; diff/rollback |
 | `View` | результат типа-запроса (`context.view(...)`) |
-| `RuntimeResources` | провайдеры + источники + произвольные ресурсы приложения |
+| `RuntimeResources` | провайдеры + источники + произвольные ресурсы приложения; `await resources.aclose()` закрывает HTTP-клиенты llm/embedder (duck-typed) — вызывайте сами при реальном завершении работы, автоматически это делает только `ChatAssistant` для callable `resources=` на каждый ход |
 | `Commit`, `Read`, `Write` | учёт версий и записанные операции провенанса |
 
 ## Артефакты и изменения
@@ -28,7 +28,7 @@
 | `Agent` | тонкий контейнер: `name`, `consumes`, `produces`, `concurrency_limit` |
 | `create_agent` | конструктор-фабрика агента — без подкласса для обычных контейнеров |
 | `Consume` / `consume` | декларативная (или декоратор) завязка реакции; `Consume.by_field` для скоуп-событий |
-| `Produce` / `produce` | производитель: пишет `self.effects` (или слот `effects` в функции-декораторе) → `None`; возврат модели/Patch тоже компилируется |
+| `Produce` / `produce` | производитель: пишет `self.effects` (или слот `effects` в функции-декораторе) → `None`; возврат модели/Patch тоже компилируется. Два канонических стиля — подкласс и функция `@produce` (см. [effects](effects.md)); `Produce(Model, factory=fn)` устарел (`DeprecationWarning`, используйте `@produce`) |
 | `Trigger` | вторичное (не артефактное) условие входа produce |
 | `StructuredGenerateAgent` | декларативный агент LLM→схема→артефакт (`schema`, `build_prompt`, `fallback`) |
 | `LLMAgent` | блокирующий цикл LLM+инструменты (`system`, `tools`, `max_steps`) |
@@ -42,7 +42,7 @@
 
 | Символ | Роль |
 | --- | --- |
-| `Runtime` | будит агентов по событиям; `run` / `arun` / `astream`; бюджет и параллельность |
+| `Runtime` | будит агентов по событиям; `run` / `arun` / `astream`; бюджет и параллельность; `isolate_errors=True` + `on_agent_error(agent, event, exc)`, чтобы исключение одного агента не обрывало весь запуск (по умолчанию — пробрасывается, §69) |
 | `Budget`, `RunOutcome`, `RunStats` | лимиты запуска и итог/статистика |
 | `Event`, `EventType` | проводной формат «что-то изменилось» — `ARTIFACT_CREATED`/`UPDATED`/`DELETED`/`STALE` |
 | `EventHub`, `ProgressEvent` | канал прогресса/announce, который потребляют web-UI |
@@ -102,9 +102,9 @@
 
 | Символ | Роль |
 | --- | --- |
-| `structured_llm(context, schema, *, system, user, attempts=…)` | один структурный вызов; `None` при честном сбое |
-| `StructuredLLM(schema, *, system=…, attempts=…)` | переиспользуемый экземпляр; `.call(context, user)` |
-| `llm_reply(context, *, system, user, attempts=…)` | обычный (неструктурный) вызов → `str` или `None` (под капотом схема с одним полем) |
+| `structured_llm(context, schema, *, system, user, attempts=…, on_error=…)` | один структурный вызов; `None` при честном сбое; `on_error(reason, exc)` (`"no_provider"`\|`"provider_error"`\|`"parse_error"`) — понять *почему*, не меняя контракт `None` |
+| `StructuredLLM(schema, *, system=…, attempts=…, on_error=…)` | переиспользуемый экземпляр; `.call(context, user)` |
+| `llm_reply(context, *, system, user, attempts=…, on_error=…)` | обычный (неструктурный) вызов → `str` или `None` (под капотом схема с одним полем) |
 | `parse_structured` | допускающий JSON→модель парсер, используемый внутри |
 
 ## Промпты (ctxloom.prompts, §68)
@@ -131,11 +131,13 @@
 | --- | --- |
 | `LLMProvider`, `EmbeddingProvider` | два контракта, с которыми говорит ядро |
 | `ImageProvider`, `SpeechProvider`, `TranscriberProvider`, `VideoProvider` | медиа-контракты |
-| `OpenAICompatProvider`, `OpenAICompatEmbedder` + вендорные фабрики (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ чат/эмбеддинг-бэкендов |
+| `OpenAICompatProvider`, `OpenAICompatEmbedder` + вендорные фабрики (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ чат/эмбеддинг-бэкендов, у всех `retry_attempts=3` по умолчанию (429/5xx/сетевые ошибки, экспоненциальный backoff — никогда на 4xx) |
+| `openrouter_embedder`, `openrouter_speech`, `groq_transcriber`, `together_embedder`, `fireworks_embedder`, `qwen_embedder`, `nvidia_embedder` | эмбеддинги/TTS/STT для вендоров, чьи не-чат эндпоинты подтверждённо OpenAI-совместимы (см. [providers](providers.md)) |
 | `Message`, `Role` | одно сообщение чата; `role` — закрытый `Literal` + фабрики `Message.system/user/assistant/tool` |
 | `LLMRequest` | одна генерация: `messages` + `temperature`/`max_tokens` — `None` = дефолт провайдера (вызов перекрывает провайдера, провайдер `None` = поле не отправляется) |
 | `LLMResponse`, `LLMResponseChunk` | результат одной генерации / один поточный чанк, возвращаемые провайдером |
 | `*_from_env(**overrides)` | подключение из `.env`; возвращает `None`, если не настроено |
+| `from_env(**overrides)` | выбор в один вызов: сперва `OPENROUTER_API_KEY`, иначе `OPENAI_BASE_URL`, иначе `None` — тот самый двухветочный дефолт, что каждый пример вручную собирает в своём `build_llm()` |
 | `FakeLLM`, `FakeEmbedder` | детерминированные заглушки для тестов/демо |
 
 ## Рецепты (ctxloom.recipes)

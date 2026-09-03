@@ -46,6 +46,17 @@ if img is not None:
 возвращает `None`, и демо переходит на детерминированное поведение (поэтому каждый
 пример работает вообще без ключей API).
 
+`from_env(**overrides)` собирает тот же двухветочный паттерн, который каждый
+пример вручную повторяет в своём `build_llm()` (сначала `OPENROUTER_API_KEY`,
+иначе `OPENAI_BASE_URL`, иначе `None`) — для приложений, которым нужен общий
+дефолт без копирования этого блока:
+
+```python
+from ctxloom.providers import from_env
+
+llm = from_env(max_tokens=2048)  # openrouter_llm(...) или llm_from_env(...) или None
+```
+
 Примеры в репозитории предпочитают **явные фабрики** (`openai_llm(...)`,
 `openrouter_llm(...)`) с явным `max_tokens`: каждое демо определяет маленький
 `build_llm()`, который читает `.env` и выбирает провайдера, — всегда видно,
@@ -57,8 +68,21 @@ if img is not None:
 вендорных фабрик. Поддерживает:
 
 - `api_base` / кастомный `proxy` (базовый URL) и `auth_scheme`/`auth_header`.
-- `_network_knobs` — батчинг, таймауты на запрос, политики ретраев.
+- `_network_knobs` — proxy/auth-заголовок/auth-схема из
+  `<PREFIX>_PROXY`/`<PREFIX>_AUTH_HEADER`/`<PREFIX>_AUTH_SCHEME` или явных
+  overrides.
+- `retry_attempts` (по умолчанию `3`) — 429/5xx и сетевые ошибки (обрыв
+  соединения, таймаут) повторяются с экспоненциальным backoff; 4xx никогда
+  не повторяется. Работает только для `complete()`, не для `stream()`
+  (стрим, упавший на середине, нельзя безопасно повторить без дублирования
+  уже отданных чанков) — см. [Надёжность](#надёжность) ниже.
 - `stream` для посимвольных `LLMResponseChunk`.
+
+11 из вендорных `*_llm` фабрик ниже (Cerebras, DeepSeek, Fireworks, GitHub
+Models, Groq, NVIDIA NIM, Perplexity, Qwen, Together, xAI, z.ai) собраны из
+одной фабрики-конструктора `_openai_compat_llm(env_prefix=...,
+default_model=..., default_base_url=...)` — каждый вендорный модуль это
+3-строчный конфиг, а не отдельно скопированная функция.
 
 | Фабрика | Вендор |
 | --- | --- |
@@ -66,29 +90,39 @@ if img is not None:
 | `anthropic_llm` | Anthropic |
 | `mistral_llm` / `mistral_embedder` | Mistral |
 | `deepseek_llm` | DeepSeek |
-| `openrouter_llm` | OpenRouter (множество вендоров) |
-| `groq_llm` | Groq (быстрый инференс) |
+| `openrouter_llm` / `openrouter_embedder` / `openrouter_speech` | OpenRouter (много вендоров: чат, изображения, видео, эмбеддинги, TTS — не STT, см. ниже) |
+| `groq_llm` / `groq_transcriber` | Groq (быстрый инференс; Whisper STT) |
 | `xai_llm` | xAI (`grok`) |
-| `together_llm` | Together AI |
-| `fireworks_llm` | Fireworks |
+| `together_llm` / `together_embedder` | Together AI |
+| `fireworks_llm` / `fireworks_embedder` | Fireworks |
 | `azure_llm` | Azure OpenAI |
 | `cerebras_llm` | Cerebras (быстрый инференс) |
 | `github_models_llm` | GitHub Models |
-| `qwen_llm` | Qwen/百炼 |
-| `nvidia_nim_llm` | NVIDIA NIM |
+| `qwen_llm` / `qwen_embedder` | Qwen/百炼 (DashScope) |
+| `nvidia_nim_llm` / `nvidia_embedder` | NVIDIA NIM |
 | `perplexity_llm` | Perplexity |
 | `zai_llm` | Z.ai |
 | `ollama_llm` | локальный Ollama |
 | `gemini_llm` | Google Gemini (`GeminiProvider`) |
+
+Каждая фабрика embedder/speech/transcriber выше проверена по документации
+самого вендора, а не предположена из «раз чат OpenAI-совместим, то и
+остальное тоже» — некоторые возможности, которые выглядят так, будто должны
+существовать в OpenAI-совместимом виде, на деле нет. Конкретный пример:
+`/audio/transcriptions` (STT) у OpenRouter принимает JSON с base64, а не
+multipart-загрузку файла, которую ожидает `OpenAICompatTranscriber` (и любой
+другой транскрайбер здесь) — реальное различие API, поэтому
+`openrouter_transcriber` намеренно нет.
 
 ## Изображения, речь, видео
 
 | Способность | Провайдеры |
 | --- | --- |
 | Изображения | `OpenAICompatImageProvider` (любой image API), `OpenRouterImageProvider`, `GeminiImageProvider`, `gemini_image`, `image_from_env` |
-| Речь (TTS) | `OpenAICompatSpeech`, `speech_from_env` |
-| Речь (STT) | `OpenAICompatTranscriber`, `transcriber_from_env` |
-| Видео | `SoraVideoProvider`, `RunwayVideoProvider`, `LumaVideoProvider`, `OpenRouterVideoProvider`, `video_from_env` |
+| Эмбеддинги | `OpenAICompatEmbedder`, `openai_embedder`, `mistral_embedder`, `openrouter_embedder`, `together_embedder`, `fireworks_embedder`, `qwen_embedder`, `nvidia_embedder`, `embedder_from_env` |
+| Речь (TTS) | `OpenAICompatSpeech`, `openrouter_speech`, `speech_from_env` |
+| Речь (STT) | `OpenAICompatTranscriber`, `groq_transcriber`, `transcriber_from_env` |
+| Видео | `SoraVideoProvider`, `RunwayVideoProvider`, `LumaVideoProvider`, `OpenRouterVideoProvider`, `video_from_env` — `generate()`/`fetch()`/`download()` все с ретраями (та же политика, что у чата); сам `poll()` терпит `fetch()`, упавший даже после своего ретрая, и продолжает опрос до `timeout`, а не бросает многоминутную задачу из-за одного сетевого сбоя |
 
 Каждая `*_from_env` принимает `**overrides`, чтобы в тестах можно было внедрить
 конфигурацию без переменных окружения.
@@ -109,6 +143,41 @@ MISTRAL_API_KEY=...
 IMAGE_PROVIDER=openrouter
 IMAGE_MODEL=google/gemini-2.0-flash-exp:free
 ```
+
+## Надёжность
+
+**Ретраи.** У каждого провайдера (`OpenAICompatProvider`/`Embedder`,
+`AnthropicProvider`, `GeminiProvider`, `OpenAICompatImageProvider`,
+`OpenAICompatSpeech`/`Transcriber`, все четыре видео-провайдера) есть
+`retry_attempts` (по умолчанию `3`) — 429/5xx и сетевые ошибки повторяются с
+экспоненциальным backoff через `ctxloom.providers._retry.with_retry`; 4xx
+(auth/bad request) никогда не повторяется, потому что повтор
+неправильной настройки только откладывает реальную ошибку. `retry_attempts=1`
+отключает ретраи.
+
+**Жизненный цикл HTTP-клиента.** Каждый провайдер лениво открывает
+`httpx.AsyncClient` и владеет им — рантайм ничего не закрывает сам. Вызывайте
+`await resources.aclose()` (`RuntimeResources`) сами при реальном завершении
+работы (FastAPI `lifespan` или конец скрипта):
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await resources.aclose()
+
+app = FastAPI(lifespan=lifespan)
+```
+
+Единственное исключение — `ChatAssistant` с **callable** `resources=`
+(например, `resources=lambda: build_resources()`): свежий `RuntimeResources`
+— и, как правило, свежий провайдер + HTTP-клиент — собирается на каждый ход,
+поэтому `stream()` сам закрывает его после хода: больше никто на этот
+инстанс не сошлётся. Обычный (не-callable) `resources=` не трогается — он
+должен пережить ход.
 
 ## Температура и max_tokens — дефолты провайдера, переопределение на вызове
 

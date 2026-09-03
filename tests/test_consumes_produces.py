@@ -1,5 +1,6 @@
 import asyncio
 
+import pytest
 from ctxloom import Agent, Consume, Context, Patch, Produce, Runtime
 from pydantic import BaseModel
 
@@ -46,13 +47,17 @@ async def make_upper(context, inputs):
     return [Output(text=inputs[0].data.text.upper())]
 
 
-class AutoAgent(Agent):
-    name = "auto_agent"
-    consumes = [Consume(Input)]
-    produces = [Produce(Output, factory=make_upper)]
+def test_auto_run_with_produce_factory_is_deprecated_but_still_works():
+    """Produce(..., factory=...) is deprecated (§ produce styles cleanup) —
+    still functions for existing code, but warns and points at @produce."""
+    with pytest.warns(DeprecationWarning, match="Produce.*factory.*deprecated"):
+        produce_instance = Produce(Output, factory=make_upper)
 
+    class AutoAgent(Agent):
+        name = "auto_agent"
+        consumes = [Consume(Input)]
+        produces = [produce_instance]
 
-def test_auto_run_with_produce_factory():
     ctx = Context()
     runtime = Runtime(ctx, agents=[AutoAgent()])
 

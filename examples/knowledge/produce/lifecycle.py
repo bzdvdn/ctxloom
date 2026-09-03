@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from ctxloom import Artifact, Context, Event, Produce
 from ctxloom.recipes import StatusMachine
 from ctxloom.sources import SourceRef
@@ -18,6 +20,16 @@ from ..models import (
     Spreadsheet,
 )
 from .common import FALLBACK_TOPN, conversation_text
+
+logger = logging.getLogger(__name__)
+
+
+def _log_llm_outage(reason: str, exc: BaseException | None) -> None:
+    """structured_llm's on_error: only "provider_error" is worth an alert —
+    "no_provider" is just offline demo mode, "parse_error" is the model
+    replying with something unparseable, not an outage."""
+    if reason == "provider_error":
+        logger.warning("BuildAnswer: LLM provider call failed: %r", exc)
 
 
 class EvaluateTurn(StatusMachine[ResearchTurn]):
@@ -134,7 +146,9 @@ class BuildAnswer(Produce[Answer]):
         if conversation:
             prompt += f"\n\n{conversation}"
         prompt += f"\nQuestion: {question}\nFacts:\n{material_lines}"
-        body = await structured_llm(context, schema=AnswerBody, user=prompt)
+        body = await structured_llm(
+            context, schema=AnswerBody, user=prompt, on_error=_log_llm_outage
+        )
         sources = [e.data.source for e in evidences] + [
             f"{c.data.source_id}:{c.data.path}"
             for c in context.list_artifacts(Spreadsheet)

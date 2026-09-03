@@ -156,16 +156,21 @@ class Effects:
         *,
         kind: str = "general",
         notes: dict[str, Any] | None = None,
+        id: str | None = None,
     ) -> Handle:
         """Poses a question to a human (HITL, §60): creates a `PendingQuestion`.
 
         Returns a handle you can link later; the human answer is recorded via
-        `effects.resume(question_art, resolution)` (§60).
+        `effects.resume(question_art, resolution)` (§60). Pass `id` for a
+        stable, re-derivable question (e.g. `f"steer:{qid}:{round}"`) so a
+        guard like `if context.get(id) is not None: return None` can stop the
+        produce from asking again while the question is still unanswered.
         """
         from .interrupt import PendingQuestion
 
         return self.create(
-            PendingQuestion(question=question, kind=kind, notes=dict(notes or {}))
+            PendingQuestion(question=question, kind=kind, notes=dict(notes or {})),
+            id=id,
         )
 
     def resume(self, question: Any, resolution: str) -> Effects:

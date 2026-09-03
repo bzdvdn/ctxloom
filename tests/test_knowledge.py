@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 from ctxloom import (
@@ -7,6 +8,7 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
+from ctxloom.providers import LLMProvider, LLMResponseChunk
 from ctxloom.recipes import keyword_score
 from ctxloom.sources import CSVSource, FileSystemSource
 from examples.knowledge.agents import (
@@ -277,3 +279,59 @@ def test_non_calculation_question_ignores_table():
     assert ctx.list_artifacts(Calculation) == []
     answer = next(a for a in ctx.list_artifacts(Answer) if a.data.query_id == query.id)
     assert "guide:auth.md" in answer.data.sources
+
+
+# ---- Phase 7: reliability — LLM provider outage (structured_llm on_error) ----
+
+
+class AlwaysFailsLLM(LLMProvider):
+    """Configured but unreachable — distinct from `llm=None` ("no provider")."""
+
+    async def complete(self, request):
+        raise RuntimeError("simulated provider outage")
+
+    async def stream(self, request):
+        yield LLMResponseChunk(text="")  # pragma: no cover — not exercised here
+
+
+def test_answer_degrades_honestly_when_llm_provider_fails(caplog):
+    """A relevant question with evidence, but the LLM provider is down (not
+    just unconfigured): the turn still reaches "answered" from raw evidence
+    (ExtractEvidence's own honest fallback), BuildAnswer's `on_error` logs the
+    outage instead of swallowing it, and the answer text is non-empty and
+    sourced — the pipeline degrades honestly rather than stalling.
+
+    Regression for a diagnosis mix-up: an *unrelated* question (no matching
+    evidence at all) was mistaken for a cascading-failure bug caused by the
+    LLM outage, when the two are unconnected — this test pins the actual
+    LLM-outage path down so it can't regress silently.
+    """
+    ctx, runtime = build_runtime()
+    ctx.resources.llm = AlwaysFailsLLM()
+    query = ctx.create(UserQuery(text="how to set up authentication?"))
+
+    with caplog.at_level(logging.WARNING):
+        asyncio.run(runtime.arun())
+
+    turn = next(t for t in ctx.list_artifacts(ResearchTurn) if t.data.query_id == query.id)
+    assert turn.data.status == "answered"
+    answer = next(a for a in ctx.list_artifacts(Answer) if a.data.query_id == query.id)
+    assert answer.data.text.strip()
+    assert "guide:auth.md" in answer.data.sources
+    assert any(
+        "BuildAnswer: LLM provider call failed" in r.message for r in caplog.records
+    )
+
+
+def test_unrelated_question_is_insufficient_regardless_of_llm():
+    """The counterpart to the above: a question with *no* matching evidence
+    goes "insufficient" the same way whether the LLM is up, down, or absent —
+    it is never reached, so an LLM outage cannot be the cause of that path."""
+    ctx, runtime = build_runtime()
+    ctx.resources.llm = AlwaysFailsLLM()
+    query = ctx.create(UserQuery(text="what is the weather today?"))
+    asyncio.run(runtime.arun())
+
+    turn = next(t for t in ctx.list_artifacts(ResearchTurn) if t.data.query_id == query.id)
+    assert turn.data.status == "insufficient"
+    assert ctx.list_artifacts(Answer) == []

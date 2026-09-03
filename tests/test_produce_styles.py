@@ -1,5 +1,6 @@
 import asyncio
 
+import pytest
 from ctxloom import (
     Agent,
     Consume,
@@ -141,7 +142,7 @@ def test_produce_decorator_update_through_slot():
     assert tasks[0].data.status == "done"
 
 
-# --- Two-argument factory stays compatible ---
+# --- Two-argument factory: deprecated, still works (§ produce styles cleanup) ---
 
 
 def plain_factory(context, inputs):
@@ -150,17 +151,30 @@ def plain_factory(context, inputs):
     return Marker(value=inputs[0].data.text + "!")
 
 
-class PlainAgent(Agent):
-    consumes = [Consume(Input)]
-    produces = [Produce(Marker, factory=plain_factory)]
+def test_plain_two_arg_factory_is_deprecated_but_still_works():
+    with pytest.warns(DeprecationWarning, match="Produce.*factory.*deprecated"):
+        produce_instance = Produce(Marker, factory=plain_factory)
 
+    class PlainAgent(Agent):
+        consumes = [Consume(Input)]
+        produces = [produce_instance]
 
-def test_plain_two_arg_factory_still_works():
     ctx = Context()
     runtime = Runtime(ctx, agents=[PlainAgent()])
     ctx.create(Input(text="ok"))
     asyncio.run(runtime.arun())
     assert ctx.list_artifacts(Marker)[0].data.value == "ok!"
+
+
+def test_produce_decorator_does_not_warn(recwarn):
+    """The @produce decorator never touches the deprecated factory= path —
+    locks in that the canonical style stays warning-free."""
+
+    @produce(Marker)
+    async def _f(context, inputs, effects):
+        return None
+
+    assert len(recwarn) == 0
 
 
 # --- The event reaches produce ---

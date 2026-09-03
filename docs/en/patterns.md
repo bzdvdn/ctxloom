@@ -34,6 +34,12 @@ Pattern: **activate stage → immediately ask** (the repair `ApprovalStage`
 creates the approval `PendingQuestion` the moment it becomes eligible, without
 waiting for a user message), then **react to the answer** on the next event.
 
+For a re-derivable question (`f"steer:{qid}:{round}"`, `medic-lab`'s steering
+ask), pass `id=` to `effects.ask(...)` so a guard
+(`if context.get(id) is not None: return None`) can stop the produce from
+asking again while the question is still unanswered — the same idempotency
+idiom as `effects.create_once`.
+
 ## Tool agents: LLM + tools (blocking or HITL)
 
 For "the model decides which tool to call" flows, use the built-in agents:
@@ -83,7 +89,17 @@ facts = await _extractor.call(context, user=message_text)
 ```
 
 Both return `None` on a missing model or a parse failure after retries — and the
-caller is expected to handle `None` (see fallbacks).
+caller is expected to handle `None` (see fallbacks). If you need to tell
+"no provider configured" apart from "the provider is down" (e.g. to alert on
+a real outage) without changing that `None` handling, pass `on_error`:
+
+```python
+def alert_if_down(reason: str, exc: Exception | None) -> None:
+    if reason == "provider_error":
+        logger.error("LLM outage: %r", exc)
+
+body = await structured_llm(context, schema=AnswerBody, user=text, on_error=alert_if_down)
+```
 
 Build the `system`/`user` strings with `PromptTemplate` (core): declared
 variables, a `KeyError` on missing vars, and model-attribute fields
@@ -137,6 +153,12 @@ runtime = Runtime(ctx, agents=[...], budget=Budget(max_runs=200), max_concurrenc
   runtime's global `max_concurrency` keep provider rate limits happy — the
   `medic-lab` demo runs a hypothesis laboratory with a LLM-limit of 2 inside a
   global cap of 6.
+- By default one agent's exception propagates out of `arun()`/`astream()` and
+  stops the whole run (§69 — fail loud, not silently). Opt into isolating it
+  instead with `Runtime(isolate_errors=True, on_agent_error=...)`: that
+  agent contributes no patch this generation, unrelated agents still make
+  progress, and the failure is traced (`AgentSpan.error`) and counted
+  (`RunStats.errors`) rather than hidden.
 
 ## Chat memory with sessions
 
@@ -170,5 +192,8 @@ See [recipes](recipes.md). The rule of thumb for choosing between patterns:
   `Patch` is the transport — you rarely type it in an ordinary produce.
 - Make eligibility a guard, not a lucky scheduling accident (`return None` early).
 - Prefer stable ids (`answer:{qid}`, `ref:{sid}:{owner}`) → idempotent re-runs.
+  `self.effects.create_once(Model(...), id=...)` folds the "already done"
+  guard into the call — `None` back means skip, don't rebuild the guard by
+  hand above every `create`.
 - Pure decision functions (`next_status`) are unit-testable without a runtime.
 - Every LLM call has a structured schema, a retry budget, and a `None` path.

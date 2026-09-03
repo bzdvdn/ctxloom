@@ -10,7 +10,7 @@ modules.
 | --- | --- |
 | `Context` | versioned working state; resources; queries; `latest(Model)`; announce; diff/rollback |
 | `View` | result of a typed join query (`context.view(...)`) |
-| `RuntimeResources` | providers + sources + arbitrary app resources |
+| `RuntimeResources` | providers + sources + arbitrary app resources; `await resources.aclose()` closes the llm/embedder HTTP clients (duck-typed) — call it yourself at real shutdown, nothing does it automatically except `ChatAssistant` for a per-turn callable `resources=` |
 | `Commit`, `Read`, `Write` | version bookkeeping and recorded provenance ops |
 
 ## Artifacts & changes
@@ -29,7 +29,7 @@ modules.
 | `Agent` | thin container: `name`, `consumes`, `produces`, `concurrency_limit` |
 | `create_agent` | constructor-style Agent builder — no subclassing needed for plain containers |
 | `Consume` / `consume` | declarative (or decorator) reaction declaration; `Consume.by_field` for scoped events |
-| `Produce` / `produce` | the work unit: writes `self.effects` (or `effects` slot in a decorated function) → `None`; model/Patch return is compiled too |
+| `Produce` / `produce` | the work unit: writes `self.effects` (or `effects` slot in a decorated function) → `None`; model/Patch return is compiled too. Two canonical styles — subclass and `@produce` function (see [effects](effects.md)); `Produce(Model, factory=fn)` is deprecated (`DeprecationWarning`, use `@produce` instead) |
 | `Trigger` | secondary (non-artifact) enter condition for a produce |
 | `StructuredGenerateAgent` | declarative LLM→schema→artifact agent (`schema`, `build_prompt`, `fallback`) |
 | `LLMAgent` | blocking LLM+tools loop (`system`, `tools`, `max_steps`) |
@@ -43,7 +43,7 @@ modules.
 
 | Symbol | Role |
 | --- | --- |
-| `Runtime` | wakes agents on events; `run` / `arun` / `astream`; budget & concurrency |
+| `Runtime` | wakes agents on events; `run` / `arun` / `astream`; budget & concurrency; `isolate_errors=True` + `on_agent_error(agent, event, exc)` to keep one agent's exception from aborting the whole run (default: propagates, §69) |
 | `Budget`, `RunOutcome`, `RunStats` | run limits and the final outcome/stats |
 | `Event`, `EventType` | the wire format of "something changed" — `ARTIFACT_CREATED`/`UPDATED`/`DELETED`/`STALE` |
 | `EventHub`, `ProgressEvent` | progress/announce channel consumed by web UIs |
@@ -103,9 +103,9 @@ modules.
 
 | Symbol | Role |
 | --- | --- |
-| `structured_llm(context, schema, *, system, user, attempts=…)` | one structured call; `None` on honest failure |
-| `StructuredLLM(schema, *, system=…, attempts=…)` | reusable instance; `.call(context, user)` |
-| `llm_reply(context, *, system, user, attempts=…)` | plain-text completion → `str` or `None` (single-text schema under the hood) |
+| `structured_llm(context, schema, *, system, user, attempts=…, on_error=…)` | one structured call; `None` on honest failure; `on_error(reason, exc)` (`"no_provider"`\|`"provider_error"`\|`"parse_error"`) to distinguish *why*, without changing the `None` contract |
+| `StructuredLLM(schema, *, system=…, attempts=…, on_error=…)` | reusable instance; `.call(context, user)` |
+| `llm_reply(context, *, system, user, attempts=…, on_error=…)` | plain-text completion → `str` or `None` (single-text schema under the hood) |
 | `parse_structured` | lenient JSON→model parser used internally |
 
 ## Prompts (ctxloom.prompts, §68)
@@ -132,11 +132,13 @@ modules.
 | --- | --- |
 | `LLMProvider`, `EmbeddingProvider` | the two contracts the core talks to |
 | `ImageProvider`, `SpeechProvider`, `TranscriberProvider`, `VideoProvider` | media contracts |
-| `OpenAICompatProvider`, `OpenAICompatEmbedder` + vendor factories (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ chat/embedder backends |
+| `OpenAICompatProvider`, `OpenAICompatEmbedder` + vendor factories (`openai_llm`, `anthropic_llm`, `deepseek_llm`, `groq_llm`, `mistral_llm`, `openrouter_llm`, `gemini_llm`, `ollama_llm`, `azure_llm`, …) | 20+ chat/embedder backends, all `retry_attempts=3` by default (429/5xx/transport errors, exponential backoff — never on 4xx) |
+| `openrouter_embedder`, `openrouter_speech`, `groq_transcriber`, `together_embedder`, `fireworks_embedder`, `qwen_embedder`, `nvidia_embedder` | embeddings/TTS/STT for vendors whose non-chat endpoints are confirmed OpenAI-compatible (see [providers](providers.md)) |
 | `Message`, `Role` | one chat message; `role` is a closed `Literal` + `Message.system/user/assistant/tool` factories |
 | `LLMRequest` | one completion: `messages` + `temperature`/`max_tokens` — `None` = provider default (call overrides provider, provider `None` = field omitted) |
 | `LLMResponse`, `LLMResponseChunk` | one completion result / one streamed chunk returned by a provider |
 | `*_from_env(**overrides)` | `.env`-driven wiring that returns `None` when unconfigured |
+| `from_env(**overrides)` | one-call selection: `OPENROUTER_API_KEY` first, else `OPENAI_BASE_URL`, else `None` — the two-branch default every example's local `build_llm()` hand-rolls |
 | `FakeLLM`, `FakeEmbedder` | deterministic stand-ins for tests/demos |
 
 ## Recipes (ctxloom.recipes)

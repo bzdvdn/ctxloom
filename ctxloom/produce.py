@@ -1,28 +1,38 @@
 """ctxloom.produce — how a produce writes an artifact (§24).
 
-Two styles cover almost everything and are the ones this repo's examples use:
+Two styles cover almost everything and are the two canonical ones — reach
+for one of these first:
 
 - **Subclass + effects** — `class X(Produce[Model]): async def produce(self,
   context, inputs, event=None): self.effects.create(...); return None`. Use
   this whenever the produce has its own state-free logic worth naming as a
   class (the common case in every example under `examples/`).
-- **`@produce(Model)` function with `effects`** — `@produce(Model)\\ndef f(context,
-  inputs, effects): effects.create(...)`. Same effects-first shape, no class
-  ceremony — pick this for a short, one-off produce.
+- **`@produce(Model)` function** — `@produce(Model)\\ndef f(context, inputs,
+  effects): effects.create(...)`, or the plain return-style
+  `def f(context, inputs): return Model(...)` (also accepts `event`). One
+  decorator, both signatures recognized by parameter name — pick this for a
+  short, one-off produce with no class ceremony.
 
-Everything else `Produce`/`produce()` also accept — a plain return-style
-`@produce` function (return a model / list / `Patch` / `None` instead of
-writing `effects`), or a two-argument `factory=` callable passed to the
-`Produce()` constructor — still works and is still tested
-(`tests/test_produce_styles.py`), kept for existing code and advanced cases
-(e.g. wrapping a function that predates `effects`). New code should reach for
-one of the two styles above first.
+Two other things `Produce` accepts are *not* on that list on purpose:
+
+- `Produce(Model, factory=fn)` — a bare two-argument-factory constructor
+  kwarg, **deprecated** (raises `DeprecationWarning`). It predates the
+  `@produce` decorator, only supports `(context, inputs[, event]) -> Model |
+  list | Patch | None`, and can't see the effects slot at all — strictly
+  weaker than `@produce(Model)`, which covers the same signature plus
+  `effects`. Kept only so old code doesn't break; port it to `@produce`.
+- Overriding `Agent.run(self, event, context) -> Patch` directly, bypassing
+  `effects`/`Produce` entirely to hand-assemble a `Patch`. This is a
+  low-level, internal escape hatch (used in this repo's own tests, never in
+  an example) for cases effects genuinely can't express — not a third
+  everyday style.
 """
 
 from __future__ import annotations
 
 import asyncio
 import inspect
+import warnings
 from collections.abc import Callable
 from typing import Any, Generic, TypeVar, get_args, get_origin
 
@@ -70,6 +80,17 @@ class Produce(Generic[TOut]):
                 "artifact_type must be provided either as class attribute or constructor argument"
             )
         self.factory = factory if factory is not None else self.__class__.factory
+        if self.factory is not None:
+            warnings.warn(
+                "Produce(..., factory=...) is deprecated: it only supports "
+                "(context, inputs[, event]) -> Model | list | Patch | None and "
+                "can't see the effects slot (no `effects` param support). Use "
+                "the @produce(Type) decorator instead — same return-style "
+                "signature, plus optional effects/event params when you need "
+                "them. See the ctxloom.produce module docstring.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._accepts_event = False
         if self.factory is not None:
             try:

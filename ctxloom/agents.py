@@ -102,6 +102,16 @@ class Agent(ABC):  # noqa: B024 — interface without abstract methods, run() ha
         return inputs
 
     async def run(self, event: Event, context: Context) -> Patch | None:
+        """Default: runs `self.produces` via `execute()` (the effects-first
+        path — write a `Produce` subclass or `@produce` function instead of
+        overriding this).
+
+        Overriding `run()` to return a `Patch` by hand is a low-level,
+        internal escape hatch for cases `effects` genuinely can't express —
+        not a third everyday produce style (see `ctxloom.produce`'s module
+        docstring for the two you should reach for first). No example in
+        this repo overrides it; only this repo's own tests do.
+        """
         await self.execute(context, event)
         return None
 

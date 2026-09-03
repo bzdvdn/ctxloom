@@ -94,18 +94,14 @@ class Steer(Produce[PendingQuestion]):
         steer_id = f"steer:{question_id}:{question.data.depth}"
         if context.get(steer_id) is not None:
             return None  # same round already steering (idempotent, §42)
-        self.effects.create(
-            PendingQuestion(
-                question=(
-                    "All hypotheses have been evaluated. Deepen one, "
-                    "or stop for the final report?\n\n"
-                    f"{_ranking_block(context, question_id)}\n\n"
-                    "Reply with a number (0-3) to deepen that hypothesis, "
-                    "or «stop» for the report."
-                ),
-                kind="steer",
-                notes={"question_id": question_id},
-            ),
+        self.effects.ask(
+            "All hypotheses have been evaluated. Deepen one, "
+            "or stop for the final report?\n\n"
+            f"{_ranking_block(context, question_id)}\n\n"
+            "Reply with a number (0-3) to deepen that hypothesis, "
+            "or «stop» for the report.",
+            kind="steer",
+            notes={"question_id": question_id},
             id=steer_id,
         )
         return None

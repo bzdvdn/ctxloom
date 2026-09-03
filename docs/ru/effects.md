@@ -21,6 +21,26 @@ async def produce(self, context, inputs, event=None) -> None:
     return None
 ```
 
+## Идемпотентность: `create_once` и `upsert`
+
+Пересобираемому id (`f"answer:{qid}"`) обычно нужен гард — почти в каждом
+produce перед `self.effects.create(...)` он и стоит. `create_once` сворачивает
+его прямо в вызов:
+
+```python
+handle = self.effects.create_once(Answer(...), id=f"answer:{qid}")
+if handle is None:
+    return None  # уже отвечено — делать нечего
+```
+
+`Create` на существующий id и так работает как create-or-refresh (новая
+версия той же сущности, §42/§43) — `upsert` просто явно называет это
+намерение там, где «может уже существовать» — это план, а не сюрприз:
+
+```python
+self.effects.upsert(Summary(...), id=f"summary:{doc_id}")
+```
+
 ## Три слоя
 
 | Слой | Что это | Кто пишет |
@@ -84,3 +104,22 @@ async def answer_turn(context, inputs, event, effects):
 `effects` заполняются автоматически. Return-контракт сохраняется: возврат
 модели / списка моделей / `Patch` / `None` компилируется рантаймом, так что
 короткие produce остаются однострочными.
+
+## Какой стиль выбрать
+
+Подкласс и функция `@produce` выше — два канонических стиля: подкласс, когда
+у produce своя логика, достойная класса, `@produce` — для короткого
+разового produce. Ещё две вещи, которые принимают `Produce`/`Agent`, в этот
+список *намеренно* не входят:
+
+- `Produce(Model, factory=fn)` — конструкторский kwarg с голой
+  двухаргументной фабрикой. **Устарел** (кидает `DeprecationWarning`): он
+  появился раньше `@produce`, поддерживает только `(context, inputs[, event])
+  -> Model | list | Patch | None` и вообще не видит слот effects — строго
+  слабее `@produce`, который покрывает ту же сигнатуру плюс `effects`.
+  Оставлен, чтобы не ломать старый код; переносите его на `@produce`.
+- Прямой override `Agent.run(self, event, context) -> Patch`, минуя
+  `effects`/`Produce` целиком, чтобы собрать `Patch` вручную. Низкоуровневый,
+  внутренний люк для случаев, которые effects принципиально не могут
+  выразить — ни один пример в репозитории его не использует, только тесты
+  самого фреймворка.

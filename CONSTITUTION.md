@@ -3081,32 +3081,26 @@ Everything else — tools, RAG, APIs, planners, schedulers, multi-agent executio
 # Appendix — Implementation Status
 
 State of the public `ctxloom` codebase, aligned with this constitution (ver 0.2).
-Verification: 300 tests; mypy (strict) and ruff clean.
+Verification: 413 tests; mypy (strict) and ruff clean.
 
 | Area | Section(s) | Status |
 |---|---|---|
-| Context / Artifact / Patch / Revision (git-like) | §4, §12, §14 | implemented (create/update/delete/link, history, diff, checkout, snapshot) |
+| Context / Artifact / Patch / Revision (git-like) | §4, §12, §14 | implemented (create/update/delete/link, history, diff, checkout, snapshot); `Context` composes a `RelationGraph` and a `CommitLog` internally (extracted for testability, no API change) |
 | Relations & provenance edges | §15, §33-§34, §36 | implemented (`Link`, `derived_from`, `supported_by`, `contradicted_by`) |
 | Context views (token-budgeted projections) | §27, §28 | implemented (`context.view` + `tokens_estimate`) |
 | Reference sources (filesystem / CSV / vector) | §7-§9, §74 P2 | implemented in core |
 | GitLab / Confluence / S3 connectors | §74 P2 | domain examples, not core (planned as `examples/` connectors) |
 | Agent contract (Produce / Consume containers) | §10-§13, §63 | implemented |
-| Reactive runtime, events, budget | §21-§24, §58 | implemented (subscriptions, outcomes, replan) |
+| Reactive runtime, events, budget | §21-§24, §58 | implemented (subscriptions, outcomes, replan); opt-in per-agent error isolation (`Runtime(isolate_errors=True, on_agent_error=...)`) — default stays fail-loud (§69) |
+| Provider reliability (retries, HTTP client lifecycle) | §69 | implemented — `with_retry` (429/5xx/transport errors, exponential backoff, never on 4xx) on every provider's network call; `RuntimeResources.aclose()`, auto-closed per turn by `ChatAssistant` for a callable `resources=` |
 | Tools / tool loop / HITL tool use | §46-§47, §60 | implemented (`tools`, `ToolUse`, `ToolUseHITL`) |
 | HITL (approvals, questions) | §60 | implemented (`PendingQuestion`, `InterruptPatch`) |
 | Knowledge chat: Evidence → Claim → Verification → Answer | §16-§19, §34-§36 | implemented (`examples/knowledge`, English) |
 | Structured-data calculation | §29, §33, §67 | implemented (`CSVSource → Spreadsheet → Calculation`) |
 | Confidence / contradictions as state | §35-§36 | implemented (deterministic, §67) |
-| Idempotency (stable ids, create-or-refresh) | §42 | implemented |
+| Idempotency (stable ids, create-or-refresh) | §42 | implemented — `effects.create_once(id=...)` folds the "already done" guard into the call; `effects.upsert(id=...)` names the create-or-refresh case explicitly |
 | Staleness / invalidation from recorded reads | §43-§44 | implemented (`stale_artifacts`; reactive via `EventType.ARTIFACT_STALE`, not just polling) |
-                  Scheduler
-                     │
-                     ▼
-            Effects → Patch
-                     │
-                     ▼
-               Context v+1
-| Produce authoring — Effects (§24) | §12, §24 | implemented — `self.effects.create/update/link/ask`, the runtime compiles the slot into one atomic `Patch` (transport) |
+| Produce authoring — Effects (§24) | §12, §24 | implemented — `self.effects.create/update/link/ask`, the runtime compiles the slot into one atomic `Patch` (transport); two canonical authoring styles (subclass, `@produce` function) — `Produce(factory=...)` deprecated, `Agent.run()` override documented as a low-level escape hatch, not a third style |
 | Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
 | Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
 | Branching (`context.branch()`) | §39-§40 | implemented — three-way `merge()` with `MergeConflict`, `BranchStore` over KV, CLI |
