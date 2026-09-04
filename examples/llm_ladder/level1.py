@@ -5,9 +5,9 @@ One question in, one `Answer` out. Teachings:
 - a guard returns `None` when the work is already done (idempotency, §42);
 - one `structured_llm` call with a schema (the deterministic parsing stays in
   code, the model only reasons);
--
-  the produce writes `self.effects.create(Answer)` and returns `None`
-  the vocabulary of links and updates (levels 2-3);
+- the produce writes `self.effects.create(Answer)` and returns `None` —
+  `create` is the only effect vocabulary needed here; `link`/`update` join in
+  at levels 2-3;
 - without a model, `structured_llm` returns `None` and the fallback line answers
   honestly (offline mode, §59).
 

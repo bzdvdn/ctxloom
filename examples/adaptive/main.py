@@ -1,14 +1,20 @@
-"""adaptive — hybrid scheduler (§26, §24): filter → rank → LLM tie-break.
+"""adaptive — hybrid scheduler (§26, §24): filter → rank → LLM tie-break → top-k.
 
 Two competing artists could each summarize a `Task`. The runtime's
-`scheduler=uncertainty_policy(...)` only *orders* and *prunes* candidates:
+`scheduler=uncertainty_policy(...)` prunes and orders candidates *before* the
+runtime dispatches them — this is not just cosmetic reordering:
 
 - **filter (hard rules)** — a rule prunes candidates that don't fit the domain
   (capability 'b' never picks a tag-"x" task), so they don't even reach ranking;
-- **rank (metric)** — the preferred artist is scheduled first (shown in the
-  log); the *decision* is then made deterministically by the same metric;
+- **rank (metric)** — the preferred artist is ranked first by the same metric
+  that also drives the final decision (`_pick_best`/`_metric` agree by design:
+  the scheduling metric *is* the business rule here);
 - **LLM tie-break** — within `llm_tie_break`, one structured call orders the
   top pair (skipped offline);
+- **rank_limit=1** — only the top-ranked artist is actually *dispatched*; the
+  runtime drains its triggering event once per turn (`arun_once`), so the
+  loser never gets a second chance to run. Watch the "candidates:" line: only
+  one artist ever produces a `Summary`, even though both are eligible;
 - **HITL approval** — an answered `PendingQuestion` is pinned to the front and
   never loses to ranking (§60).
 
@@ -96,6 +102,7 @@ def _not_b_for_x(context: Context, agent: Agent, event: Event) -> bool:
 
 RULES: list[Rule] = [_not_b_for_x]
 LLM_TIE_BREAK = 1.0  # wide: any tie is broken by the model when available
+RANK_LIMIT = 1  # top-k: only the top-ranked artist is dispatched at all
 
 
 # --- deterministic metric: prefer 'b' when the task mentions money ------------
@@ -245,6 +252,7 @@ def run(
             "You are the adaptive scheduler. Among the two artists, decide "
             "which one should run first. Reply with the index only."
         ),
+        rank_limit=RANK_LIMIT,
     )
     agents = [ArtistA(), ArtistB(), DecisionAgent()]
     _arun(Runtime(ctx, agents=agents, scheduler=scheduler))
@@ -275,9 +283,13 @@ def main() -> int:
     ctx = run(tag=args.tag, text=args.text, llm=build_llm())
     summaries = sorted(ctx.list_artifacts(Summary), key=lambda s: s.data.by)
     finals = ctx.list_artifacts(Final)
-    print("adaptive · filter → rank → LLM tie-break → HITL approval")
+    print("adaptive · filter → rank → LLM tie-break → top-k → HITL approval")
     if args.tag == "x":
         print("  rule: capability 'b' excluded for tag 'x' (pruned before ranking)")
+    print(
+        f"  scheduler: rank_limit={RANK_LIMIT} — only the top-ranked artist "
+        "below was ever dispatched; the other never ran"
+    )
     print("  candidates:", ", ".join(f"{s.data.by}" for s in summaries) or "—")
     for f in finals:
         print(f"  final ({f.data.by}): {f.data.text[:70]}")

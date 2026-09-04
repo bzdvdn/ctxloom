@@ -186,7 +186,7 @@ class StageAgent(Agent):
 class ExperimentAgent(Agent):
     name = "experiment"
     consumes = [Consume(Trigger), Consume(Request)]
-    produces = [Experiment(), Produce(Candidate)]
+    produces = [Experiment()]
 
 
 class PickAgent(Agent):

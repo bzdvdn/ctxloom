@@ -1,4 +1,4 @@
-"""llm-ladder · level 3 — lifecycle, multi-call, and state-changing patches (§39? no — §67, §69).
+"""llm-ladder · level 3 — lifecycle, multi-call, and state-changing patches (§67, §69).
 
 Three LLM calls across the turn, several produces, and a `StatusMachine` that
 *moves state* (its transitions are `update_fields` patches). The turn artifacts
@@ -207,7 +207,11 @@ class Finisher(Produce[Answer]):
             ),
             user=f"Verified claim: {claim.data.text}",
         )
-        text = body.text if body is not None else f"(offline answer) {claim.data.text}"
+        text = (
+            body.text
+            if body is not None
+            else f"No LLM configured to synthesize an answer; claim on record: {claim.data.text}"
+        )
         answer = self.effects.create(
             Answer(query_id=qid, text=text), id=f"answer:{qid}"
         )

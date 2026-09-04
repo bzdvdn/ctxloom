@@ -225,10 +225,12 @@ class Flow(Agent):
         RouteTask(),
         Specialist(),
         Supervisor(),
-        Produce(Task),
-        Produce(SpecialistReport),
+        # Supervisor.produce() creates PendingQuestion via `effects.ask(...)`,
+        # but its own `artifact_type` is FinalReply — this bare `Produce`
+        # widens the agent-level allowed-types set (`Runtime._validate_patch_types`
+        # unions every produces[i].artifact_type) so that Create is not
+        # rejected. Not a no-op: removing it breaks HITL approval.
         Produce(PendingQuestion),
-        Produce(FinalReply),
     ]
 
 

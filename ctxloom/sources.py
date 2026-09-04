@@ -335,12 +335,24 @@ _CSV_SEARCH_SAMPLE = 5
 
 
 def _html_to_text(html: str) -> str:
-    """Strips scripts/styles/tags from an HTML document, then collapses
-    whitespace into readable paragraphs."""
-    without_scripts = re.sub(
-        r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I
+    """Strips scripts/styles/boilerplate/tags from an HTML document, then
+    collapses whitespace into readable paragraphs.
+
+    Best-effort and dependency-free (regex, not a DOM parser) — good enough
+    for typical page markup, where real sites (Wikipedia, docs sites) use
+    `<nav>`/`<header>`/`<footer>`/`<aside>` as flat, non-nested landmarks; a
+    same-tag region nested inside itself may not fully strip. Without this,
+    boilerplate ("Jump to content", cookie banners, site nav) can outrank
+    real content in the naive `[:200]`-style offline fallback excerpt.
+    """
+    without_comments = re.sub(r"<!--.*?-->", " ", html, flags=re.S)
+    without_boilerplate = re.sub(
+        r"<(script|style|noscript|nav|header|footer|aside)[^>]*>.*?</\1>",
+        " ",
+        without_comments,
+        flags=re.S | re.I,
     )
-    without_tags = re.sub(r"<[^>]+>", " ", without_scripts)
+    without_tags = re.sub(r"<[^>]+>", " ", without_boilerplate)
     text = _html.unescape(without_tags)
     paragraphs = [p.strip() for p in re.split(r"\s*\n\s*", text) if p.strip()]
     return "\n".join(paragraphs).strip()

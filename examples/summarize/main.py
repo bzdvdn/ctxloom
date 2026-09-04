@@ -123,7 +123,10 @@ class Prune(Produce[Msg]):
         event: Event | None = None,
     ) -> None:
         messages = sorted(context.list_artifacts(Msg), key=lambda m: m.created_at)
-        old = messages[: len(messages) - WINDOW]
+        # `max(0, ...)`: a plain negative slice bound wraps from the end in
+        # Python (`messages[:-1]` means "all but the last"), which would
+        # prune the wrong messages while the window hasn't filled up yet.
+        old = messages[: max(0, len(messages) - WINDOW)]
         if not old:
             return None
         for message in old:
@@ -137,17 +140,29 @@ class Flow(Agent):
     produces = [Summarize(), Prune()]
 
 
-def run(
+async def _arun(
     *,
     seed: list[str] | None = None,
     llm: LLMProvider | None = None,
 ) -> Context:
     ctx = Context(resources=RuntimeResources(llm=llm))
-    if seed is not None:
-        for i, text in enumerate(seed):
-            ctx.create(Msg(role="user" if i % 2 == 0 else "assistant", text=text))
-    asyncio.run(Runtime(ctx, agents=[Flow()]).arun())
+    runtime = Runtime(ctx, agents=[Flow()])
+    # One message, then one run — not a bulk seed followed by a single run —
+    # so round 1's summary actually gets produced before round 2's messages
+    # even exist (otherwise `Summarize` only ever sees the final message
+    # count and round 1 is structurally unreachable).
+    for i, text in enumerate(seed or []):
+        ctx.create(Msg(role="user" if i % 2 == 0 else "assistant", text=text))
+        await runtime.arun()
     return ctx
+
+
+def run(
+    *,
+    seed: list[str] | None = None,
+    llm: LLMProvider | None = None,
+) -> Context:
+    return asyncio.run(_arun(seed=seed, llm=llm))
 
 
 def main() -> int:
@@ -164,7 +179,7 @@ def main() -> int:
     summaries = sorted(ctx.list_artifacts(Summary), key=lambda s: s.data.round)
     print("summarize · memory as artifacts (window=4, summary every 2 msgs)")
     for s in summaries:
-        print(f"  round {s.data.round}: {s.data.text[:120]}")
+        print(f"  round {s.data.round}: {s.data.text[:200]}")
     print(f"  messages kept in context: {len(ctx.list_artifacts(Msg))}")
     return 0
 

@@ -59,7 +59,7 @@ def build_llm() -> LLMProvider | None:
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parent
-FALLBACK_REPLY = "Не удалось обработать запрос. Попробуйте ещё раз."
+FALLBACK_REPLY = "Failed to process the request. Try again."
 
 
 class AskRequest(BaseModel):

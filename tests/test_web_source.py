@@ -68,3 +68,26 @@ def test_html_to_text_strips_markup():
     assert "x()" not in _html_to_text(
         "<html><body><script>x()</script>fine</body></html>"
     )
+
+
+def test_html_to_text_strips_boilerplate_landmarks():
+    """A page's nav/header/footer chrome must not outrank real content in the
+    naive `[:200]`-style offline excerpt (real bug: a Wikipedia-shaped page's
+    <nav> menu was landing ahead of the article text)."""
+    from ctxloom.sources import _html_to_text
+
+    html = (
+        "<html><body>"
+        "<header>Site Header <nav>Main menu Contents Current events</nav></header>"
+        "<!-- a comment full of noise -->"
+        "<article>The article's real content starts here.</article>"
+        "<aside>Related links sidebar</aside>"
+        "<footer>Copyright footer text</footer>"
+        "</body></html>"
+    )
+    text = _html_to_text(html)
+    assert "The article's real content starts here." in text
+    assert "Main menu" not in text
+    assert "Related links sidebar" not in text
+    assert "Copyright footer text" not in text
+    assert "noise" not in text

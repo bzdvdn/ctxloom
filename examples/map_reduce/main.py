@@ -198,9 +198,19 @@ class Flow(Agent):
     produces = [Split(), Summarize(), Combine()]
 
 
+DEFAULT_SOURCE = (
+    "Ctxloom treats an agent system as versioned artifacts and reactions, "
+    "not a hand-drawn execution graph wired node by node.\n\n"
+    "Every agent declares only what it consumes and produces; the runtime "
+    "works out execution order from state changes as they happen.\n\n"
+    "Each derived artifact links back to what produced it, so explaining "
+    "why the system answered a certain way is a graph walk, not a guess."
+)
+
+
 def run(
     *,
-    source: str = "Example state a few paragraphs and see it summarized.\n" * 6,
+    source: str = DEFAULT_SOURCE,
     llm: LLMProvider | None = None,
 ) -> Context:
     ctx = Context(resources=RuntimeResources(llm=llm))

@@ -77,6 +77,7 @@ class Generator(Produce[Hypothesis]):
         context.announce("Generating hypotheses...", kind="status")
 
         statements: list[str] = list(self.STATEMENTS)
+        used_demo_topic = True
         if question_text:
             body = await _hypotheses_prompt.call(
                 context,
@@ -92,6 +93,18 @@ class Generator(Produce[Hypothesis]):
             )
             if candidates:
                 statements = candidates[: self.MAX_HYPOTHESES]
+                used_demo_topic = False
+
+        if used_demo_topic:
+            # Honest disclosure (§59): without an LLM there is no way to turn
+            # free text into hypotheses, so the lab falls back to its own
+            # fixed demo topic instead of silently "investigating" something
+            # unrelated to what was actually asked.
+            context.announce(
+                "No LLM configured — demoing with the lab's own fixed topic "
+                "(vitamin D vs. colds) instead of analyzing your question.",
+                kind="status",
+            )
 
         for i, statement in enumerate(statements):
             hyp_id = f"hyp:{question_id}:{i}"
