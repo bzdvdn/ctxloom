@@ -132,6 +132,8 @@ on that loop.
 
 - [Why ctxloom](why-ctxloom.md) — the *design argument*: why effects, why no
   graph, why determinism, why versioned state.
+- [Comparison](comparison.md) — ctxloom vs LangGraph/CrewAI, feature by
+  feature, and when *not* to use ctxloom.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
 - [Sources](sources.md) — where agents get information from.
 - [Recipes](recipes.md) — ready-made search fan-out, ref materialization,

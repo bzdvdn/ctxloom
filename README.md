@@ -20,16 +20,22 @@ react to events — there is no graph, no node pipeline.
 pip install ctxloom
 ```
 
-Runs offline, no API key needed — paste this straight into a `.py` file:
+Runs offline, no API key needed — paste this straight into a `.py` file. Two
+agents, no graph edge declared between them — the second reacts because the
+first one's output exists, and the answer carries *proof* of where it came
+from:
 
 ```python
 from pydantic import BaseModel
 
 from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
-from ctxloom.sources import FileSystemSource
 
 
 class Question(BaseModel):
+    text: str
+
+
+class Evidence(BaseModel):
     text: str
 
 
@@ -37,22 +43,43 @@ class Answer(BaseModel):
     text: str
 
 
-@produce(Answer)
-async def echo(context, inputs, event, effects):
+DOCS = {
+    "refund": "Refunds are available within 14 days of purchase.",
+    "pricing": "The Pro plan is $49/month, billed annually.",
+}
+
+
+@produce(Evidence)
+async def find_evidence(context, inputs, event, effects):
     question = next((a for a in inputs if isinstance(a.data, Question)), None)
     if question is None:
         return None
-    effects.create(Answer(text=f"echo: {question.data.text}"))
+    hit = next((v for k, v in DOCS.items() if k in question.data.text.lower()), None)
+    if hit is not None:
+        effects.create(Evidence(text=hit))
 
 
-echo_agent = create_agent("echo", consumes=[Consume(Question)], produces=[echo])
+@produce(Answer)
+async def answer_from_evidence(context, inputs, event, effects):
+    evidence = next((a for a in inputs if isinstance(a.data, Evidence)), None)
+    if evidence is None:
+        return None
+    effects.create(Answer(text=evidence.data.text)).link("supported_by", evidence)
 
-ctx = Context(resources=RuntimeResources(sources={"docs": FileSystemSource("./docs")}))
-runtime = Runtime(ctx, agents=[echo_agent], budget=Budget(max_runs=10))
-ctx.create(Question(text="hello"))  # agents that consume it react automatically
-runtime.run()
 
-print(ctx.latest(Answer).data.text)  # "echo: hello"
+search_agent = create_agent("search", consumes=[Consume(Question)], produces=[find_evidence])
+answer_agent = create_agent("answer", consumes=[Consume(Evidence)], produces=[answer_from_evidence])
+
+ctx = Context(resources=RuntimeResources())
+runtime = Runtime(ctx, agents=[search_agent, answer_agent], budget=Budget(max_runs=10))
+
+ctx.create(Question(text="what's your refund policy?"))
+runtime.run()  # search_agent and answer_agent both react — nobody wired them together
+
+answer = ctx.latest(Answer)
+evidence = ctx.related(answer.id, "supported_by")[0]
+print(answer.data.text)                     # "Refunds are available within 14 days of purchase."
+print("supported_by:", evidence.data.text)  # provenance you can trace, not just a string in a log
 ```
 
 ## How it works
@@ -86,6 +113,9 @@ actual state.
 | The model guesses the numbers | **Calculations are calculated** — the LLM is a reasoning component, not the source of truth |
 
 Reactive. Deterministic. Accountable.
+
+Full breakdown, including where ctxloom is *not* the right choice:
+[docs/en/comparison.md](docs/en/comparison.md).
 
 ## Core primitives
 
@@ -148,6 +178,7 @@ Classic-pattern ports run as one-liners too:
 - [English](docs/en/index.md) · [Русский](docs/ru/index.md) — concepts, sources,
   providers, recipes, patterns, observability, eval, branching, replay, viz/CLI, API.
 - [Why ctxloom](docs/en/why-ctxloom.md) — the *design argument*: why effects, why no graph, why determinism.
+- [Comparison](docs/en/comparison.md) — ctxloom vs LangGraph/CrewAI, feature by feature, and when *not* to use ctxloom.
 - [Tutorial · llm-ladder](docs/en/index.md#llm-ladder) — learn the workflow.
 - [docs/constitution.md](docs/constitution.md) — the full design rationale and invariants.
 

@@ -129,6 +129,8 @@ print(ctx.list_artifacts(Answer)[0].data.text)  # "echo: hello"
 
 - [Почему ctxloom](why-ctxloom.md) — _дизайн-аргумент_: почему effects, почему
   без графа, почему детерминизм, почему версионируемое состояние.
+- [Сравнение](comparison.md) — ctxloom vs LangGraph/CrewAI по пунктам, и когда
+  ctxloom *не* стоит использовать.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
 - [Sources](sources.md) — откуда агенты берут информацию.
 - [Recipes](recipes.md) — готовые search fan-out, материализация референсов,
