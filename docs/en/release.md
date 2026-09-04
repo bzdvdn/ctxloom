@@ -4,7 +4,8 @@ How a `ctxloom` version is cut, built, verified, and published.
 
 ## Versioning
 
-- [SemVer](https://semver.org/); pre-releases carry an `rc` mark — `0.1.0rc1`.
+- [SemVer](https://semver.org/); pre-releases carry an `rc` mark (e.g.
+  `0.4.0rc1`), dropped for the stable cut (`0.4.0`).
 - The version lives in **two places** and must stay in sync:
   - `pyproject.toml` → `[project] version`;
   - `ctxloom/__init__.py` → `__version__`.
@@ -46,20 +47,20 @@ above. Two changes worth knowing if you're crossing them:
 # 2) version + changelog (see above)
 
 # 3) build artifacts
-uv build                     # dist/ctxloom-0.1.0rc1-py3-none-any.whl + sdist
+uv build                     # dist/ctxloom-0.4.0-py3-none-any.whl + sdist
 
 # 4) verify the wheel in a scratch venv (not the workspace, so no PYTHONPATH)
 uv venv /tmp/ctxloom-rc
-/tmp/ctxloom-rc/bin/python -m pip install --quiet dist/ctxloom-0.1.0rc1-py3-none-any.whl
+/tmp/ctxloom-rc/bin/python -m pip install --quiet dist/ctxloom-0.4.0-py3-none-any.whl
 /tmp/ctxloom-rc/bin/python -c "import ctxloom; print(ctxloom.__version__)"
 /tmp/ctxloom-rc/bin/python -m ctxloom graph examples.knowledge.agents 2>/dev/null \
     || /tmp/ctxloom-rc/bin/ctxloom --help >/dev/null   # console script present
 # confirm the wheel contains ctxloom + tracing templates and NOT examples/tests:
-unzip -l dist/ctxloom-0.1.0rc1-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates" 
+unzip -l dist/ctxloom-0.4.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates" 
 
 # 5) tag
-git tag v0.1.0rc1
-git push origin v0.1.0rc1
+git tag v0.4.0
+git push origin v0.4.0
 
 # 6) publish (PyPI token in env)
 uv publish --publish-url https://upload.pypi.org/legacy/

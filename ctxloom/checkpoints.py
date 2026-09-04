@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sqlite3
+import time
 import urllib.parse
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -139,12 +140,26 @@ class _AsyncSQLite:
         self._lock = asyncio.Lock()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
-        conn.execute(self._init_sql)
-        conn.commit()
-        return conn
+        # `busy_timeout` only takes effect once set on *this* connection, so
+        # the pragmas below race the very connections that would honor it —
+        # switching journal mode is an exclusive operation SQLite does not
+        # always retry through the normal busy handler. Several backends
+        # opening a brand-new file at once can still hit `database is
+        # locked` here; retry the one-time bootstrap instead of the hot path.
+        conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=5.0)
+        attempts = 0
+        while True:
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA busy_timeout=5000")
+                conn.execute(self._init_sql)
+                conn.commit()
+                return conn
+            except sqlite3.OperationalError:
+                attempts += 1
+                if attempts >= 10:
+                    raise
+                time.sleep(0.05 * attempts)
 
     def _exec(self, sql: str, params: tuple[Any, ...]) -> list[tuple[Any, ...]]:
         assert self._conn is not None

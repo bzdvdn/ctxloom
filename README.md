@@ -142,9 +142,11 @@ Full breakdown, including where ctxloom is *not* the right choice:
   (and `PostgreSQLKVBackend`) for durable chat memory.
 - **Web layer** — `ChatAssistant` + `create_chat_router` mount a canonical SSE
   chat on *your* FastAPI app; errors degrade to a logged fallback, never a 500.
-- **Recipes** — `fan_out_sources`, `materialize_doc`, `StatusMachine`, change→rebuild
-  rollback helpers, `Skill`/`match_skills` (Claude-Skills-shaped instructions,
-  keyword-triggered) — pure, LLM-free.
+- **Recipes** — `find`/`find_all` (typed lookup in `inputs`), `fan_out_sources`,
+  `materialize_doc`, `StatusMachine`, `WindowSummarizer`/`WindowPruner`
+  (bounded conversation memory), change→rebuild rollback helpers,
+  `Skill`/`match_skills` (Claude-Skills-shaped instructions, keyword-triggered)
+  — pure and LLM-free, except the summarizer, which takes your callback.
 - **Viz & CLI** — Mermaid `blueprint`/`context_to_mermaid`/`trace_to_mermaid`;
   `ctxloom` with `graph`/`context`/`trace`/`replay`/`branch`.
 

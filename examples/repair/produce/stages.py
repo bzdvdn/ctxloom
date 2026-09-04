@@ -63,11 +63,10 @@ class CollectStage(Produce[Project]):
         inputs: list[Artifact[Any]],
         event: Event | None = None,
     ) -> None:
-        if _project_artifact(context) is None:
+        project_art = _project_artifact(context)
+        if project_art is None:
             self.effects.create(Project())
             return None
-        project_art = _project_artifact(context)
-        assert project_art is not None
         project = project_art.data
         if project.stage != "collect":
             return None

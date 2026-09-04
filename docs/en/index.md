@@ -20,9 +20,6 @@ CONTEXT ───────► ARTIFACTS ──► AGENTS REACT ──self.eff
 You describe *what data exists*, *what artifacts exist*, and *what agents can do
 with them*. The runtime does the plumbing.
 
-You describe *what data exists*, *what artifacts exist*, and *what agents can do
-with them*. The runtime does the plumbing.
-
 ## The mental model
 
 | Traditional agent | ctxloom |
@@ -81,22 +78,20 @@ Every run is a commit. That gives you:
 
 ## Quick start
 
+Two agents, no graph edge declared between them — the second reacts because the
+first one's output exists, and the answer carries *proof* of where it came from:
+
 ```python
 from pydantic import BaseModel
 
-from ctxloom import (
-    Agent,
-    Budget,
-    Consume,
-    Context,
-    Patch,
-    Produce,
-    Runtime,
-    RuntimeResources,
-)
+from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
 
 
 class Question(BaseModel):
+    text: str
+
+
+class Evidence(BaseModel):
     text: str
 
 
@@ -104,24 +99,43 @@ class Answer(BaseModel):
     text: str
 
 
-class Echo(Produce[Answer]):
-    async def produce(self, context, inputs, event=None):
-        question = next(a for a in inputs if isinstance(a.data, Question))
-        self.effects.create(Answer(text=f"echo: {question.data.text}"))
+DOCS = {
+    "refund": "Refunds are available within 14 days of purchase.",
+    "pricing": "The Pro plan is $49/month, billed annually.",
+}
+
+
+@produce(Evidence)
+async def find_evidence(context, inputs, event, effects):
+    question = next((a for a in inputs if isinstance(a.data, Question)), None)
+    if question is None:
         return None
+    hit = next((v for k, v in DOCS.items() if k in question.data.text.lower()), None)
+    if hit is not None:
+        effects.create(Evidence(text=hit))
 
 
-class EchoAgent(Agent):
-    name = "echo"
-    consumes = [Consume(Question)]
-    produces = [Echo()]
+@produce(Answer)
+async def answer_from_evidence(context, inputs, event, effects):
+    evidence = next((a for a in inputs if isinstance(a.data, Evidence)), None)
+    if evidence is None:
+        return None
+    effects.create(Answer(text=evidence.data.text)).link("supported_by", evidence)
 
+
+search_agent = create_agent("search", consumes=[Consume(Question)], produces=[find_evidence])
+answer_agent = create_agent("answer", consumes=[Consume(Evidence)], produces=[answer_from_evidence])
 
 ctx = Context(resources=RuntimeResources())
-runtime = Runtime(ctx, agents=[EchoAgent()], budget=Budget(max_runs=10))
-ctx.create(Question(text="hello"))   # agents that consume it react automatically
-runtime.run()
-print(ctx.list_artifacts(Answer)[0].data.text)  # "echo: hello"
+runtime = Runtime(ctx, agents=[search_agent, answer_agent], budget=Budget(max_runs=10))
+
+ctx.create(Question(text="what's your refund policy?"))
+runtime.run()  # search_agent and answer_agent both react — nobody wired them together
+
+answer = ctx.latest(Answer)
+evidence = ctx.related(answer.id, "supported_by")[0]
+print(answer.data.text)                     # "Refunds are available within 14 days of purchase."
+print("supported_by:", evidence.data.text)  # provenance you can trace, not just a string in a log
 ```
 
 That is the whole loop: **create an artifact → agents react → a patch is applied

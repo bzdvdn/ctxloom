@@ -78,22 +78,21 @@ _«почему агент так сказал?»_, проходя по связ
 
 ## Быстрый старт
 
+Два агента, и между ними не объявлено ни одной связи в графе — второй
+реагирует потому, что появился результат первого, а ответ несёт *доказательство*
+того, откуда он взялся:
+
 ```python
 from pydantic import BaseModel
 
-from ctxloom import (
-    Agent,
-    Budget,
-    Consume,
-    Context,
-    Patch,
-    Produce,
-    Runtime,
-    RuntimeResources,
-)
+from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
 
 
 class Question(BaseModel):
+    text: str
+
+
+class Evidence(BaseModel):
     text: str
 
 
@@ -101,24 +100,43 @@ class Answer(BaseModel):
     text: str
 
 
-class Echo(Produce[Answer]):
-    async def produce(self, context, inputs, event=None):
-        question = next(a for a in inputs if isinstance(a.data, Question))
-        self.effects.create(Answer(text=f"echo: {question.data.text}"))
+DOCS = {
+    "refund": "Возврат возможен в течение 14 дней с момента покупки.",
+    "pricing": "Тариф Pro — $49/месяц при годовой оплате.",
+}
+
+
+@produce(Evidence)
+async def find_evidence(context, inputs, event, effects):
+    question = next((a for a in inputs if isinstance(a.data, Question)), None)
+    if question is None:
         return None
+    hit = next((v for k, v in DOCS.items() if k in question.data.text.lower()), None)
+    if hit is not None:
+        effects.create(Evidence(text=hit))
 
 
-class EchoAgent(Agent):
-    name = "echo"
-    consumes = [Consume(Question)]
-    produces = [Echo()]
+@produce(Answer)
+async def answer_from_evidence(context, inputs, event, effects):
+    evidence = next((a for a in inputs if isinstance(a.data, Evidence)), None)
+    if evidence is None:
+        return None
+    effects.create(Answer(text=evidence.data.text)).link("supported_by", evidence)
 
+
+search_agent = create_agent("search", consumes=[Consume(Question)], produces=[find_evidence])
+answer_agent = create_agent("answer", consumes=[Consume(Evidence)], produces=[answer_from_evidence])
 
 ctx = Context(resources=RuntimeResources())
-runtime = Runtime(ctx, agents=[EchoAgent()], budget=Budget(max_runs=10))
-ctx.create(Question(text="hello"))   # агенты, потребляющие это, реагируют сами
-runtime.run()
-print(ctx.list_artifacts(Answer)[0].data.text)  # "echo: hello"
+runtime = Runtime(ctx, agents=[search_agent, answer_agent], budget=Budget(max_runs=10))
+
+ctx.create(Question(text="какая у вас политика возврата?"))
+runtime.run()  # оба агента реагируют сами — никто их не связывал вручную
+
+answer = ctx.latest(Answer)
+evidence = ctx.related(answer.id, "supported_by")[0]
+print(answer.data.text)                     # "Возврат возможен в течение 14 дней с момента покупки."
+print("supported_by:", evidence.data.text)  # провенанс, который можно проследить, а не строка в логе
 ```
 
 Это весь цикл: **создан артефакт → агенты реагируют → применён патч → версия
@@ -136,3 +154,8 @@ print(ctx.list_artifacts(Answer)[0].data.text)  # "echo: hello"
 - [Recipes](recipes.md) — готовые search fan-out, материализация референсов,
   машины состояний жизненного цикла.
 - [Examples](examples.md) — пять работающих приложений, которые можно запустить.
+- [Design notes](design-notes/adaptive.md) — более глубокое обоснование
+  адаптивного [планировщика](design-notes/adaptive.md); модель компиляции
+  effects → Patch описана в [English design note](../en/design-notes/patches.md)
+  (пока не переведена — это архивный лог обсуждения, актуальное поведение уже
+  в [effects.md](effects.md)).

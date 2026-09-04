@@ -1,6 +1,6 @@
 # ctxloom vs. LangGraph / CrewAI / plain function calls
 
-This page is a comparison, not a pitch. ctxloom is pre-1.0 (`0.4.0rc1`), the
+This page is a comparison, not a pitch. ctxloom is pre-1.0 (`0.4.0`), the
 ecosystem is one maintainer, and there is no hosted platform, no managed
 tracing SaaS, no marketplace of pre-built agents. If any of those are what you
 need today, the honest answer is: use LangGraph or CrewAI, they're mature and

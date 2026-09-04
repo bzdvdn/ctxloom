@@ -138,7 +138,7 @@ Small, self-contained ports of the classic agent patterns — every one runs
 ## Running tests
 
 ```bash
-.venv/bin/python -m pytest      # 331 tests (1 skipped without TEST_PG_DSN)
+.venv/bin/python -m pytest      # 443 tests (2 skipped without TEST_PG_DSN)
 .venv/bin/mypy                  # strict typing across the repo
 .venv/bin/ruff check            # lint
 ```

@@ -262,13 +262,11 @@ class Reporter(Produce[ResearchReport]):
                 uncertainty_ = "insufficient evidence."
         else:
             uncertainty_ = "see the ranked hypotheses below."
-        answer = synthesized
-        uncertainty = uncertainty_
         self.effects.create(
             ResearchReport(
                 question_id=question_id,
-                answer=answer,
-                uncertainty=uncertainty,
+                answer=synthesized,
+                uncertainty=uncertainty_,
                 ranking=ranking,
             ),
             id=f"report:{question_id}",

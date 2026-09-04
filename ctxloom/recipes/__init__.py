@@ -4,6 +4,8 @@ These are not core primitives (Context/Artifact/Patch/Produce stay minimal, the
 constitution's primitives-first rule). Instead they are ready-made patterns that
 keep reappearing across agent codebases and the bundled examples:
 
+- `find` / `find_all` — pick the typed artifact(s) out of a produce's
+  `inputs` without repeating `next(... isinstance ...)` — see `recipes.inputs`;
 - `fan_out_sources` — query all configured sources, emit ranked, idempotent
   `SourceRef`s tagged with an owner (§8, §24, §42) — see `recipes.search`;
 - `materialize_doc` — lazily resolve a `SourceRef` into a document with a
@@ -11,6 +13,10 @@ keep reappearing across agent codebases and the bundled examples:
 - `StatusMachine` — a `Produce` that deterministically advances an artifact's
   `status` lifecycle driven by a pure `next_status(context, key)` (§67, §69) —
   see `recipes.status`;
+- `WindowSummarizer` / `WindowPruner` / `llm_summarizer` — bounded
+  conversation memory: periodic summarization + pruning as two plain
+  `Produce`s, domain owns the summarizer callback and the summary artifact
+  shape (§27, §37) — see `recipes.memory`;
 - `keyword_score` / `stem_words` — deterministic text scoring without
   embedders (English and Russian) — see `recipes.text`;
 - `changed_fields` / `earliest_stage` / `downstream_fields` — the
@@ -26,6 +32,8 @@ Extend by adding a module here (the package stays import-surface-flat).
 
 from __future__ import annotations
 
+from .inputs import find, find_all
+from .memory import WindowPruner, WindowSummarizer, llm_summarizer
 from .resolve import materialize_doc
 from .rollback import changed_fields, downstream_fields, earliest_stage
 from .search import fan_out_sources
@@ -37,11 +45,16 @@ __all__ = [
     "EN_STOPWORDS",
     "Skill",
     "StatusMachine",
+    "WindowPruner",
+    "WindowSummarizer",
     "changed_fields",
     "downstream_fields",
     "earliest_stage",
     "fan_out_sources",
+    "find",
+    "find_all",
     "keyword_score",
+    "llm_summarizer",
     "load_skills",
     "match_skills",
     "materialize_doc",

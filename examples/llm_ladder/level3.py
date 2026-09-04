@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from typing import Any
 
 from ctxloom import (
     Agent,
@@ -39,7 +40,7 @@ from ctxloom import (
 )
 from ctxloom.prompts import PromptTemplate
 from ctxloom.providers import LLMProvider
-from ctxloom.recipes import StatusMachine
+from ctxloom.recipes import StatusMachine, find
 from pydantic import BaseModel
 
 
@@ -114,10 +115,10 @@ class StartTurn(Produce[Turn]):
     async def produce(
         self,
         context: Context,
-        inputs: list[Artifact[Question]],
+        inputs: list[Artifact[Any]],
         event: Event | None = None,
     ) -> None:
-        question = next((q for q in context.list_artifacts(Question)), None)
+        question = find(inputs, Question)
         if question is None:
             return None
         qid = question.id
@@ -135,11 +136,11 @@ class Claimer(Produce[Claim]):
     async def produce(
         self,
         context: Context,
-        inputs: list[Artifact[Turn]],
+        inputs: list[Artifact[Any]],
         event: Event | None = None,
     ) -> None:
-        question = next((q for q in context.list_artifacts(Question)), None)
-        turn = next((t for t in context.list_artifacts(Turn)), None)
+        question = find(inputs, Question)
+        turn = find(inputs, Turn)
         if question is None or turn is None:
             return None
         qid = question.id
@@ -185,12 +186,12 @@ class Finisher(Produce[Answer]):
     async def produce(
         self,
         context: Context,
-        inputs: list[Artifact[Turn]],
+        inputs: list[Artifact[Any]],
         event: Event | None = None,
     ) -> None:
-        question = next((q for q in context.list_artifacts(Question)), None)
-        turn = next((t for t in context.list_artifacts(Turn)), None)
-        claim = next((c for c in context.list_artifacts(Claim)), None)
+        question = find(inputs, Question)
+        turn = find(inputs, Turn)
+        claim = find(inputs, Claim)
         if question is None or turn is None or claim is None:
             return None
         qid = question.id

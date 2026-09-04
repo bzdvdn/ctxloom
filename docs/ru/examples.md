@@ -138,7 +138,7 @@ uv run python -m examples.adaptive.main --tag x    # правило отсека
 ## Тесты
 
 ```bash
-.venv/bin/python -m pytest      # 331 тест (1 пропущен без TEST_PG_DSN)
+.venv/bin/python -m pytest      # 443 теста (2 пропущены без TEST_PG_DSN)
 .venv/bin/mypy                  # строгая типизация по всему репозиторию
 .venv/bin/ruff check            # линтер
 ```

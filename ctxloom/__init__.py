@@ -71,7 +71,7 @@ from .viz import (
     trace_to_mermaid,
 )
 
-__version__ = "0.4.0rc1"
+__version__ = "0.4.0"
 
 __all__ = [
     "Agent",
@@ -87,6 +87,9 @@ __all__ = [
     "Create",
     "Delete",
     "EmbeddingProvider",
+    "EvalCase",
+    "EvalReport",
+    "EvalResult",
     "Event",
     "EventHub",
     "EventType",
@@ -123,6 +126,8 @@ __all__ = [
     "RuntimeResources",
     "ReplayLLM",
     "ReplayMiss",
+    "replay_context",
+    "replay_summary",
     "SQLiteBackend",
     "SQLiteKVBackend",
     "Session",
@@ -158,4 +163,15 @@ __all__ = [
     "tool",
     "trace_provenance_to_mermaid",
     "trace_to_mermaid",
+    "answer_coverage",
+    "answer_present",
+    "calculation_correctness",
+    "claim_verification",
+    "confidence_calibration",
+    "core_metrics",
+    "evidence_quality",
+    "provenance_grounded",
+    "run_case",
+    "run_suite",
+    "source_coverage",
 ]

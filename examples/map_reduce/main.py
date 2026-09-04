@@ -164,12 +164,11 @@ class Combine(Produce[FinalSummary]):
         chunks = sorted(context.list_artifacts(Chunk), key=lambda c: c.data.index)
         if not chunks:
             return None  # not split yet (§69: eligibility is a state decision)
-        summaries = {
-            c.data.index: s
-            for s in context.list_artifacts(ChunkSummary)
-            for c in chunks
-            if s.id == f"summary:{c.id}"
-        }
+        summaries = {}
+        for c in chunks:
+            s = context.get(f"summary:{c.id}")
+            if s is not None:
+                summaries[c.data.index] = s
         if len(summaries) < len(chunks):
             return None  # wait for every chunk's summary (§24)
         parts = "\n".join(f"[{i}] {summaries[i].data.text}" for i in sorted(summaries))

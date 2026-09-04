@@ -4,6 +4,21 @@
 которые повторяются во всех демо. Импорт `ctxloom.recipes` не тянет лишних
 зависимостей — всё построено на ядре.
 
+## `find` / `find_all` — поиск типизированных артефактов в `inputs`
+
+Если агент объявляет больше одного типа в `consumes`, produce получает плоский
+`list[Artifact[Any]]`; выбрать «тот самый Question» или «все Evidence» —
+почти в каждом produce одна и та же строка
+`next((a for a in inputs if isinstance(a.data, X)), None)`. `find`/`find_all` —
+типизированная замена в одну строку:
+
+```python
+from ctxloom.recipes import find, find_all
+
+question = find(inputs, Question)          # Artifact[Question] | None
+evidence = find_all(inputs, Evidence)       # list[Artifact[Evidence]]
+```
+
 ## `fan_out_sources` — реактивный поиск
 
 ```python
@@ -106,6 +121,56 @@ class EvaluateTurn(StatusMachine[ResearchTurn]):
 машина и верификатор разделены, детерминированы и тестируются по отдельности.
 `EvaluateTurn` в примерах knowledge/research — канонический образец этого
 рецепта.
+
+## `WindowSummarizer` / `WindowPruner` — ограниченная память диалога (§27, §37)
+
+Долгоживущая память чата — это просто состояние: артефакты-сообщения
+накапливаются, а два обычных `Produce` держат окно ограниченным — саммарайзер
+сжимает недавнее окно каждые N сообщений, прунер удаляет то, что вышло за
+границы. Рецепт владеет размером окна, периодичностью и идемпотентностью;
+домен владеет тем, *как* суммировать и *как выглядит* артефакт саммари:
+
+```python
+from ctxloom.recipes import WindowPruner, WindowSummarizer, llm_summarizer
+
+
+class Summary(BaseModel):
+    round: int
+    text: str
+
+
+def build_summary(round_no: int, text: str) -> Summary:
+    return Summary(round=round_no, text=text)
+
+
+class Flow(Agent):
+    name = "chat"
+    consumes = [Consume(Msg)]
+    produces = [
+        WindowSummarizer(
+            Msg, Summary,
+            summarize=llm_summarizer("Сожми недавний диалог в короткую заметку-память."),
+            build=build_summary,
+            window=8,   # сколько сообщений идёт в один саммари
+            every=4,    # новый саммари каждые N сообщений
+        ),
+        WindowPruner(Msg, keep=8),  # полезен и сам по себе, без саммарайзера
+    ]
+```
+
+- `summarize(context, history) -> str | None` — ваш колбэк (или
+  `llm_summarizer(system=...)` — тонкая обёртка над `llm_reply`); `None`
+  запускает `fallback` рецепта (по умолчанию — обрезанная строка истории,
+  никогда не падение).
+- `build(round_no, text) -> Summary` — форму артефакта саммари определяете вы;
+  рецепт никогда не угадывает имена полей.
+- Id саммари выводится из количества сообщений (`summary:{round}` по
+  умолчанию), поэтому повторный прогон того же поколения никогда не
+  дублирует саммари.
+- `render`/`order_key`/`id_of` переопределяемы, если дефолты (рендер по
+  role/text, сортировка по `created_at`) не подходят вашему артефакту.
+
+Полное рабочее демо — в `examples/summarize/main.py`.
 
 ## `keyword_score` / `stem_words` — детерминированный скоринг текста (§67)
 

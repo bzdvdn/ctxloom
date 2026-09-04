@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from typing import Any
 
 from ctxloom import (
     Agent,
@@ -38,6 +39,7 @@ from ctxloom import (
 )
 from ctxloom.prompts import PromptTemplate
 from ctxloom.providers import LLMProvider
+from ctxloom.recipes import find
 from pydantic import BaseModel
 
 
@@ -118,11 +120,11 @@ class AnswerFromDoc(Produce[Answer]):
     async def produce(
         self,
         context: Context,
-        inputs: list[Artifact[Question]],
+        inputs: list[Artifact[Any]],
         event: Event | None = None,
     ) -> None:
-        question = next((q for q in context.list_artifacts(Question)), None)
-        doc = next((d for d in context.list_artifacts(Doc)), None)
+        question = find(inputs, Question)
+        doc = find(inputs, Doc)
         if question is None or doc is None:
             return None
         qid = question.id

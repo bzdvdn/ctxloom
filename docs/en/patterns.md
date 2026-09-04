@@ -3,6 +3,19 @@
 Reusable patterns observed across the five examples. They are not abstract —
 each is concretely instantiated in `examples/`.
 
+## TL;DR
+
+| Do | Don't | Why |
+| --- | --- | --- |
+| Write `self.effects.create/update/link/ask(...)`, return `None` | Assemble a `Patch` by hand in an ordinary produce | The runtime compiles one atomic patch per produce — building it yourself is the escape hatch, not the default |
+| Guard eligibility with an early `return None` | Rely on scheduling order to skip work that isn't ready | Eligibility is a state decision, not a lucky accident (§69) |
+| Use stable ids (`answer:{qid}`) or `effects.create_once(...)` | Re-derive an id from a counter or timestamp | Idempotent re-runs — the same event twice must not duplicate state |
+| Return `None` on missing model / failed parse, then show an honest fallback | Substitute a canned "confident-sounding" answer when the LLM call fails | Deterministic work stays deterministic; generative failure must be visible, not papered over |
+| Keep `next_status`/scoring functions pure `(context, key) -> ...` | Mix LLM calls or side effects into a `StatusMachine.next_status` | Pure functions are unit-testable without a runtime |
+| Use `Runtime(isolate_errors=True, on_agent_error=...)` only when you've decided partial progress is acceptable | Reach for `isolate_errors` as a default to silence exceptions | Default is fail-loud (§69) — isolating errors is an explicit product decision, not a safety net |
+
+Each row links to the fuller pattern below.
+
 ## HITL: humans as first-class participants
 
 A human is just another reaction to the context. The runtime represents a

@@ -6,8 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-04
+
 Work since 0.4.0-rc1 — internal cleanup, dedupe, and an async-native
-checkpoint/session/branch layer.
+checkpoint/session/branch layer. First stable (non-rc) release.
 
 ### Breaking
 
@@ -72,6 +74,28 @@ checkpoint/session/branch layer.
 - `providers.from_env(**overrides)`: the `OPENROUTER_API_KEY` → else
   `OPENAI_BASE_URL` → else `None` selection every example hand-rolled as a
   local `build_llm()`.
+- `recipes.find(inputs, Model)`/`recipes.find_all(inputs, Model)` — pick the
+  typed artifact(s) out of a produce's `inputs` without repeating
+  `next(... isinstance ...)`; adopted across the `llm_ladder` examples.
+- `recipes.WindowSummarizer`/`recipes.WindowPruner`/`recipes.llm_summarizer` —
+  bounded conversation memory (periodic summarization + pruning) as two
+  parametrized `Produce`s, generalized from `examples/summarize/main.py`
+  (which now uses them instead of its own hand-rolled Summarize/Prune pair).
+- `docs/{en,ru}/comparison.md` — ctxloom vs LangGraph/CrewAI, feature by
+  feature, and an explicit "where ctxloom is not the right choice" section.
+- `docs/{en,ru}/api.md`: a **Stability** section spelling out the pre-1.0
+  SemVer contract — public API is `ctxloom.__all__` (and each submodule's own
+  `__all__`), everything importable-but-unexported (e.g.
+  `ctxloom.relations.RelationGraph`, `ctxloom.commit_log.CommitLog`) carries
+  no compatibility guarantee, and breaking changes are always called out in
+  `CHANGELOG.md` even pre-1.0.
+- `tests/test_cli.py`: the `ctxloom/cli/` package (extracted this release)
+  shipped with 0% test coverage — now covered end to end (parser wiring,
+  `graph`/`context`/`replay`/`branch`/`trace`, happy paths and the shared
+  "store not found" error path).
+- `tests/test_checkpoints_concurrency.py`: a concurrent-writer regression
+  test for `SQLiteKVBackend`, the scenario the WAL/`busy_timeout` fix above
+  targets.
 
 ### Changed
 
@@ -107,6 +131,21 @@ checkpoint/session/branch layer.
   already-`async` chat/web request handlers (`chat.py`, `web.py`, the
   `medic_lab` example router) — silently blocking the event loop on every
   turn. Now real `await` calls against the async session API.
+- `ctxloom/__init__.py`: 15 public names (eval + replay helpers) were
+  importable but missing from `__all__`, so `from ctxloom import *` and
+  doc/IDE tooling silently dropped them.
+- Minor example bugs across `knowledge`, `map_reduce`, `medic_lab`, and
+  `repair` produces: a stale re-query re-running the same filter twice
+  instead of reusing an already-scoped list, a `Combine` produce that
+  cross-joined chunks against summaries instead of a direct id lookup, a
+  dead local re-alias, and a duplicated existence check in `repair`'s
+  `CollectStage`.
+- `SQLiteKVBackend`'s bootstrap (`journal_mode=WAL` + `busy_timeout` pragmas
+  on first connect) could itself raise `sqlite3.OperationalError: database is
+  locked` when several backends opened the same brand-new file at once —
+  changing journal mode is an exclusive operation SQLite does not always
+  retry through the busy handler. The one-time bootstrap now retries with
+  backoff; the hot-path `execute()` was already correctly serialized.
 
 ## [0.4.0-rc1] — 2026-09-02
 

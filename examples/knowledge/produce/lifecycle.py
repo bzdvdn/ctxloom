@@ -202,7 +202,6 @@ class BuildAnswer(Produce[Answer]):
         )
         for evidence_art in evidences:
             answer.link("supported_by", evidence_art)
-        for calc in context.list_artifacts(Calculation):
-            if calc.data.query_id == query_id:
-                answer.link("supported_by", calc)
+        for calc in calculations:
+            answer.link("supported_by", calc)
         return None

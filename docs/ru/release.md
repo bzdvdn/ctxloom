@@ -4,7 +4,8 @@
 
 ## Версионирование
 
-- [SemVer](https://semver.org/); пре-релизы помечаются `rc` — `0.1.0rc1`.
+- [SemVer](https://semver.org/); пре-релизы помечаются `rc` (например,
+  `0.4.0rc1`), для стабильного релиза `rc` убирается (`0.4.0`).
 - Версия живёт в **двух местах** и должна совпадать:
   - `pyproject.toml` → `[project] version`;
   - `ctxloom/__init__.py` → `__version__`.
@@ -44,17 +45,17 @@ Changelog). При бампе версии:
 # 2) версия и чейджлог
 
 # 3) сборка
-uv build                         # dist/ctxloom-0.1.0rc1-py3-none-any.whl + sdist
+uv build                         # dist/ctxloom-0.4.0-py3-none-any.whl + sdist
 
 # 4) проверка wheel в чистом venv (не workspace — чтобы не цеплял PYTHONPATH)
 uv venv /tmp/ctxloom-rc
-/tmp/ctxloom-rc/bin/python -m pip install dist/ctxloom-0.1.0rc1-py3-none-any.whl
+/tmp/ctxloom-rc/bin/python -m pip install dist/ctxloom-0.4.0-py3-none-any.whl
 /tmp/ctxloom-rc/bin/python -c "import ctxloom; print(ctxloom.__version__)"
 /tmp/ctxloom-rc/bin/ctxloom --help          # console-скрипт на месте
-unzip -l dist/ctxloom-0.1.0rc1-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates"
+unzip -l dist/ctxloom-0.4.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates"
 
 # 5) тег
-git tag v0.1.0rc1 && git push origin v0.1.0rc1
+git tag v0.4.0 && git push origin v0.4.0
 
 # 6) публикация (токен PyPI в env)
 uv publish --publish-url https://upload.pypi.org/legacy/

@@ -32,6 +32,7 @@ from ctxloom import (
 )
 from ctxloom.prompts import PromptTemplate
 from ctxloom.providers import LLMProvider
+from ctxloom.recipes import find
 from pydantic import BaseModel
 
 
@@ -86,7 +87,7 @@ class Answerer(Produce[Answer]):
         inputs: list[Artifact[Question]],
         event: Event | None = None,
     ) -> None:
-        question = next((q for q in context.list_artifacts(Question)), None)
+        question = find(inputs, Question)
         if question is None:
             return None
         qid = question.id

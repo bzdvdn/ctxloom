@@ -4,6 +4,20 @@
 recur in every demo. Importing `ctxloom.recipes` does not pull in additional
 dependencies — everything is built on the core.
 
+## `find` / `find_all` — locate typed artifacts in `inputs`
+
+A produce whose agent declares more than one `Consume` type receives a flat
+`list[Artifact[Any]]`; picking out "the one Question" or "all the Evidence"
+is the same `next((a for a in inputs if isinstance(a.data, X)), None)` in
+nearly every produce. `find`/`find_all` are a typed one-liner for it:
+
+```python
+from ctxloom.recipes import find, find_all
+
+question = find(inputs, Question)          # Artifact[Question] | None
+evidence = find_all(inputs, Evidence)       # list[Artifact[Evidence]]
+```
+
 ## `fan_out_sources` — reactive search
 
 ```python
@@ -105,6 +119,55 @@ Put your *verify* logic into another `produce` that react on status changes —
 the machine and the verifier are separate, deterministic, and unit-testable.
 The knowledge/research demos' `EvaluateTurn` are the canonical instance of
 this recipe.
+
+## `WindowSummarizer` / `WindowPruner` — bounded conversation memory (§27, §37)
+
+Long-running chat memory is just state: message artifacts accumulate, and two
+plain `Produce`s keep the window bounded — a summarizer condenses the recent
+window every N messages, a pruner deletes what falls outside it. The recipe
+owns the window size, cadence, and idempotency; the domain owns *how* to
+summarize and *what* the summary artifact looks like:
+
+```python
+from ctxloom.recipes import WindowPruner, WindowSummarizer, llm_summarizer
+
+
+class Summary(BaseModel):
+    round: int
+    text: str
+
+
+def build_summary(round_no: int, text: str) -> Summary:
+    return Summary(round=round_no, text=text)
+
+
+class Flow(Agent):
+    name = "chat"
+    consumes = [Consume(Msg)]
+    produces = [
+        WindowSummarizer(
+            Msg, Summary,
+            summarize=llm_summarizer("Condense the recent conversation into a short memory note."),
+            build=build_summary,
+            window=8,   # messages fed into one summary
+            every=4,    # produce a new summary every N messages
+        ),
+        WindowPruner(Msg, keep=8),  # standalone-useful without the summarizer too
+    ]
+```
+
+- `summarize(context, history) -> str | None` — your callback (or
+  `llm_summarizer(system=...)`, a thin wrapper over `llm_reply`); `None`
+  triggers the recipe's `fallback` (default: a truncated-history string, never
+  a crash).
+- `build(round_no, text) -> Summary` — you own the summary artifact's shape;
+  the recipe never guesses field names.
+- The summary id is derived from the message count (`summary:{round}` by
+  default), so re-running the same generation never duplicates a summary.
+- `render`/`order_key`/`id_of` are all overridable if the defaults (role/text
+  rendering, `created_at` ordering) don't fit your artifact.
+
+See `examples/summarize/main.py` for the full runnable demo.
 
 ## `keyword_score` / `stem_words` — deterministic text scoring (§67)
 

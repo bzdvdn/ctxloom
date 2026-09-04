@@ -4,6 +4,31 @@ Top-level symbols exported by `ctxloom` (see `ctxloom/__init__.py`). The format
 for each group: name — one-line role. Details live in the doc-strings of the
 modules.
 
+## Stability
+
+As of `0.4.0`, ctxloom is pre-1.0 but no longer `rc` — the surface below is
+the stable contract, not a moving target.
+
+- **Public API = every name in `ctxloom.__all__`** (and each submodule's own
+  `__all__` — `ctxloom.recipes`, `ctxloom.providers`, `ctxloom.viz`, `ctxloom.eval`,
+  …), which is exactly the set of symbols documented on this page. If it's
+  importable from `ctxloom` but not in `__all__`, it's an internal detail with
+  no compatibility guarantee — e.g. `ctxloom.relations.RelationGraph` and
+  `ctxloom.commit_log.CommitLog` exist because `Context` was split into
+  smaller modules for readability, but neither is exported: `Context` is the
+  supported surface, they are not.
+- **SemVer, pre-1.0 style**: a minor bump (`0.4.0` → `0.5.0`) may add symbols
+  or, rarely, change behavior in a way `CHANGELOG.md` marks `Breaking` — pre-1.0
+  minors are where ctxloom is still allowed to correct a design mistake. A
+  patch bump (`0.4.0` → `0.4.1`) never removes or renames a public symbol and
+  never changes documented behavior, only fixes bugs against it.
+- **Every breaking change is called out in `CHANGELOG.md` under a `### Breaking`
+  heading**, even in a pre-1.0 release — see [release.md](release.md). If you
+  only read one section before upgrading, read that one.
+- Anything under `ctxloom.cli.*` beyond the documented `python -m ctxloom …`
+  subcommands, and anything in a module's tests-only helpers, is implementation
+  detail regardless of whether it happens to be importable.
+
 ## Context & state
 
 | Symbol | Role |
@@ -145,9 +170,13 @@ modules.
 
 | Symbol | Role |
 | --- | --- |
+| `find(inputs, Model)` / `find_all(inputs, Model)` | typed lookup in a produce's `inputs` without `next(... isinstance ...)` |
 | `fan_out_sources(context, query, owner_id, …)` | idempotent fan-out search → refs + patch |
 | `materialize_doc(context, ref_artifact, doc_factory, relation=…)` | lazy ref → document with provenance |
 | `StatusMachine` | deterministic artifact lifecycle (`next_status`, `terminal`, `on_transition`, `query_id_field`/`status_field`) |
+| `WindowSummarizer(message_type, artifact_type, summarize=…, build=…)` | periodic conversation-window summarization, idempotent by message count |
+| `WindowPruner(message_type, keep=…)` | deletes messages older than the window; standalone-useful |
+| `llm_summarizer(system=…)` | builds a `WindowSummarizer(summarize=…)` callback from a system prompt via `llm_reply` |
 
 ## Text & rollback helpers (ctxloom.recipes)
 
