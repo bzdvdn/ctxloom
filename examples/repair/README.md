@@ -34,6 +34,18 @@ from the local price catalog, and — when you say the plan is over budget —
 drywall, blocks) in ₽; `data/materials.csv` is a small curated list for the
 fast catalog demo. Both are Russian by design (see the note above).
 
+## Scenarios
+
+`scenarios/` holds `ctxloom.testing.ScenarioLab` scenarios — a separate track
+from the unit tests in `tests/`, run through the `ctxloom scenario` CLI so a
+plain `pytest` run never needs a model key or a network connection:
+
+```bash
+.venv/bin/python -m ctxloom scenario examples.repair.scenarios
+.venv/bin/python -m ctxloom scenario examples.repair.scenarios --mode record   # real OpenRouter call
+.venv/bin/python -m ctxloom scenario examples.repair.scenarios --mode replay   # offline, from the fixture
+```
+
 ## Structure
 
 ```
@@ -51,5 +63,6 @@ examples/repair/
   image_prompt.py      photo-preview prompt builder
   agents.py            RepairFlow (thin container over the stages)
   chat.py · web.py     entrypoints (console · FastAPI/SSE)
+  scenarios/           ScenarioLab scenarios (see above; recorded fixtures in scenarios/data/)
   data/ · web/ · sessions/
 ```

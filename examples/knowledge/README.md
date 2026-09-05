@@ -24,7 +24,25 @@ knowledge/
 ├── web/index.html    # UI templates
 ├── docs/             # English documentation fixtures (guide / pricing / costs)
 ├── skills/           # cost-reporting.md — a Claude-Skills-shaped instruction
+├── scenarios/        # ScenarioLab scenarios (see below; fixtures in scenarios/data/)
 └── .env.example      # keys for a real model
+```
+
+## Scenarios
+
+`scenarios/` holds `ctxloom.testing.ScenarioLab` scenarios — a separate track
+from the unit tests in `tests/`, run through the `ctxloom scenario` CLI so a
+plain `pytest` run never needs a model key or a network connection. One of
+them locks down exactly the flagship question below — the GPU total (3580)
+is asserted straight from `Calculation.value`, no model involved. A
+multi-turn scenario (`lab.scenario()`/`.turn()`) also proves chat memory
+still holds the first question and its answer by the time a follow-up is
+asked, all without a model:
+
+```bash
+.venv/bin/python -m ctxloom scenario examples.knowledge.scenarios
+.venv/bin/python -m ctxloom scenario examples.knowledge.scenarios --mode record   # real model call
+.venv/bin/python -m ctxloom scenario examples.knowledge.scenarios --mode replay   # offline, from the fixture
 ```
 
 ## Run

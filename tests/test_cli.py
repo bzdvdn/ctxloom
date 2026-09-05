@@ -39,7 +39,14 @@ def test_build_parser_registers_every_subcommand():
     ]
     choices = sub_actions[0].choices
     assert choices is not None
-    assert set(choices) == {"graph", "context", "trace", "replay", "branch"}
+    assert set(choices) == {
+        "graph",
+        "context",
+        "trace",
+        "replay",
+        "branch",
+        "scenario",
+    }
 
 
 def test_main_no_command_prints_help_and_returns_zero(capsys):

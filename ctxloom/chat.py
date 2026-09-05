@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from .agents import Agent
 from .budget import Budget
 from .context import Context
+from .events import Event
 from .resources import RuntimeResources
 from .runtime import Runtime
 from .session import Session, SessionStore
@@ -207,6 +208,8 @@ class ChatAssistant:
         create_message: Callable[[Context, str], str] | None = None,
         status_kinds: Sequence[str] = ("status",),
         fallback_reply: str = "No reply assembled.",
+        isolate_errors: bool = False,
+        on_agent_error: Callable[[Agent, Event, BaseException], None] | None = None,
     ):
         self.store = store
         self._agents = agents
@@ -220,6 +223,8 @@ class ChatAssistant:
         self._create_message = create_message
         self._status_kinds = tuple(status_kinds)
         self._fallback_reply = fallback_reply
+        self._isolate_errors = isolate_errors
+        self._on_agent_error = on_agent_error
 
     async def _open(self, session_id: str) -> Session:
         return await self.store.open(session_id, resources=_resolve(self._resources))
@@ -232,6 +237,8 @@ class ChatAssistant:
             budget=self._budget,
             max_concurrency=self._max_concurrency,
             tracer=_resolve(self._tracer),
+            isolate_errors=self._isolate_errors,
+            on_agent_error=self._on_agent_error,
         )
 
     async def stream(self, text: str, session_id: str = "") -> AsyncIterator[ChatEvent]:

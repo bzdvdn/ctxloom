@@ -6,6 +6,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+### Added
+
+- **`ctxloom.testing`**: a scenario-based behavioral testing harness for agent
+  pipelines. `ScenarioLab`/`Scenario` (`ctxloom scenario` CLI) seed artifacts
+  into a fresh `Context`, run a `Runtime` to completion, and return a
+  `ScenarioResult` with chained assertions (`.artifacts(...)`, `.tools`,
+  `.path`, `.llm`, `.errors`). `Scenario` (`lab.scenario()`) supports
+  multi-turn conversations on one shared `Context`, for flows that need
+  several rounds to reach the state under test.
+- Tool fault injection (`lab.fail(tool_name, error, times=None)`) and
+  generic resource fault injection (`lab.fail_resource(name, error,
+  method=None, times=None)`) — the latter fails the LLM, the embedder, a
+  named source, or any `resources.set(...)` value via a duck-typed
+  reflection proxy (`ctxloom/testing/mock.py`) that correctly handles sync,
+  async, and async-generator methods.
+- Record/replay LLM wrapping (`ctxloom/testing/record.py`, reusing
+  `ReplayLLM`) and a `@scenario` registry (`ctxloom/testing/registry.py`)
+  for discovering and running scenarios via `ctxloom scenario <module>...`.
+- Assertion sugar: `ArtifactAssertions.equals/.contains/.field_in`,
+  `PathAssertions.any_of/.times`, `ToolAssertions.called_any`.
+- Worked examples: `examples/repair/scenarios/`, `examples/knowledge/scenarios/`.
+
 ## [0.4.0] — 2026-09-04
 
 Work since 0.4.0-rc1 — internal cleanup, dedupe, and an async-native

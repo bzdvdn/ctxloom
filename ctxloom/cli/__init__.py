@@ -7,6 +7,7 @@ Subcommands:
     trace    run diagram from a trace store (SQLite)
     replay   deterministic state replay of a saved session
     branch   persistent forks over a KV backend
+    scenario run ctxloom.testing scenarios (separate from pytest)
 
 Examples:
 
@@ -24,7 +25,7 @@ import argparse
 import sys
 
 from .. import __version__
-from . import branch, context, graph, replay, trace
+from . import branch, context, graph, replay, scenario, trace
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command")
 
-    for module in (graph, context, trace, replay, branch):
+    for module in (graph, context, trace, replay, branch, scenario):
         module.add_parser(sub)
 
     return parser
@@ -63,7 +64,8 @@ def main(argv: list[str] | None = None) -> int:
         print("  ctxloom trace   <trace.db>       run diagram")
         print("  ctxloom context <sessions.sqlite3>  live provenance graph")
         print("  ctxloom replay  <sessions.sqlite3>  deterministic replay")
-        print("  ctxloom branch  <path> <session> <action>  persistent forks\n")
+        print("  ctxloom branch  <path> <session> <action>  persistent forks")
+        print("  ctxloom scenario <module>  run ctxloom.testing scenarios\n")
         print("Run 'ctxloom <command> --help' for details, or try an example:")
         print("  uv run python ./examples/llm_ladder/level1.py")
         parser.print_help()
