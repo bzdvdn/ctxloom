@@ -23,3 +23,4 @@ htmlcov/
 *.png
 *.db
 *.jsonl
+.scratch
