@@ -25,7 +25,13 @@ from ..services.geometry import ensure_geometry
 from ._common import resources
 
 ROOM_INFO = ensure_geometry(
-    ProjectInfo(room_type="кухня", area=12, ceiling_height=2.7, budget=150_000, style="минимализм")
+    ProjectInfo(
+        room_type="кухня",
+        area=12,
+        ceiling_height=2.7,
+        budget=150_000,
+        style="минимализм",
+    )
 )
 
 

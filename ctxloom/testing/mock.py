@@ -135,7 +135,9 @@ class ResourceFaultInstaller:
     wrapped run raises.
     """
 
-    def __init__(self, resources: RuntimeResources, faults: list[ResourceFault]) -> None:
+    def __init__(
+        self, resources: RuntimeResources, faults: list[ResourceFault]
+    ) -> None:
         self._resources = resources
         self._faults = {f.resource: f for f in faults}
         self._originals: list[tuple[str, Any]] = []

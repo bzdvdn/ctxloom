@@ -71,7 +71,9 @@ def test_unknown_module_raises_system_exit():
 def test_mode_flag_sets_env_var_read_by_mode_from_env(capsys, monkeypatch):
     monkeypatch.delenv(MODE_ENV_VAR, raising=False)
 
-    code = main(["scenario", FIXTURE_MODULE, "-k", "reports its mode", "--mode", "replay"])
+    code = main(
+        ["scenario", FIXTURE_MODULE, "-k", "reports its mode", "--mode", "replay"]
+    )
 
     assert code == 0
     assert os.environ.get(MODE_ENV_VAR) == "replay"

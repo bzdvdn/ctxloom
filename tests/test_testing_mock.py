@@ -66,7 +66,9 @@ def test_proxy_fails_every_method_by_default():
 
 def test_proxy_can_target_a_single_method():
     fake = FakeResource()
-    proxy = _FailingProxy(fake, ResourceFault("r", RuntimeError("boom"), method="async_method"))
+    proxy = _FailingProxy(
+        fake, ResourceFault("r", RuntimeError("boom"), method="async_method")
+    )
 
     assert proxy.sync_method(1) == "sync:1"  # untouched
     with pytest.raises(RuntimeError, match="boom"):
@@ -125,7 +127,9 @@ def test_proxy_error_factory_gets_a_fresh_exception_per_call():
 def test_installer_wraps_llm_and_restores_it_after():
     original = FakeResource()
     resources = RuntimeResources(llm=original)  # type: ignore[arg-type]  # fake, not a real provider
-    installer = ResourceFaultInstaller(resources, [ResourceFault("llm", RuntimeError("boom"))])
+    installer = ResourceFaultInstaller(
+        resources, [ResourceFault("llm", RuntimeError("boom"))]
+    )
 
     with installer:
         assert resources.llm is not original
@@ -138,7 +142,9 @@ def test_installer_wraps_llm_and_restores_it_after():
 def test_installer_restores_even_if_the_body_raises():
     original = FakeResource()
     resources = RuntimeResources(llm=original)  # type: ignore[arg-type]  # fake, not a real provider
-    installer = ResourceFaultInstaller(resources, [ResourceFault("llm", RuntimeError("boom"))])
+    installer = ResourceFaultInstaller(
+        resources, [ResourceFault("llm", RuntimeError("boom"))]
+    )
 
     with pytest.raises(ValueError):  # noqa: SIM117 - want the with inside the raises
         with installer:
@@ -163,7 +169,9 @@ def test_installer_can_wrap_an_additional_named_resource():
 
 def test_installer_rejects_an_unknown_resource_name():
     resources = RuntimeResources()
-    installer = ResourceFaultInstaller(resources, [ResourceFault("no_such_thing", RuntimeError())])
+    installer = ResourceFaultInstaller(
+        resources, [ResourceFault("no_such_thing", RuntimeError())]
+    )
 
     with pytest.raises(ScenarioError, match="no such resource"), installer:
         pass
@@ -171,7 +179,9 @@ def test_installer_rejects_an_unknown_resource_name():
 
 def test_installer_rejects_a_resource_that_is_none():
     resources = RuntimeResources()  # llm defaults to None
-    installer = ResourceFaultInstaller(resources, [ResourceFault("llm", RuntimeError())])
+    installer = ResourceFaultInstaller(
+        resources, [ResourceFault("llm", RuntimeError())]
+    )
 
     with pytest.raises(ScenarioError, match="nothing to fail"), installer:
         pass
