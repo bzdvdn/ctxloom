@@ -127,11 +127,19 @@ class FileSystemSource(Source):
         results.sort(key=lambda r: r.score or 0.0, reverse=True)
         return results[:limit]
 
+    async def asearch(self, query: str, limit: int = 10) -> list[SourceRef]:
+        """Offloads the directory scan to a worker thread (§ ctxloom.checkpoints
+        has the same pattern): `search()` walks and reads every matching file
+        under `root` synchronously, which would otherwise stall the runtime's
+        event loop — and every other agent running concurrently with it — for
+        as long as the scan takes."""
+        return await asyncio.to_thread(self.search, query, limit)
+
     async def resolve(self, ref: SourceRef) -> str:
         full_path = self.root / ref.locator
         if not full_path.exists():
             raise FileNotFoundError(f"File not found: {full_path}")
-        return full_path.read_text(encoding="utf-8")
+        return await asyncio.to_thread(full_path.read_text, encoding="utf-8")
 
 
 def _chunk_text(text: str, size: int) -> list[str]:
@@ -170,6 +178,9 @@ class EmbeddingSource(Source):
     async, synchronous `search` is not supported — the aggregator must
     call `asearch`. Semantic search is preferred over keyword sources,
     hence `preferred=True` (scout polls it first).
+
+    The index is built once and kept forever — a file changed under `root`
+    after the first search stays invisible until you call `invalidate()`.
     """
 
     def __init__(
@@ -197,12 +208,9 @@ class EmbeddingSource(Source):
             "EmbeddingSource requires async asearch (embedding is async)"
         )
 
-    async def _ensure_index(self) -> None:
-        if self._index is not None:
-            return
+    def _scan_chunks_sync(self) -> list[tuple[str, str]]:
         if not self.root.exists():
-            self._index = []
-            return
+            return []
         chunks: list[tuple[str, str]] = []
         for path in sorted(self.root.rglob("*")):
             if not path.is_file() or path.suffix not in self.extensions:
@@ -213,6 +221,15 @@ class EmbeddingSource(Source):
                 continue
             for chunk in _chunk_text(content, self.chunk_size):
                 chunks.append((str(path.relative_to(self.root)), chunk))
+        return chunks
+
+    async def _ensure_index(self) -> None:
+        if self._index is not None:
+            return
+        # Directory walk + file reads are blocking — run them off the event
+        # loop (same reasoning as FileSystemSource.asearch); the embed() call
+        # below is presumably already async-native I/O, so it stays direct.
+        chunks = await asyncio.to_thread(self._scan_chunks_sync)
         if not chunks:
             self._index = []
             return
@@ -220,6 +237,16 @@ class EmbeddingSource(Source):
         self._index = [
             (loc, text, vec) for (loc, text), vec in zip(chunks, vectors, strict=False)
         ]
+
+    def invalidate(self) -> None:
+        """Drops the cached index so the next search rebuilds it from disk.
+
+        `_ensure_index()` only ever builds the index once, lazily, on the
+        first search (see the class docstring) — nothing detects that files
+        under `root` changed since. Call this yourself (e.g. after a known
+        write, or on a periodic timer) to pick up changes.
+        """
+        self._index = None
 
     async def asearch(self, query: str, limit: int = 10) -> list[SourceRef]:
         await self._ensure_index()
@@ -249,7 +276,7 @@ class EmbeddingSource(Source):
         full_path = self.root / ref.locator
         if not full_path.exists():
             raise FileNotFoundError(f"File not found: {full_path}")
-        return full_path.read_text(encoding="utf-8")
+        return await asyncio.to_thread(full_path.read_text, encoding="utf-8")
 
 
 class CSVSource(Source):
@@ -321,11 +348,16 @@ class CSVSource(Source):
         results.sort(key=lambda r: r.score or 0.0, reverse=True)
         return results[:limit]
 
+    async def asearch(self, query: str, limit: int = 10) -> list[SourceRef]:
+        """Offloads the directory scan to a worker thread — see
+        `FileSystemSource.asearch` for why."""
+        return await asyncio.to_thread(self.search, query, limit)
+
     async def resolve(self, ref: SourceRef) -> dict[str, Any]:
         full_path = self.root / ref.locator
         if not full_path.exists():
             raise FileNotFoundError(f"File not found: {full_path}")
-        rows = self._read(full_path)
+        rows = await asyncio.to_thread(self._read, full_path)
         if not rows:
             return {"columns": [], "rows": []}
         return {"columns": rows[0], "rows": rows[1:]}

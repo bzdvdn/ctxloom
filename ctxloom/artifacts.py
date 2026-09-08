@@ -55,6 +55,11 @@ class Artifact(Generic[TData]):
         self._history: list[
             TData
         ] = []  # previous data versions (excluding the current one)
+        # Memoized to_dict(), keyed by version: re-derived on every save()
+        # otherwise (session persistence saves after every commit, §ctxloom.session)
+        # even though most artifacts in a large context are unchanged since the
+        # last save — see ctxloom/session.py for the calling context.
+        self._dict_cache: tuple[int, dict[str, Any]] | None = None
 
     def update(self, new_data: TData) -> None:
         """Saves the current version to history and replaces the data."""
@@ -88,7 +93,16 @@ class Artifact(Generic[TData]):
         return compute_dict_diff(old_data, new_data)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        """Serializes the artifact, including its full version history.
+
+        Memoized per `version` (bumped by `update()`): an unchanged artifact
+        returns the same dict instance on a later call instead of re-walking
+        `model_dump()` over its entire history again — the history only grows
+        monotonically, so a cache keyed by version can never go stale.
+        """
+        if self._dict_cache is not None and self._dict_cache[0] == self.version:
+            return self._dict_cache[1]
+        d = {
             "id": self.id,
             "data_type": self.data_type,
             "data": self.data.model_dump(mode="json"),
@@ -97,6 +111,8 @@ class Artifact(Generic[TData]):
             "history": [v.model_dump(mode="json") for v in self._history],
             "created_by_commit": self.created_by_commit,
         }
+        self._dict_cache = (self.version, d)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Artifact[Any]:

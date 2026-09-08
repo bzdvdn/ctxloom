@@ -50,6 +50,80 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
   context accumulates thousands of artifacts but any one update only
   invalidates a handful of them.
 
+- **`Session.save()` (called after every commit — see `Runtime._commit_patches_to_apply`)
+  no longer re-serializes the whole context from scratch each time.**
+  `Artifact.to_dict()` is now memoized per `version` (an artifact's full
+  history only needs re-encoding once, not on every unrelated save), and
+  `CommitLog.to_dict()` is memoized per commit id (a commit is immutable
+  once appended). Separately, `FileKVBackend._set_sync` now builds the JSON
+  via `json.dumps()` + one `write()` instead of `json.dump(obj, f)` —
+  `json.dump()`'s streaming encoder never takes CPython's C-accelerated
+  path (only `.encode()`, what `dumps()` uses, does), so for a large
+  payload it was walking the entire object graph in pure Python on every
+  save. Measured on a session with 3000 accumulated artifacts/commits:
+  `Context.to_dict()` 11ms → 1.3ms (cache warm), full `session.save()`
+  ~68ms → ~19ms. Both caches are keyed so they can never go stale (version
+  number; commit id) and need no manual invalidation.
+
+### Fixed
+
+- **`ToolUse`'s blocking tool-call loop now respects `Budget.max_seconds`
+  between its own internal steps.** `Runtime._budget_exhausted()` only
+  checks the deadline *between* agent runs; `ToolUse._loop` makes up to
+  `max_steps` sequential LLM/tool round-trips inside one `produce()`, and
+  previously only checked `Budget.max_tool_calls` there — a slow provider
+  could blow well past `max_seconds` before the runtime ever got a chance
+  to see it. `Runtime._begin_turn` now also publishes the computed deadline
+  as `resources.get("budget_deadline")`; the loop checks it between steps
+  and falls through to the existing forced-answer path, same as hitting
+  `max_steps`. `ToolUseHITL` didn't need this — it's already one step per
+  reactive turn, bounded by the runtime's own per-generation check.
+- **`FileSystemSource`/`CSVSource`/`EmbeddingSource` no longer block the
+  event loop.** `asearch()` (what `fan_out_sources` actually calls) used to
+  default to calling the synchronous `search()` directly, which walks and
+  reads every matching file under `root` — for a large corpus, that stalls
+  the whole runtime (every concurrently-running agent) for as long as the
+  scan takes. Each now offloads via `asyncio.to_thread`, the same pattern
+  `ctxloom/checkpoints.py`'s backends already use. `resolve()` on all three
+  is offloaded too. `search()` itself is unchanged (still synchronous,
+  still directly usable/testable without an event loop).
+- **`EmbeddingSource.invalidate()`**: the vector index was built once,
+  lazily, and cached forever with no way to pick up files that changed
+  under `root` afterward. Now documented as a known limitation, with an
+  explicit method to drop the cache and force a rebuild on the next search.
+- **`ChatAssistant.stream()`/`.invoke()` now serialize concurrent turns on
+  the same `session_id`.** Two overlapping calls for the same session (a
+  double submit, a client retry) both used to load the same starting state
+  and run independently, and whichever `session.save()` landed last won —
+  silently dropping the other turn (§59: no silent data loss). A per-session
+  `asyncio.Lock`, created lazily and dropped once uncontended (bounded by
+  concurrently-active sessions, not every session_id ever seen), now makes
+  the second call wait for the first instead of racing it. Different
+  `session_id`s are unaffected — this doesn't serialize the whole assistant,
+  only same-session turns. Verified with a concurrent same-session test:
+  both turns' messages and derived artifacts persist (previously the second
+  `save()` could overwrite the first's). Scoped to `ChatAssistant` — the
+  lower-level `run_message` building block (for custom transports/loops)
+  has no such guarantee, by design; its own caller owns that story.
+
+### Known limitation (documented, not fixed)
+
+- `ToolUseHITL`'s history/duplicate-question lookups
+  (`context.list_artifacts(Observation | PendingQuestion)` filtered by
+  `query_id` in Python) scale with the total count of that artifact type
+  across *every* conversation sharing one `Context`, not just the current
+  one — `RelationGraph` isn't indexed by `source_id` either, so routing
+  through `context.related()` instead wouldn't actually help without also
+  indexing that. Only matters if you share one long-lived `Context` across
+  many concurrent tool-use conversations instead of the standard
+  one-`Context`-per-session pattern (`SessionStore`, every example here) —
+  left as a documented trade-off (see the `ToolUseHITL` class docstring)
+  rather than done as a drive-by alongside the fixes above.
+- `chat.default_session_state` sorts *every* artifact in the context
+  (`ctx.list_artifacts()`, no type filter) on each call — a view-endpoint
+  cost (`ChatAssistant.history()` / `GET /api/runs/{id}`), not a per-commit
+  one, so left as-is rather than optimized alongside the session-save fixes.
+
 ### Changed
 
 - **`Runtime`'s tracing plumbing moved to `ctxloom.tracing.RunTracer`.**

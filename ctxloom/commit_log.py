@@ -40,6 +40,7 @@ class CommitLog:
         "_last_write_commit",
         "_dependents",
         "_producing_read_ids",
+        "_dict_cache",
     )
 
     def __init__(self) -> None:
@@ -49,6 +50,10 @@ class CommitLog:
         self._last_write_commit: dict[str, Commit] = {}
         self._dependents: dict[str, set[str]] = {}
         self._producing_read_ids: dict[str, set[str]] = {}
+        # Memoized Commit.to_dict(), keyed by commit id: a commit is immutable
+        # once appended (writes/reads/operations never change afterward), so
+        # this can never go stale — see `to_dict()`.
+        self._dict_cache: dict[str, dict[str, Any]] = {}
 
     @property
     def version(self) -> int:
@@ -137,6 +142,10 @@ class CommitLog:
         del self._commits[version:]
         self._version = version
         self._rebuild_indices()
+        live_ids = {c.id for c in self._commits}
+        self._dict_cache = {
+            cid: d for cid, d in self._dict_cache.items() if cid in live_ids
+        }
 
     def replay_state(self, upto_version: int) -> dict[str, Any]:
         """Replays the artifact state by applying commits up to and including
@@ -179,10 +188,29 @@ class CommitLog:
         # Deep-copied commits are new objects — re-derive the indices instead
         # of copying dicts that would still point at the originals.
         clone._rebuild_indices()
+        # A commit's serialized form only depends on its (unchanged-by-copy)
+        # field values, keyed by its (unchanged-by-copy) id — safe to carry
+        # the cache over instead of re-serializing on the clone's first save.
+        clone._dict_cache = dict(self._dict_cache)
         return clone
 
     def to_dict(self) -> list[dict[str, Any]]:
-        return [c.to_dict() for c in self._commits]
+        """Serializes the commit chain, memoized per commit id.
+
+        A commit is immutable once appended (`writes` is filled in before
+        `Context.log_commit()` and never touched again), so re-serializing an
+        already-serialized commit on every `Context.to_dict()`/session save
+        is pure waste for a long-lived context — only new commits since the
+        last call actually get `Commit.to_dict()` called on them.
+        """
+        result = []
+        for c in self._commits:
+            cached = self._dict_cache.get(c.id)
+            if cached is None:
+                cached = c.to_dict()
+                self._dict_cache[c.id] = cached
+            result.append(cached)
+        return result
 
     @classmethod
     def from_dict(

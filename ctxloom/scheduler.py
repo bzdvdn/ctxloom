@@ -145,7 +145,7 @@ class Scheduler:
 
         description = ", ".join(
             f"[{i}] agent={item[0].name} "
-            f"capabilities={list(item[0].capabilities) if hasattr(item[0], 'capabilities') else []} "
+            f"capabilities={list(item[0].capabilities)} "
             f"event={item[1].type.value}"
             for i, item in enumerate(top)
         )

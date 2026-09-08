@@ -14,6 +14,7 @@ different LLM agents in one Runtime.
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
@@ -163,9 +164,17 @@ class ToolUse(_ToolLoopBase):
         history: list[str] = []
         budget = context.resources.get("budget")
         max_tool_calls = budget.max_tool_calls if budget is not None else None
+        # Runtime only enforces Budget.max_seconds *between* agent runs
+        # (Runtime._budget_exhausted): this loop makes several LLM/tool
+        # round-trips inside one produce(), so without its own check here a
+        # slow provider could blow well past the time budget before the
+        # runtime ever gets a chance to see it.
+        deadline = context.resources.get("budget_deadline")
         executed = 0
         context.announce("Deciding next action…", kind="agent", agent=self.name)
         for _ in range(self.max_steps):
+            if deadline is not None and time.monotonic() >= deadline:
+                break  # time budget exhausted — fall through to the forced answer
             decision = await structured_llm(
                 context,
                 schema=_ToolUseStep,
@@ -194,7 +203,8 @@ class ToolUse(_ToolLoopBase):
                 f"tool_call: {decision.tool}({json.dumps(decision.args, ensure_ascii=False)})\n"
                 f"result: {result}"
             )
-        # Loop hit the limit: force the LLM to answer based on the data.
+        # Loop hit the step limit or the time budget: force the LLM to answer
+        # based on the data gathered so far.
         forced = await structured_llm(
             context,
             schema=_FinalAnswer,
@@ -242,6 +252,19 @@ class ToolUseHITL(_ToolLoopBase):
     The LLM may answer (`answer`), call a tool (`tool_call`, result goes into an
     `Observation`), or ask a clarifying question (`ask` → `PendingQuestion`).
     The human answer comes back into the loop as `Observation(source="user")`.
+
+    `_history`/the `ask` dedup check filter `context.list_artifacts(Observation
+    | PendingQuestion)` by `query_id` in Python — O(count of that type in the
+    whole context), not indexed by `query_id`. Bounded per conversation
+    (`max_steps`, `max_asks`), so this is only a real cost if *many*
+    long-running conversations share one `Context` — the standard
+    one-`Context`-per-session pattern (`SessionStore`, every example in this
+    repo) keeps each conversation's own artifact count small regardless of
+    how many sessions exist. A real fix would need `RelationGraph` indexed by
+    `source_id` (it currently isn't either) plus linking each Observation to
+    its goal artifact instead of filtering by field — deliberately not done
+    here; flag it if you're sharing one long-lived `Context` across many
+    concurrent tool-use conversations.
     """
 
     def __init__(

@@ -80,13 +80,18 @@ class Runtime:
         self._deadline = None
         self._turn_started_at = time.monotonic()
         self._active_budget = budget or self.budget
-        # expose budget visibility to agents (LLM agent counts max_tool_calls)
-        self.context.resources.set("budget", self._active_budget)
         if (
             self._active_budget is not None
             and self._active_budget.max_seconds is not None
         ):
             self._deadline = self._turn_started_at + self._active_budget.max_seconds
+        # expose budget visibility to agents (LLM agent counts max_tool_calls;
+        # a multi-step blocking loop like ToolUse._loop checks `budget_deadline`
+        # between its own internal steps — the runtime only enforces max_seconds
+        # *between* agent runs, so a produce with its own internal loop would
+        # otherwise never see it until the whole produce() returns).
+        self.context.resources.set("budget", self._active_budget)
+        self.context.resources.set("budget_deadline", self._deadline)
         self._turn_started = True
         self._trace.begin_turn(
             session_id=self.session.session_id if self.session is not None else ""

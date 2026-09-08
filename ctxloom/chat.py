@@ -15,8 +15,10 @@ Two levels of use:
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Sequence
+from contextlib import asynccontextmanager
 from typing import Any
 
 from pydantic import BaseModel
@@ -225,6 +227,39 @@ class ChatAssistant:
         self._fallback_reply = fallback_reply
         self._isolate_errors = isolate_errors
         self._on_agent_error = on_agent_error
+        # Serializes concurrent turns on the *same* session_id (a double
+        # submit, a client retry): without this, two overlapping stream()
+        # calls both load the same starting state and the later save() wins,
+        # silently dropping the other turn (§59: no silent data loss).
+        # Different session_ids never block each other. Entries are removed
+        # once uncontended (`_lock_refs` hits 0) so this stays bounded by
+        # concurrently-active sessions, not by every session_id ever seen —
+        # see `_locked_session`.
+        self._locks_guard = asyncio.Lock()
+        self._session_locks: dict[str, asyncio.Lock] = {}
+        self._lock_refs: dict[str, int] = {}
+
+    @asynccontextmanager
+    async def _locked_session(self, session_id: str) -> AsyncGenerator[None, None]:
+        """Mutual exclusion per `session_id` for the turn's duration (§59).
+
+        The lock is created on first use and dropped once nothing holds it
+        (`_lock_refs` hits 0) — sized by concurrently-active sessions, not
+        every session_id ever seen, so a long-lived server doesn't grow this
+        dict without bound.
+        """
+        async with self._locks_guard:
+            lock = self._session_locks.setdefault(session_id, asyncio.Lock())
+            self._lock_refs[session_id] = self._lock_refs.get(session_id, 0) + 1
+        async with lock:
+            try:
+                yield
+            finally:
+                async with self._locks_guard:
+                    self._lock_refs[session_id] -= 1
+                    if self._lock_refs[session_id] <= 0:
+                        self._lock_refs.pop(session_id, None)
+                        self._session_locks.pop(session_id, None)
 
     async def _open(self, session_id: str) -> Session:
         return await self.store.open(session_id, resources=_resolve(self._resources))
@@ -247,53 +282,62 @@ class ChatAssistant:
         Never raises for app-level failures: session open / runtime crash /
         reply hook all degrade to the fallback `message` and are logged via the
         `ctxloom.chat` logger, so a web layer never delivers a 500 mid-stream.
+
+        Turns on the same `session_id` are serialized (`_locked_session`): a
+        second concurrent call for the same session waits for the first to
+        finish instead of racing it to `session.save()` (§59 — no silent lost
+        update). Different `session_id`s never block each other. This only
+        covers calls made through this `ChatAssistant` instance — the
+        lower-level `run_message` building block has no such guarantee, by
+        design (see the module docstring).
         """
-        try:
-            session = await self._open(session_id)
-            runtime = self._build_runtime(session)
-        except Exception:
-            logger.exception(
-                "chat.ChatAssistant: failed to open session %r", session_id
-            )
-            yield ChatEvent(
-                kind="message",
-                session_id=session_id,
-                payload=_fallback_payload(self._fallback_reply),
-            )
-            return
-        yield ChatEvent(kind="session", session_id=session_id)
-        try:
-            async for event in run_message(
-                runtime,
-                text,
-                user_message=self._user_message,
-                reply=self._reply,
-                create_message=self._create_message,
-                status_kinds=self._status_kinds,
-                fallback_reply=self._fallback_reply,
-                session_id=session_id,
-            ):
-                yield event
-        finally:
+        async with self._locked_session(session_id):
             try:
-                await session.save()  # persist the conversation after the turn
+                session = await self._open(session_id)
+                runtime = self._build_runtime(session)
             except Exception:
                 logger.exception(
-                    "chat.ChatAssistant: failed to save session %r", session_id
+                    "chat.ChatAssistant: failed to open session %r", session_id
                 )
-            if callable(self._resources):
-                # A callable `resources=` builds a fresh RuntimeResources (and
-                # typically a fresh provider + HTTP client) on every turn —
-                # nothing else will ever reference this instance again, so
-                # it's this turn's job to close it. A shared instance passed
-                # directly is not touched here: it must outlive this turn.
+                yield ChatEvent(
+                    kind="message",
+                    session_id=session_id,
+                    payload=_fallback_payload(self._fallback_reply),
+                )
+                return
+            yield ChatEvent(kind="session", session_id=session_id)
+            try:
+                async for event in run_message(
+                    runtime,
+                    text,
+                    user_message=self._user_message,
+                    reply=self._reply,
+                    create_message=self._create_message,
+                    status_kinds=self._status_kinds,
+                    fallback_reply=self._fallback_reply,
+                    session_id=session_id,
+                ):
+                    yield event
+            finally:
                 try:
-                    await session.context.resources.aclose()
+                    await session.save()  # persist the conversation after the turn
                 except Exception:
                     logger.exception(
-                        "chat.ChatAssistant: failed to close per-turn resources %r",
-                        session_id,
+                        "chat.ChatAssistant: failed to save session %r", session_id
                     )
+                if callable(self._resources):
+                    # A callable `resources=` builds a fresh RuntimeResources (and
+                    # typically a fresh provider + HTTP client) on every turn —
+                    # nothing else will ever reference this instance again, so
+                    # it's this turn's job to close it. A shared instance passed
+                    # directly is not touched here: it must outlive this turn.
+                    try:
+                        await session.context.resources.aclose()
+                    except Exception:
+                        logger.exception(
+                            "chat.ChatAssistant: failed to close per-turn resources %r",
+                            session_id,
+                        )
 
     async def invoke(self, text: str, session_id: str = "") -> dict[str, Any]:
         """Run one turn and return the terminal reply (aggregated stream)."""
