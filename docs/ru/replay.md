@@ -10,7 +10,7 @@ Replay отвечает на конституционный вопрос — **�
 `ReplayLLM` — студия записи вызовов модели. Два прохода:
 
 ```python
-from ctxloom import ReplayLLM
+from ctxloom.replay import ReplayLLM
 
 # проход 1 — записать настоящий запуск
 resources = RuntimeResources(
@@ -41,7 +41,7 @@ runtime.run()                          # те же артефакты, те же
 конкретном коммите без исполнения агентов:
 
 ```python
-from ctxloom import replay_context, replay_summary
+from ctxloom.replay import replay_context, replay_summary
 from ctxloom.checkpoints import SQLiteKVBackend
 from ctxloom.session import SessionStore
 

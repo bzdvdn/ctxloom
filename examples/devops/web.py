@@ -18,16 +18,11 @@ from typing import Any
 if __package__ in (None, ""):  # running as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import (
-    Budget,
-    ChatAssistant,
-    FileKVBackend,
-    RuntimeResources,
-    SessionStore,
-    Tracer,
-    TraceStore,
-)
+from ctxloom import Budget, RuntimeResources, SessionStore
+from ctxloom.chat import ChatAssistant
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.providers import openai_llm, openrouter_llm
+from ctxloom.tracing import Tracer, TraceStore
 from ctxloom.tracing.web import create_trace_router
 from ctxloom.web import create_chat_router
 from dotenv import load_dotenv

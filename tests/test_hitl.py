@@ -1,13 +1,7 @@
 import asyncio
 
-from ctxloom import (
-    Agent,
-    Consume,
-    FileKVBackend,
-    Patch,
-    Runtime,
-    SessionStore,
-)
+from ctxloom import Agent, Consume, Patch, Runtime, SessionStore
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.interrupt import PendingQuestion
 from pydantic import BaseModel
 

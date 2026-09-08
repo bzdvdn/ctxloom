@@ -15,7 +15,7 @@ artifact graph — not the smoothness of the text.
 ## Running a suite
 
 ```python
-from ctxloom import EvalCase, run_suite, core_metrics, calculation_correctness
+from ctxloom.eval import EvalCase, calculation_correctness, core_metrics, run_suite
 
 cases = [
     EvalCase(

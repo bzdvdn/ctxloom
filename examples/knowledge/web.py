@@ -22,12 +22,9 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import (
-    Budget,
-    ChatAssistant,
-    FileKVBackend,
-    SessionStore,
-)
+from ctxloom import Budget, SessionStore
+from ctxloom.chat import ChatAssistant
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.web import create_chat_router
 from dotenv import load_dotenv
 from examples.knowledge.agents import AGENTS

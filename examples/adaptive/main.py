@@ -38,10 +38,10 @@ from ctxloom import (
     Produce,
     Runtime,
     RuntimeResources,
-    structured_llm,
 )
 from ctxloom.providers import LLMProvider
 from ctxloom.scheduler import Rule, uncertainty_policy
+from ctxloom.structured import structured_llm
 from pydantic import BaseModel
 
 

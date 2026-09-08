@@ -16,12 +16,9 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import (
-    Budget,
-    ChatAssistant,
-    FileKVBackend,
-    SessionStore,
-)
+from ctxloom import Budget, SessionStore
+from ctxloom.chat import ChatAssistant
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.web import create_chat_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles

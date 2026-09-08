@@ -15,7 +15,8 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import FileKVBackend, SessionStore
+from ctxloom import SessionStore
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.tracing import TraceStore
 from ctxloom.tracing.web import create_trace_router
 from dotenv import load_dotenv

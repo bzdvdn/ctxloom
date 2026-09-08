@@ -14,10 +14,11 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from ctxloom import Agent, Consume, RuntimeResources, ToolAnswer, ToolUse, tool
+from ctxloom import Agent, Consume, RuntimeResources, tool
 from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
 from ctxloom.testing import ScenarioError, ScenarioLab
 from ctxloom.testing.mock import ResourceFault, ResourceFaultInstaller, _FailingProxy
+from ctxloom.tool_use import ToolAnswer, ToolUse
 from pydantic import BaseModel
 
 

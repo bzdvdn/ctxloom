@@ -59,7 +59,8 @@ return None
 агентов:
 
 ```python
-from ctxloom import HITLLMAgent, Consume, Produce
+from ctxloom import Consume, Produce
+from ctxloom.llm_agent import HITLLMAgent
 
 class OpsAgent(HITLLMAgent):
     name = "ops"
@@ -87,8 +88,7 @@ Runtime оборачивает один вызов LLM в схему `pydantic` 
 парсингом JSON:
 
 ```python
-from ctxloom import structured_llm
-from ctxloom.structured import StructuredLLM
+from ctxloom.structured import StructuredLLM, structured_llm
 
 # процедурный вариант:
 body = await structured_llm(

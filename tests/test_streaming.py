@@ -1,7 +1,7 @@
 import asyncio
 
-from ctxloom import Agent, Consume, Context, Patch, ProgressEvent, Runtime
-from ctxloom.streaming import EventHub
+from ctxloom import Agent, Consume, Context, Patch, Runtime
+from ctxloom.streaming import EventHub, ProgressEvent
 from pydantic import BaseModel
 
 

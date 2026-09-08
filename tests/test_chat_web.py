@@ -2,14 +2,9 @@ import asyncio
 import os
 
 import pytest
-from ctxloom import (
-    ChatAssistant,
-    Consume,
-    FileKVBackend,
-    SessionStore,
-    create_agent,
-    produce,
-)
+from ctxloom import Consume, SessionStore, create_agent, produce
+from ctxloom.chat import ChatAssistant
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.web import create_chat_router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -125,7 +120,8 @@ def test_web_extra_error_is_readable(tmp_path, monkeypatch):
     for mod in [m for m in sys.modules if m == "fastapi" or m.startswith("fastapi.")]:
         monkeypatch.delitem(sys.modules, mod)
     monkeypatch.setattr(builtins, "__import__", blocked)
-    from ctxloom import ChatAssistant, Consume, create_agent, produce
+    from ctxloom import Consume, create_agent, produce
+    from ctxloom.chat import ChatAssistant
 
     class _Q(BaseModel):
         text: str

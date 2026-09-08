@@ -10,18 +10,10 @@ from __future__ import annotations
 
 import asyncio
 
-from ctxloom import (
-    Agent,
-    Consume,
-    Patch,
-    Produce,
-    RuntimeResources,
-    ToolAnswer,
-    ToolUse,
-    tool,
-)
+from ctxloom import Agent, Consume, Patch, Produce, RuntimeResources, tool
 from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
 from ctxloom.testing import ScenarioLab
+from ctxloom.tool_use import ToolAnswer, ToolUse
 from pydantic import BaseModel
 
 

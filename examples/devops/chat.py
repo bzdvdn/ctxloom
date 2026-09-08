@@ -12,13 +12,8 @@ from typing import Any
 if __package__ in (None, ""):  # running as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import (
-    Budget,
-    FileKVBackend,
-    Runtime,
-    RuntimeResources,
-    SessionStore,
-)
+from ctxloom import Budget, Runtime, RuntimeResources, SessionStore
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.providers import openai_llm, openrouter_llm
 from dotenv import load_dotenv
 from examples.devops.agents import (

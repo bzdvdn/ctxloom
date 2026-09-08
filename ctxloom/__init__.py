@@ -1,43 +1,36 @@
+"""ctxloom's core public API.
+
+Deliberately small: the primitives from the README's "Core primitives"
+section, plus the everyday building blocks (tool calling, sessions, the LLM
+provider protocol) most agents need regardless of what else they use.
+
+Everything else — eval, tracing, checkpoint/branch backends beyond the
+in-memory default, the chat/web layer, the adaptive scheduler, replay,
+structured-LLM helpers, viz, prompts — is one level down, in its own
+submodule (`ctxloom.eval`, `ctxloom.tracing`, `ctxloom.chat`, ...). Import it
+from there:
+
+    from ctxloom.structured import structured_llm
+    from ctxloom.tracing import TraceStore
+    from ctxloom.chat import ChatAssistant
+
+This keeps `dir(ctxloom)` / editor autocomplete to what you need to build a
+first agent, and keeps optional-dependency features (Postgres, FastAPI) out
+of the names you see by default even though they were always cheap to import
+(the driver itself is still lazily imported inside the class, see
+`ctxloom._extras`).
+"""
+
 from .agents import Agent, create_agent
 from .artifacts import Artifact
-from .branching import BranchStore
 from .budget import Budget, RunOutcome, RunStats
-from .chat import ChatAssistant, ChatEvent, default_session_state, run_message
-from .checkpoints import (
-    CheckpointBackend,
-    FileBackend,
-    FileKVBackend,
-    KVBackend,
-    PostgreSQLKVBackend,
-    SQLiteBackend,
-    SQLiteKVBackend,
-)
-from .commit import Commit, Read, Write
 from .consume import Consume, consume
 from .context import Context, MergeConflict, View
-from .eval import (
-    EvalCase,
-    EvalReport,
-    EvalResult,
-    Metric,
-    answer_coverage,
-    answer_present,
-    calculation_correctness,
-    claim_verification,
-    confidence_calibration,
-    core_metrics,
-    evidence_quality,
-    provenance_grounded,
-    run_case,
-    run_suite,
-    source_coverage,
-)
+from .effects import Effects, Handle
 from .events import Event, EventType
 from .interrupt import PendingQuestion
-from .llm_agent import HITLLMAgent, LLMAgent, StructuredGenerateAgent
 from .patches import Create, Delete, Link, Patch, Relation, Unlink, Update
 from .produce import Produce, produce
-from .prompts import MessagesPrompt, PromptTemplate
 from .providers import (
     EmbeddingProvider,
     FakeEmbedder,
@@ -48,28 +41,11 @@ from .providers import (
     LLMResponseChunk,
     Message,
 )
-from .replay import ReplayLLM, ReplayMiss, replay_context, replay_summary
 from .resources import RuntimeResources
 from .runtime import Runtime
-from .scheduler import Scheduler, uncertainty_policy
 from .session import Session, SessionStore
-from .streaming import EventHub, ProgressEvent
-from .structured import (
-    StructuredLLM,
-    llm_reply,
-    parse_structured,
-    structured_llm,
-)
-from .tool_use import Observation, ToolAnswer, ToolUse, ToolUseHITL
 from .tools import FunctionTool, Tool, ToolOutput, tool
-from .tracing import AgentSpan, CompositeTracer, RunTrace, Tracer, TraceStore
 from .triggers import Trigger
-from .viz import (
-    blueprint,
-    context_to_mermaid,
-    trace_provenance_to_mermaid,
-    trace_to_mermaid,
-)
 
 __version__ = "0.4.0"
 
@@ -77,101 +53,43 @@ __all__ = [
     "Agent",
     "Artifact",
     "Budget",
-    "BranchStore",
-    "CheckpointBackend",
-    "ChatAssistant",
-    "ChatEvent",
-    "Commit",
     "Consume",
     "Context",
     "Create",
     "Delete",
     "EmbeddingProvider",
-    "EvalCase",
-    "EvalReport",
-    "EvalResult",
+    "Effects",
     "Event",
-    "EventHub",
     "EventType",
     "FakeEmbedder",
     "FakeLLM",
-    "FileBackend",
-    "FileKVBackend",
     "FunctionTool",
-    "HITLLMAgent",
-    "KVBackend",
-    "LLMAgent",
-    "LLMProvider",
-    "LLMRequest",
-    "LLMResponse",
-    "LLMResponseChunk",
+    "Handle",
     "Link",
     "Message",
-    "MessagesPrompt",
     "MergeConflict",
-    "Metric",
-    "Observation",
     "Patch",
-    "PostgreSQLKVBackend",
     "PendingQuestion",
     "Produce",
-    "ProgressEvent",
-    "PromptTemplate",
-    "Read",
     "Relation",
     "RunOutcome",
     "RunStats",
     "Runtime",
-    "Scheduler",
     "RuntimeResources",
-    "ReplayLLM",
-    "ReplayMiss",
-    "replay_context",
-    "replay_summary",
-    "SQLiteBackend",
-    "SQLiteKVBackend",
+    "LLMProvider",
+    "LLMRequest",
+    "LLMResponse",
+    "LLMResponseChunk",
     "Session",
     "SessionStore",
-    "StructuredGenerateAgent",
-    "StructuredLLM",
     "Tool",
-    "ToolAnswer",
     "ToolOutput",
-    "ToolUse",
-    "ToolUseHITL",
-    "TraceStore",
-    "Tracer",
     "Trigger",
     "Unlink",
-    "uncertainty_policy",
     "Update",
     "View",
-    "Write",
-    "AgentSpan",
-    "CompositeTracer",
-    "RunTrace",
-    "blueprint",
     "consume",
-    "context_to_mermaid",
     "create_agent",
-    "default_session_state",
-    "llm_reply",
-    "parse_structured",
     "produce",
-    "run_message",
-    "structured_llm",
     "tool",
-    "trace_provenance_to_mermaid",
-    "trace_to_mermaid",
-    "answer_coverage",
-    "answer_present",
-    "calculation_correctness",
-    "claim_verification",
-    "confidence_calibration",
-    "core_metrics",
-    "evidence_quality",
-    "provenance_grounded",
-    "run_case",
-    "run_suite",
-    "source_coverage",
 ]

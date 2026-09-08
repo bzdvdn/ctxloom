@@ -96,7 +96,8 @@ def test_staleness_survives_session_restart(tmp_path):
 
 
 async def _test_staleness_survives_session_restart(tmp_path):
-    from ctxloom import FileKVBackend, RuntimeResources, SessionStore
+    from ctxloom import RuntimeResources, SessionStore
+    from ctxloom.checkpoints import FileKVBackend
 
     store = SessionStore(FileKVBackend(str(tmp_path)))
     session = await store.open("inval", resources=RuntimeResources())

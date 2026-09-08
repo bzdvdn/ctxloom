@@ -67,7 +67,7 @@ except MergeConflict as exc:
 нового хранилища, семантика живёт в операциях `Context`:
 
 ```python
-from ctxloom import BranchStore
+from ctxloom.branching import BranchStore
 from ctxloom.checkpoints import SQLiteKVBackend
 
 store = BranchStore(SQLiteKVBackend("sessions.sqlite3"))

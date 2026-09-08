@@ -9,7 +9,8 @@ fallback, §59) — the pipeline still runs fully offline.
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce, structured_llm
+from ctxloom import Artifact, Context, Event, Produce
+from ctxloom.structured import structured_llm
 
 from ..models import Evidence, EvidenceBody, Question, Strategy
 from ..prompts import wording_system

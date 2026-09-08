@@ -1,17 +1,16 @@
 import asyncio
 
-from ctxloom import (
-    Agent,
-    Consume,
-    Context,
-    Patch,
-    Runtime,
-    RuntimeResources,
+from ctxloom import Agent, Consume, Context, Patch, Runtime, RuntimeResources
+from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from ctxloom.tracing import (
+    AgentSpan,
+    ArtifactRef,
+    LLMCall,
+    RelationRef,
+    RunTrace,
     Tracer,
     TraceStore,
 )
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.tracing import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from pydantic import BaseModel
 
 
@@ -148,7 +147,7 @@ def test_runtime_records_spans_and_trace(tmp_path):
 
 
 def test_runtime_records_llm_calls(tmp_path):
-    from ctxloom import structured_llm
+    from ctxloom.structured import structured_llm
 
     class AnswerBody(BaseModel):
         text: str

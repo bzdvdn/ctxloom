@@ -2,12 +2,8 @@
 
 import asyncio
 
-from ctxloom import (
-    BranchStore,
-    Context,
-    MergeConflict,
-    RuntimeResources,
-)
+from ctxloom import Context, MergeConflict, RuntimeResources
+from ctxloom.branching import BranchStore
 from ctxloom.checkpoints import SQLiteKVBackend
 from pydantic import BaseModel
 

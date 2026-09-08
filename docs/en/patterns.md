@@ -58,7 +58,8 @@ idiom as `effects.create_once`.
 For "the model decides which tool to call" flows, use the built-in agents:
 
 ```python
-from ctxloom import HITLLMAgent, Consume, Produce
+from ctxloom import Consume, Produce
+from ctxloom.llm_agent import HITLLMAgent
 
 class OpsAgent(HITLLMAgent):
     name = "ops"
@@ -86,8 +87,7 @@ The runtime wraps a single LLM call into a `pydantic` schema with retries and
 lenient JSON parsing:
 
 ```python
-from ctxloom import structured_llm
-from ctxloom.structured import StructuredLLM
+from ctxloom.structured import StructuredLLM, structured_llm
 
 # procedural variant:
 body = await structured_llm(

@@ -89,6 +89,11 @@ class Context:
         self._relations = RelationGraph()
         self._base: Context | None = None
         self._fork_name: str = ""
+        # Incrementally maintained (§ dependents index): artifact ids whose
+        # producing commit read a source that has since moved to a newer
+        # version. Kept up to date by `update()`/`log_commit()` so
+        # `stale_artifacts()`/`has_stale()` never rescan the whole context.
+        self._stale: set[str] = set()
 
     # ---- announce: agent progress events streamed out ----
 
@@ -164,6 +169,7 @@ class Context:
                     artifact_id=dependent.id,
                 )
             )
+            self._stale.add(dependent.id)
         return artifact
 
     def delete(self, artifact_id: str) -> bool:
@@ -171,6 +177,7 @@ class Context:
         artifact = self._artifacts.pop(artifact_id, None)
         if artifact is None:
             return False
+        self._stale.discard(artifact_id)
         self._events.append(
             Event(
                 type=EventType.ARTIFACT_DELETED,
@@ -355,6 +362,7 @@ class Context:
             new_ws._artifacts[artifact.id] = new_artifact
         new_ws._log = self._log.copy()
         new_ws._relations = self._relations.copy()
+        new_ws._recompute_stale()
         return new_ws
 
     def merge_from(self, other: Context) -> None:
@@ -483,6 +491,11 @@ class Context:
             self.log_commit(
                 Commit(author="merge", message=message, operations=operations)
             )
+            # merge mutates `_artifacts` directly (create/update/delete above),
+            # bypassing the incremental hooks in `create()`/`update()`/
+            # `delete()` — resync `_stale` from scratch rather than risk it
+            # drifting from the post-merge state.
+            self._recompute_stale()
 
     @staticmethod
     def _kind_short(signature: Any) -> str:
@@ -493,6 +506,10 @@ class Context:
     def log_commit(self, commit: Commit) -> None:
         """Applies the commit to the repository: fills in parent/version, moves head."""
         self._log.append(commit)
+        # A commit that (re-)writes an artifact refreshes it against its
+        # current reads — it can no longer be in the stale set.
+        for write in commit.writes:
+            self._stale.discard(write.artifact_id)
 
     def commit_log(self) -> list[Commit]:
         return self._log.history()
@@ -550,16 +567,19 @@ class Context:
     def _dependents_of(self, artifact_id: str) -> list[Artifact[Any]]:
         """Artifacts whose producing commit read `artifact_id` at an older version.
 
-        Same scan as `stale_artifacts()`, scoped to one artifact — used right
-        after that artifact's version bumps to emit `ARTIFACT_STALE` reactively
-        instead of waiting for a `stale_artifacts()` poll.
+        Looks up only `artifact_id`'s actual dependents via the commit log's
+        reverse index (`CommitLog.dependents_of`), not every artifact in the
+        context — used right after that artifact's version bumps to emit
+        `ARTIFACT_STALE` reactively instead of waiting for a `stale_artifacts()`
+        poll.
         """
         current = self._artifacts.get(artifact_id)
         if current is None:
             return []
         dependents: list[Artifact[Any]] = []
-        for aid, artifact in self._artifacts.items():
-            if aid == artifact_id:
+        for aid in self._log.dependents_of(artifact_id):
+            artifact = self._artifacts.get(aid)
+            if artifact is None:
                 continue
             commit = self._producing_commit(aid)
             if commit is None:
@@ -575,21 +595,33 @@ class Context:
 
         Dependencies are built from the actual reads recorded by the runtime via
         consumes — a link derived from execution, not an author-drawn graph.
+        Backed by the incrementally-maintained `_stale` set (kept current by
+        `update()`/`log_commit()`), not a rescan of every artifact.
         """
-        stale: list[Artifact[Any]] = []
-        for artifact_id, artifact in self._artifacts.items():
+        return [self._artifacts[aid] for aid in self._stale if aid in self._artifacts]
+
+    def has_stale(self) -> bool:
+        return bool(self._stale)
+
+    def _recompute_stale(self) -> None:
+        """Full rebuild of `_stale` from current artifacts + the commit log.
+
+        Only needed after a bulk rewrite that bypasses the normal
+        `create`/`update`/`log_commit` path (`checkout`, `clone`, `from_dict`)
+        — those are inherently O(state) operations already, unlike the hot
+        `update()`/`stale_artifacts()` path this index exists to keep cheap.
+        """
+        stale: set[str] = set()
+        for artifact_id in self._artifacts:
             commit = self._producing_commit(artifact_id)
             if commit is None:
                 continue
             for read in commit.reads:
                 current = self._artifacts.get(read.artifact_id)
                 if current is not None and current.version > read.version:
-                    stale.append(artifact)
+                    stale.add(artifact_id)
                     break
-        return stale
-
-    def has_stale(self) -> bool:
-        return bool(self.stale_artifacts())
+        self._stale = stale
 
     def _rebuild_artifacts_from_commits(
         self, upto_version: int
@@ -631,6 +663,7 @@ class Context:
 
         self._events = []
         self._log.truncate(version)
+        self._recompute_stale()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -655,6 +688,7 @@ class Context:
         )
         ws._fork_name = d.get("fork_name", "")
         ws._base = Context.from_dict(d["base"]) if d.get("base") is not None else None
+        ws._recompute_stale()
         return ws
 
     async def save_checkpoint(self, backend_or_path: str | CheckpointBackend) -> None:

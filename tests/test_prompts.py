@@ -1,6 +1,6 @@
 """Prompt templating (§68): strict variables, defaults, model attributes, chat rows."""
 
-from ctxloom import MessagesPrompt, PromptTemplate
+from ctxloom.prompts import MessagesPrompt, PromptTemplate
 from ctxloom.providers import Message
 from pydantic import BaseModel
 

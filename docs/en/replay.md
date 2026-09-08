@@ -10,7 +10,7 @@ recorded, a run can be *reproduced exactly*.
 `ReplayLLM` is a recording studio for the model calls. Two passes:
 
 ```python
-from ctxloom import ReplayLLM
+from ctxloom.replay import ReplayLLM
 
 # pass 1 — record a real run
 resources = RuntimeResources(
@@ -41,7 +41,7 @@ A session checkpoint carries the full commit chain. Reconstruct the state at a
 specific commit without agent execution:
 
 ```python
-from ctxloom import replay_context, replay_summary
+from ctxloom.replay import replay_context, replay_summary
 from ctxloom.checkpoints import SQLiteKVBackend
 from ctxloom.session import SessionStore
 

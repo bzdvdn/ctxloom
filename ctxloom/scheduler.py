@@ -138,7 +138,7 @@ class Scheduler:
     async def _llm_order(self, context: Context, top: list[WorkItem]) -> list[WorkItem]:
         from pydantic import BaseModel
 
-        from . import structured_llm
+        from .structured import structured_llm
 
         class _Order(BaseModel):
             first: int

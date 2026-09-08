@@ -11,7 +11,6 @@ import logging
 import re
 from typing import Any
 
-from ctxloom import structured_llm
 from ctxloom.artifacts import Artifact
 from ctxloom.context import Context
 from ctxloom.recipes import (
@@ -19,6 +18,7 @@ from ctxloom.recipes import (
     downstream_fields,
     stem_words,
 )
+from ctxloom.structured import structured_llm
 
 from ..models import ChatReply, DesignOption, Project, ProjectInfo, UserMsg
 from ..services.geometry import ensure_geometry, geometry_text

@@ -17,14 +17,9 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import (
-    Budget,
-    ChatAssistant,
-    Context,
-    FileKVBackend,
-    RuntimeResources,
-    SessionStore,
-)
+from ctxloom import Budget, Context, RuntimeResources, SessionStore
+from ctxloom.chat import ChatAssistant
+from ctxloom.checkpoints import FileKVBackend
 from ctxloom.providers import (
     embedder_from_env,
     image_from_env,

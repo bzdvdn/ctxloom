@@ -6,6 +6,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+### Breaking
+
+- **`ctxloom/__init__.py` now exports only the core surface** — the
+  primitives from the README's "Core primitives" section plus tool calling,
+  sessions, and the LLM provider protocol (~40 names, down from ~150).
+  Eval, tracing, checkpoint/branch backends beyond the in-memory default,
+  the chat/web layer, the adaptive scheduler, replay, structured-LLM
+  helpers, viz, and prompt templates are no longer re-exported at the top
+  level — import them from their own submodule instead, e.g.:
+
+  ```python
+  from ctxloom.structured import structured_llm
+  from ctxloom.tracing import TraceStore
+  from ctxloom.chat import ChatAssistant
+  from ctxloom.checkpoints import FileKVBackend, SQLiteKVBackend
+  from ctxloom.eval import EvalCase, run_suite
+  from ctxloom.llm_agent import HITLLMAgent
+  from ctxloom.replay import ReplayLLM
+  from ctxloom.scheduler import Scheduler
+  from ctxloom.tool_use import ToolUse
+  from ctxloom.viz import blueprint
+  from ctxloom.branching import BranchStore
+  from ctxloom.prompts import PromptTemplate
+  from ctxloom.streaming import ProgressEvent
+  ```
+
+  Nothing moved or was renamed — every symbol still lives in the same
+  module it always did; only the top-level re-export was removed. Grep your
+  codebase for the names above under `from ctxloom import` and repoint them
+  at their submodule.
+
+### Performance
+
+- `Context.stale_artifacts()`/`has_stale()`/the internal dependents lookup
+  behind `update()` no longer rescan every artifact in the context on every
+  call. `CommitLog` now maintains a reverse index (source artifact →
+  dependents) and a `producing_commit` lookup incrementally as commits are
+  appended, and `Context` keeps an incrementally-updated `_stale` set.
+  `producing_commit()` is O(1) instead of an O(commits) reverse scan;
+  `stale_artifacts()`/`has_stale()` are O(stale count) instead of O(context
+  size). Matters most for long-lived sessions/knowledge bases where a
+  context accumulates thousands of artifacts but any one update only
+  invalidates a handful of them.
+
 ### Added
 
 - **`ctxloom.testing`**: a scenario-based behavioral testing harness for agent

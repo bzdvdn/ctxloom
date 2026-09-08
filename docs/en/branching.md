@@ -67,7 +67,7 @@ Branches survive restarts as named keys over the **same KV backend** — no new
 storage, the semantics live in `Context` operations:
 
 ```python
-from ctxloom import BranchStore
+from ctxloom.branching import BranchStore
 from ctxloom.checkpoints import SQLiteKVBackend
 
 store = BranchStore(SQLiteKVBackend("sessions.sqlite3"))

@@ -100,7 +100,7 @@ class Answerer(Produce[Answer]):
 
 
 async def structured_reply(context: Context, question: Artifact[Question]) -> str:
-    from ctxloom import structured_llm
+    from ctxloom.structured import structured_llm
 
     body = await structured_llm(
         context,

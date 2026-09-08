@@ -36,11 +36,11 @@ from ctxloom import (
     Produce,
     Runtime,
     RuntimeResources,
-    structured_llm,
 )
 from ctxloom.prompts import PromptTemplate
 from ctxloom.providers import LLMProvider
 from ctxloom.recipes import StatusMachine, find
+from ctxloom.structured import structured_llm
 from pydantic import BaseModel
 
 

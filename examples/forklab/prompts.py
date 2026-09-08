@@ -8,7 +8,7 @@ wording and synthesis stages share the same understanding of the product.
 
 from __future__ import annotations
 
-from ctxloom import PromptTemplate
+from ctxloom.prompts import PromptTemplate
 
 _WORDING = PromptTemplate(
     """You are a research assistant in the domain of {topic}.

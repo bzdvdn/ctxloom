@@ -74,7 +74,7 @@ def test_postgres_kv_requires_dsn_and_lazy_driver():
 
 
 async def _test_postgres_kv_roundtrip(dsn: str) -> None:
-    from ctxloom import PostgreSQLKVBackend
+    from ctxloom.checkpoints import PostgreSQLKVBackend
 
     backend = PostgreSQLKVBackend(dsn)
     try:
