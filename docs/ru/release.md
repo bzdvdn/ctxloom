@@ -5,7 +5,7 @@
 ## Версионирование
 
 - [SemVer](https://semver.org/); пре-релизы помечаются `rc` (например,
-  `0.4.0rc1`), для стабильного релиза `rc` убирается (`0.4.0`).
+  `0.5.0rc1`), для стабильного релиза `rc` убирается (`0.5.0`).
 - Версия живёт в **двух местах** и должна совпадать:
   - `pyproject.toml` → `[project] version`;
   - `ctxloom/__init__.py` → `__version__`.
@@ -25,6 +25,12 @@ Changelog). При бампе версии:
 `CHANGELOG.md`, ломающие изменения помечены по правилу выше. Два изменения,
 о которых стоит знать при переходе через них:
 
+- **0.5.0** — `ctxloom/__init__.py` реэкспортирует только core-поверхность
+  (~40 имён вместо ~150); eval, tracing, checkpoint/branch-бэкенды, chat/web
+  слой, адаптивный scheduler, replay, structured-LLM хелперы, viz и
+  prompt-шаблоны переехали в импорты из своих сабмодулей. Ничего не
+  переименовано — полный список before/after в записи `### Breaking`
+  `CHANGELOG.md`.
 - **0.4.0-rc1** — `LLMRequest.temperature` был захардкожен как `0.7`, стал
   `float | None`; `None` теперь означает «не передавать поле → дефолт
   провайдера», а не «использовать `0.7`». Форма вызова та же, поведение
@@ -45,17 +51,17 @@ Changelog). При бампе версии:
 # 2) версия и чейджлог
 
 # 3) сборка
-uv build                         # dist/ctxloom-0.4.0-py3-none-any.whl + sdist
+uv build                         # dist/ctxloom-0.5.0-py3-none-any.whl + sdist
 
 # 4) проверка wheel в чистом venv (не workspace — чтобы не цеплял PYTHONPATH)
 uv venv /tmp/ctxloom-rc
-/tmp/ctxloom-rc/bin/python -m pip install dist/ctxloom-0.4.0-py3-none-any.whl
+/tmp/ctxloom-rc/bin/python -m pip install dist/ctxloom-0.5.0-py3-none-any.whl
 /tmp/ctxloom-rc/bin/python -c "import ctxloom; print(ctxloom.__version__)"
 /tmp/ctxloom-rc/bin/ctxloom --help          # console-скрипт на месте
-unzip -l dist/ctxloom-0.4.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates"
+unzip -l dist/ctxloom-0.5.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates"
 
 # 5) тег
-git tag v0.4.0 && git push origin v0.4.0
+git tag v0.5.0 && git push origin v0.5.0
 
 # 6) публикация (токен PyPI в env)
 uv publish --publish-url https://upload.pypi.org/legacy/

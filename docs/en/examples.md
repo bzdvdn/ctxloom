@@ -1,6 +1,6 @@
 # Examples
 
-Thirteen working applications ship in `examples/` (in-repo, not packaged). They
+Fourteen working applications ship in `examples/` (in-repo, not packaged). They
 are the reference implementations for the [recipes](recipes.md),
 [patterns](patterns.md) and the [port matrix](port-matrix.md) — canonical
 examples are split into a `produce/` package (stages) + thin
@@ -109,6 +109,22 @@ uv run python -m examples.forklab.main --conflict # explicit MergeConflict + pol
 The same pattern is the natural base for rewriting `medic-lab`: hypotheses
 become real forks instead of tag-routed channels.
 
+## `ledger` — minimal recompute (reactive dependency graph)
+
+**What it shows:** a tiny cost model (hours × rate → labor cost → tax/discount
+→ total), built to make one point concretely, with numbers: dependencies are
+declared on artifact *types* via `Consume`, not wired between nodes sharing one
+blob of state — so editing one fact recomputes exactly what actually consumed
+it, and nothing else. `Artifact.version` is the proof: a formula that never
+consumed the edited fact is never even invoked for that edit, not
+"invoked-and-decided-not-to-update." No LLM, fully deterministic (§67) — same
+offline-proof spirit as `forklab`, but for reactive invalidation instead of
+branch/merge.
+
+```bash
+uv run python -m examples.ledger.main
+```
+
 ## `adaptive` — hybrid scheduling
 
 **What it shows:** the adaptive planner (`ctxloom.scheduler`) in action — hard
@@ -138,7 +154,7 @@ Small, self-contained ports of the classic agent patterns — every one runs
 ## Running tests
 
 ```bash
-.venv/bin/python -m pytest      # 443 tests (2 skipped without TEST_PG_DSN)
+.venv/bin/python -m pytest      # 487 tests (2 skipped without TEST_PG_DSN)
 .venv/bin/mypy                  # strict typing across the repo
 .venv/bin/ruff check            # lint
 ```

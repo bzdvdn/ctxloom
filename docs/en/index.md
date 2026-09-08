@@ -142,17 +142,52 @@ That is the whole loop: **create an artifact → agents react → a patch is app
 → the context version advances**. Everything else in this documentation builds
 on that loop.
 
+Ready for something closer to a real app? [Quickstart](quickstart.md) has
+three runnable, verified snippets — a tool-calling agent, retrieval over your
+own docs, a session-persisted chat bot — each pointing at the full example
+it's trimmed from.
+
 ## Where to go next
+
+**Understand the idea**
 
 - [Why ctxloom](why-ctxloom.md) — the *design argument*: why effects, why no
   graph, why determinism, why versioned state.
 - [Comparison](comparison.md) — ctxloom vs LangGraph/CrewAI, feature by
   feature, and when *not* to use ctxloom.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
+
+**Build with it**
+
+- [Quickstart](quickstart.md) — three runnable snippets: tool-calling agent,
+  retrieval over your docs, session-persisted chat bot.
 - [Sources](sources.md) — where agents get information from.
+- [Providers](providers.md) — wiring an LLM/embedder/image/speech provider
+  into `RuntimeResources`.
 - [Recipes](recipes.md) — ready-made search fan-out, ref materialization,
   lifecycle state machines.
-- [Examples](examples.md) — five working applications you can run.
+- [Patterns](patterns.md) — reusable shapes (reflection, map-reduce,
+  supervisor, …), each backed by a concrete example.
+
+**Operate it**
+
+- [Observability](observability.md) — every run traces agent spans,
+  reads/writes, LLM calls; offline dashboard, or ship to Langfuse/Postgres.
+- [Evaluation](eval.md) — multi-level scoring over the final `Context`
+  (evidence quality, provenance grounding, calculation correctness, …).
+- [Branching & merge](branching.md) — fork state, explore alternatives,
+  three-way merge with explicit conflicts.
+- [Replay](replay.md) — reconstruct *why* the agent answered, deterministically,
+  without re-running agents.
+- [Visualization & CLI](viz.md) — Mermaid diagrams of the artifact graph and
+  a run's trace; the `ctxloom` command-line tools.
+- [API reference](api.md) — every top-level symbol, one line each.
+
+**See it run**
+
+- [Examples](examples.md) — fourteen working applications you can run.
+- [Port matrix](port-matrix.md) — which classic LangGraph/CrewAI/DSPy pattern
+  maps to which example.
 - [Design notes](design-notes/adaptive.md) — deeper rationale for the
   adaptive [scheduler](design-notes/adaptive.md) and the
   [effects → Patch](design-notes/patches.md) compilation model.

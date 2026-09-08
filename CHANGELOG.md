@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-08
+
+Performance and correctness pass across the core runtime (staleness
+tracking, session persistence, event-loop blocking, a budget-deadline gap in
+`ToolUse`, a `ChatAssistant` concurrency race), a breaking trim of the
+public API surface down to core primitives, an internal split of `Runtime`'s
+tracing and `Context`'s fork/merge logic into their own modules, and the new
+`ctxloom.testing` scenario harness.
+
 ### Breaking
 
 - **`ctxloom/__init__.py` now exports only the core surface** — the

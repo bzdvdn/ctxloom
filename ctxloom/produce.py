@@ -21,11 +21,15 @@ Two other things `Produce` accepts are *not* on that list on purpose:
   list | Patch | None`, and can't see the effects slot at all — strictly
   weaker than `@produce(Model)`, which covers the same signature plus
   `effects`. Kept only so old code doesn't break; port it to `@produce`.
-- Overriding `Agent.run(self, event, context) -> Patch` directly, bypassing
-  `effects`/`Produce` entirely to hand-assemble a `Patch`. This is a
-  low-level, internal escape hatch (used in this repo's own tests, never in
-  an example) for cases effects genuinely can't express — not a third
-  everyday style.
+- Overriding `Agent.run(self, event, context) -> Patch | None` directly,
+  bypassing `Produce` entirely (though not necessarily `effects` — the
+  runtime still merges whatever `current_effects()` collected during the
+  call, same as for a normal produce). This is a low-level, internal escape
+  hatch for cases a `Produce` genuinely can't express — not a third everyday
+  style to reach for on a first pass. `ctxloom.llm_agent.StructuredGenerateAgent`
+  is the one built-in exception (writes via `current_effects()` directly
+  instead of `self.effects`, since `Agent` — unlike `Produce` — has no
+  `effects` property); no example under `examples/` overrides `run()`.
 """
 
 from __future__ import annotations

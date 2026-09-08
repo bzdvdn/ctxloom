@@ -1,6 +1,6 @@
 # Patterns
 
-Reusable patterns observed across the five examples. They are not abstract —
+Reusable patterns observed across the examples. They are not abstract —
 each is concretely instantiated in `examples/`.
 
 ## TL;DR

@@ -161,7 +161,7 @@ uv run python ./examples/devops/web.py         # HITL ops assistant + trace dash
 ```
 
 Classic-pattern ports run as one-liners too:
-`python -m examples.{reflection,map_reduce,supervisor,summarize,time_travel,adaptive}.main`.
+`python -m examples.{reflection,map_reduce,supervisor,summarize,time_travel,adaptive,ledger}.main`.
 
 ## Examples (in-repo, not shipped)
 
@@ -171,6 +171,7 @@ Classic-pattern ports run as one-liners too:
 - `devops` — HITL tool agents + LLM tool router + trace dashboard.
 - `repair` — budget-aware replanning (chat/data in Russian by design).
 - `forklab` — deterministic branch & merge: two strategies on their own forks, three-way merge.
+- `ledger` — offline proof of reactive recompute: edit one fact, only its real `Consume`rs re-run.
 - `llm_ladder` — the workflow from one LLM call to state-changing patches (3 levels).
 - `adaptive` — hybrid scheduler: rule filters + deterministic rank + LLM tie-break + `rank_limit`.
 - `{reflection,map_reduce,supervisor,summarize,time_travel}` — canonical ports (see [port-matrix](docs/en/port-matrix.md)).
@@ -179,9 +180,11 @@ Classic-pattern ports run as one-liners too:
 
 - [English](docs/en/index.md) · [Русский](docs/ru/index.md) — concepts, sources,
   providers, recipes, patterns, observability, eval, branching, replay, viz/CLI, API.
+- [Quickstart](docs/en/quickstart.md) — three runnable snippets: tool-calling
+  agent, retrieval over your docs, session-persisted chat bot.
 - [Why ctxloom](docs/en/why-ctxloom.md) — the *design argument*: why effects, why no graph, why determinism.
 - [Comparison](docs/en/comparison.md) — ctxloom vs LangGraph/CrewAI, feature by feature, and when *not* to use ctxloom.
-- [Tutorial · llm-ladder](docs/en/index.md#llm-ladder) — learn the workflow.
+- [Tutorial · llm-ladder](docs/en/examples.md#tutorial-ladder) — learn the workflow.
 - [docs/constitution.md](docs/constitution.md) — the full design rationale and invariants.
 
 ## Development

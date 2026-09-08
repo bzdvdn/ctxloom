@@ -143,17 +143,52 @@ print("supported_by:", evidence.data.text)  # провенанс, который
 контекста продвинулась**. Всё остальное в этой документации надстраивается над
 этим циклом.
 
+Хотите чего-то ближе к реальному приложению? [Quickstart](quickstart.md) —
+три рабочих, проверенных сниппета: tool-calling агент, поиск по своим
+документам, чат-бот с сохраняемыми сессиями — каждый со ссылкой на полный
+пример, из которого он урезан.
+
 ## Куда дальше
+
+**Понять идею**
 
 - [Почему ctxloom](why-ctxloom.md) — _дизайн-аргумент_: почему effects, почему
   без графа, почему детерминизм, почему версионируемое состояние.
 - [Сравнение](comparison.md) — ctxloom vs LangGraph/CrewAI по пунктам, и когда
   ctxloom *не* стоит использовать.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
+
+**Строить на этом**
+
+- [Quickstart](quickstart.md) — три рабочих сниппета: tool-calling агент,
+  поиск по своим документам, чат-бот с сохраняемыми сессиями.
 - [Sources](sources.md) — откуда агенты берут информацию.
+- [Providers](providers.md) — как подключить LLM/эмбеддер/провайдер
+  изображений/речи в `RuntimeResources`.
 - [Recipes](recipes.md) — готовые search fan-out, материализация референсов,
   машины состояний жизненного цикла.
-- [Examples](examples.md) — пять работающих приложений, которые можно запустить.
+- [Patterns](patterns.md) — переиспользуемые паттерны (reflection,
+  map-reduce, supervisor, …), каждый — на конкретном примере.
+
+**Эксплуатировать**
+
+- [Observability](observability.md) — трейс каждого запуска: агентские спаны,
+  чтения/записи, LLM-вызовы; офлайн-дашборд или экспорт в Langfuse/Postgres.
+- [Evaluation](eval.md) — многоуровневая оценка финального `Context`
+  (качество evidence, provenance grounding, корректность вычислений, …).
+- [Branching & merge](branching.md) — форк состояния, исследование
+  альтернатив, трёхстороннее слияние с явными конфликтами.
+- [Replay](replay.md) — детерминированная реконструкция «почему агент
+  ответил именно так», без повторного запуска агентов.
+- [Visualization & CLI](viz.md) — Mermaid-диаграммы графа артефактов и трейса
+  запуска; CLI-утилиты `ctxloom`.
+- [API reference](api.md) — все верхнеуровневые символы, по строке на каждый.
+
+**Посмотреть в деле**
+
+- [Examples](examples.md) — четырнадцать работающих приложений, которые можно запустить.
+- [Port matrix](port-matrix.md) — какой классический паттерн LangGraph/CrewAI/DSPy
+  соответствует какому примеру.
 - [Design notes](design-notes/adaptive.md) — более глубокое обоснование
   адаптивного [планировщика](design-notes/adaptive.md); модель компиляции
   effects → Patch описана в [English design note](../en/design-notes/patches.md)
