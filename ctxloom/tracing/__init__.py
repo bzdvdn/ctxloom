@@ -9,7 +9,7 @@ from .langfuse import LangfuseTracer
 from .models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from .postgres import PostgresStore
 from .store import TraceReader, TraceSink, TraceStore
-from .tracer import CompositeTracer, RecordingLLM, Tracer
+from .tracer import CompositeTracer, RecordingLLM, RunTracer, Tracer
 
 __all__ = [
     "AgentSpan",
@@ -21,6 +21,7 @@ __all__ = [
     "RecordingLLM",
     "RelationRef",
     "RunTrace",
+    "RunTracer",
     "TraceReader",
     "TraceSink",
     "TraceStore",

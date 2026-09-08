@@ -17,8 +17,6 @@ from .interrupt import PendingQuestion
 from .patches import (
     Create,
     Delete,
-    Link,
-    Operation,
     Relation,
     Update,
 )
@@ -28,17 +26,6 @@ from .streaming import EventHub, ProgressEvent, QueueEvent
 
 TData = TypeVar("TData", bound=BaseModel)
 TArtifact = TypeVar("TArtifact", bound=BaseModel)
-
-
-class MergeConflict(Exception):
-    """Two branches changed the same artifact differently since their fork (§40).
-
-    The framework never chooses silently; a verifier or merge policy resolves.
-    """
-
-    def __init__(self, message: str, conflicts: list[str] | None = None):
-        super().__init__(message)
-        self.conflicts = conflicts or []
 
 
 @dataclass
@@ -349,44 +336,16 @@ class Context:
         return events
 
     def clone(self) -> Context:
-        new_ws = Context()
-        for artifact in self._artifacts.values():
-            new_artifact = Artifact(
-                data=artifact.data.model_copy(deep=True),
-                id=artifact.id,  # <-- important!
-                created_by_commit=artifact.created_by_commit,
-            )
-            new_artifact._history = [v.model_copy(deep=True) for v in artifact._history]
-            new_artifact.created_at = artifact.created_at
-            new_artifact.updated_at = artifact.updated_at
-            new_ws._artifacts[artifact.id] = new_artifact
-        new_ws._log = self._log.copy()
-        new_ws._relations = self._relations.copy()
-        new_ws._recompute_stale()
-        return new_ws
+        """Deep copy of this context's live state. See `ctxloom.branching`."""
+        from .branching import clone_context
+
+        return clone_context(self)
 
     def merge_from(self, other: Context) -> None:
-        operations: list[Operation] = []
-        for other_id in list(other._artifacts.keys()):
-            other_artifact = other._artifacts[other_id]
-            if other_id in self._artifacts:
-                current = self._artifacts[other_id]
-                if other_artifact.version > current.version:
-                    new_data = other_artifact.data.model_copy(deep=True)
-                    self.update(other_id, new_data)
-                    operations.append(Update(other_id, new_data))
-            else:
-                new_data = other_artifact.data.model_copy(deep=True)
-                self.create(new_data)
-                operations.append(Create(new_data))
-        for rel in other.relations():
-            if (rel.source_id, rel.relation, rel.target_id) not in self._relations:
-                self.link(rel.source_id, rel.relation, rel.target_id)
-                operations.append(Link(rel.source_id, rel.relation, rel.target_id))
-        if operations:
-            self.log_commit(
-                Commit(author="merge", message="Merged Context", operations=operations)
-            )
+        """Two-way merge, no conflict detection. See `ctxloom.branching`."""
+        from .branching import merge_context_from
+
+        merge_context_from(self, other)
 
     def branch(self, *, name: str = "") -> Context:
         """Forks an isolated copy for alternative state exploration (§39).
@@ -394,114 +353,25 @@ class Context:
         The fork records a snapshot of its base, so a later `merge` of two
         fork-mates can detect diverged artifacts three-way (§40). The branch
         shares `resources` with the parent but is otherwise fully independent:
-        subsequent changes on either side do not affect the other.
+        subsequent changes on either side do not affect the other. Algorithm
+        lives in `ctxloom.branching.fork_context`.
         """
-        fork = self.clone()
-        fork.resources = self.resources
-        fork._base = self.clone()
-        fork._fork_name = name
-        return fork
+        from .branching import fork_context
 
-    @staticmethod
-    def _data_sig(artifact: Artifact[Any] | None) -> Any:
-        """Canonical signature of an artifact's current data (None = absent)."""
-        if artifact is None:
-            return None
-        return artifact.data.model_dump(mode="json")
+        return fork_context(self, name=name)
 
     def merge(self, other: Context, *, message: str = "Merged branch") -> None:
         """Merges `other` into `self` with explicit conflicts, atomically (§40).
 
         Three-way merge against the shared fork base (the fork snapshot of
-        `other`, or of `self` when `other` has none). For every artifact that
-        exists anywhere among base/self/other:
-
-            equal(self, other)  → no-op
-            equal(self, base)   → adopt `other` (only it moved the artifact)
-            equal(other, base)  → keep `self` (only it moved the artifact)
-            otherwise           → MergeConflict, nothing is applied
-
-        So a change adopted from `other` never silently overwrites a change made
-        on `self` since the fork (§40: the framework must not choose silently).
+        `other`, or of `self` when `other` has none) — raises `MergeConflict`
+        (`ctxloom.branching.MergeConflict`, re-exported as `ctxloom.MergeConflict`)
+        rather than silently choosing a side. Algorithm lives in
+        `ctxloom.branching.merge_contexts`.
         """
-        base = other._base if other._base is not None else self._base
-        if base is None:
-            base = Context()
+        from .branching import merge_contexts
 
-        ids = set(base._artifacts) | set(self._artifacts) | set(other._artifacts)
-        operations: list[Operation] = []
-        pending: dict[str, BaseModel] = {}
-        conflicts: list[str] = []
-
-        for artifact_id in sorted(ids):
-            base_art = base._artifacts.get(artifact_id)
-            self_art = self._artifacts.get(artifact_id)
-            other_art = other._artifacts.get(artifact_id)
-            sb = self._data_sig(base_art)
-            ss = self._data_sig(self_art)
-            so = self._data_sig(other_art)
-            if ss == so:
-                continue
-            if ss == sb or so == sb:
-                if so == sb:
-                    continue  # only self moved it — keep as is
-                # only other moved it — adopt
-                if other_art is None:
-                    operations.append(Delete(artifact_id))
-                else:
-                    pending[artifact_id] = other_art.data.model_copy(deep=True)
-                    operations.append(
-                        Create(other_art.data)
-                        if self_art is None
-                        else Update(artifact_id, other_art.data)
-                    )
-            else:
-                conflicts.append(
-                    f"{artifact_id} diverged since the fork "
-                    f"(self={self._kind_short(ss)}, other={self._kind_short(so)})"
-                )
-
-        if conflicts:
-            raise MergeConflict(
-                "merge would overwrite diverged state — resolve first (§40):\n"
-                + "\n".join(conflicts),
-                conflicts=conflicts,
-            )
-
-        removed: set[str] = set()
-        for op in operations:
-            if isinstance(op, Delete):
-                self._artifacts.pop(op.artifact_id, None)
-                removed.add(op.artifact_id)
-        for artifact_id, data in pending.items():
-            existing = self._artifacts.get(artifact_id)
-            if existing is None:
-                self._artifacts[artifact_id] = Artifact(data=data, id=artifact_id)
-            else:
-                existing.update(data)
-
-        for rel in other.relations():
-            if rel.source_id in removed or rel.target_id in removed:
-                continue
-            if (rel.source_id, rel.relation, rel.target_id) not in self._relations:
-                self.link(rel.source_id, rel.relation, rel.target_id)
-                operations.append(Link(rel.source_id, rel.relation, rel.target_id))
-
-        if operations:
-            self.log_commit(
-                Commit(author="merge", message=message, operations=operations)
-            )
-            # merge mutates `_artifacts` directly (create/update/delete above),
-            # bypassing the incremental hooks in `create()`/`update()`/
-            # `delete()` — resync `_stale` from scratch rather than risk it
-            # drifting from the post-merge state.
-            self._recompute_stale()
-
-    @staticmethod
-    def _kind_short(signature: Any) -> str:
-        if signature is None:
-            return "absent"
-        return "changed"
+        merge_contexts(self, other, message=message)
 
     def log_commit(self, commit: Commit) -> None:
         """Applies the commit to the repository: fills in parent/version, moves head."""

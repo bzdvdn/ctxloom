@@ -50,6 +50,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
   context accumulates thousands of artifacts but any one update only
   invalidates a handful of them.
 
+### Changed
+
+- **`Runtime`'s tracing plumbing moved to `ctxloom.tracing.RunTracer`.**
+  Span/trace building (`ArtifactRef`/`RelationRef`/`AgentSpan`/`RunTrace`
+  construction), the `RecordingLLM` wrap of `resources.llm`, and the
+  task→agent attribution that wrap needs were previously interleaved with
+  `Runtime`'s dispatch loop (`_artifact_ref`, `_write_refs`,
+  `_relation_refs`, `_read_refs`, `_record_llm`, `_agent_by_task`, ...).
+  They're now one collaborator (`RunTracer`, a no-op when no tracer is
+  configured) that `Runtime` calls into at a few points
+  (`begin_turn`/`record_span`/`write_refs`/`relation_refs`/`end_turn`).
+  `Runtime` drops from 640 to ~490 lines and is now just the dispatch loop;
+  no public behavior changes (`Runtime.tracer` stays a public attribute,
+  `runtime.arun()`/`astream()`/`Tracer`/`CompositeTracer` are unaffected).
+  Internal-only rename, not covered by the API-surface breaking change
+  above: nothing here was ever part of the public API.
+
+- **`Context`'s fork/merge algorithm moved to `ctxloom.branching`.**
+  `clone()`/`branch()`/`merge_from()`/`merge()` used to carry the full
+  three-way-merge implementation (~180 lines) inline in `context.py`,
+  reaching into `_artifacts`/`_relations` directly. That logic is now
+  `clone_context`/`fork_context`/`merge_context_from`/`merge_contexts` in
+  `ctxloom/branching.py`, next to `BranchStore` (which already persisted
+  forks, just didn't own their semantics). `Context.clone()/.branch()/
+  .merge_from()/.merge()` are now one-line delegations — same signatures,
+  same behavior, including the pre-existing quirk where `merge_from()`
+  mints a fresh id for an artifact absent from the target (not "fixed" as
+  part of this move — a real behavior change belongs in its own change).
+  `MergeConflict` moved with the algorithm: `ctxloom.branching.MergeConflict`,
+  still re-exported as `ctxloom.MergeConflict` — code importing it from
+  `ctxloom.context` directly (nothing in this repo did) would need to
+  switch to `ctxloom.branching` or the top-level import. `context.py` drops
+  by ~150 lines; conflict messages now say `target=`/`other=` instead of
+  `self=`/`other=` (cosmetic — no test or example asserted on the old
+  wording).
+
 ### Added
 
 - **`ctxloom.testing`**: a scenario-based behavioral testing harness for agent

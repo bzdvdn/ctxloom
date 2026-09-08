@@ -14,14 +14,25 @@ call `context.resources.llm` as before.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import time
+import uuid
 from collections.abc import AsyncIterator, Callable, Iterable
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
+from ..patches import Create, Link, Update
 from ..providers import LLMProvider, LLMRequest, LLMResponse, LLMResponseChunk
-from .models import AgentSpan, LLMCall, RunTrace
+from .models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
 from .store import TraceSink, TraceStore
+
+if TYPE_CHECKING:
+    from ..agents import Agent
+    from ..commit import Read, Write
+    from ..context import Context
+    from ..events import Event
+    from ..patches import Patch
 
 #: Up to what size to truncate artifact/response data in a trace.
 TRACE_TRUNCATE = 1500
@@ -155,3 +166,205 @@ class CompositeTracer:
     async def on_turn_end(self, trace: RunTrace) -> None:
         for tracer in self.tracers:
             await tracer.on_turn_end(trace)
+
+
+class RunTracer:
+    """Runtime's tracing collaborator (§54).
+
+    Builds `ArtifactRef`/`RelationRef`/`AgentSpan`/`RunTrace` and delivers
+    them to the configured `Tracer`, so `Runtime` only calls into this at a
+    few well-defined points instead of interleaving span-building with the
+    dispatch loop. Owns: wrapping `resources.llm` in `RecordingLLM` on
+    construction, the task→agent attribution that wrapper needs to attribute
+    an LLM call to the agent that made it, the per-turn span buffer, and the
+    artifact-data truncation cache (`ArtifactRef.data` is memoized per
+    `(artifact_id, version)` for one turn, since the same artifact is often
+    referenced — as a read — by several spans in a generation).
+
+    A no-op when `tracer` is None (the common case, no tracing configured):
+    every method still works, `record_span` just returns `None` and nothing
+    is buffered or sent anywhere.
+    """
+
+    def __init__(self, context: Context, tracer: Tracer | CompositeTracer | None):
+        self._context = context
+        self.tracer = tracer
+        self._agent_by_task: dict[asyncio.Task[Any], str] = {}
+        self._pending_llm: dict[str, list[LLMCall]] = {}
+        self._trace_data_cache: dict[tuple[str, int], str] = {}
+        self.run_id = ""
+        self.spans: list[AgentSpan] = []
+        if self.tracer is not None and context.resources.llm is not None:
+            context.resources.llm = RecordingLLM(
+                context.resources.llm,
+                on_call=self._record_llm,
+                agent_of=self._current_agent_name,
+            )
+
+    @property
+    def enabled(self) -> bool:
+        return self.tracer is not None
+
+    # ---- task -> agent attribution, for RecordingLLM.agent_of ----
+
+    def register_task(self, task: asyncio.Task[Any] | None, agent_name: str) -> None:
+        if task is not None:
+            self._agent_by_task[task] = agent_name
+
+    def unregister_task(self, task: asyncio.Task[Any] | None) -> None:
+        if task is not None:
+            self._agent_by_task.pop(task, None)
+
+    def _current_agent_name(self) -> str:
+        task = asyncio.current_task()
+        if task is None:
+            return ""
+        return self._agent_by_task.get(task, "")
+
+    def _record_llm(self, call: LLMCall) -> None:
+        self._pending_llm.setdefault(call.agent, []).append(call)
+
+    # ---- ArtifactRef / RelationRef builders ----
+
+    def _artifact_data(self, artifact_id: str) -> Any | None:
+        artifact = self._context.get(artifact_id)
+        return artifact.data if artifact is not None else None
+
+    def artifact_ref(
+        self,
+        artifact_id: str,
+        version: int,
+        op_type: str,
+        model: Any | None,
+    ) -> ArtifactRef:
+        data: str | None = None
+        if model is not None:
+            key = (artifact_id, version)
+            data = self._trace_data_cache.get(key)
+            if data is None:
+                data = _clip(
+                    json.dumps(model.model_dump(mode="json"), ensure_ascii=False)
+                )
+                self._trace_data_cache[key] = data
+        return ArtifactRef(
+            artifact_id=artifact_id,
+            version=version,
+            op_type=op_type,
+            data_type=type(model).__name__ if model is not None else "",
+            data=data,
+        )
+
+    @staticmethod
+    def _type_name(artifact_id: str, context: Context | None) -> str:
+        artifact = context.get(artifact_id) if context is not None else None
+        data = artifact.data if artifact is not None else None
+        return type(data).__name__ if data is not None else ""
+
+    def read_refs(self, reads: list[Read]) -> list[ArtifactRef]:
+        return [
+            self.artifact_ref(
+                read.artifact_id,
+                read.version,
+                "read",
+                self._artifact_data(read.artifact_id),
+            )
+            for read in reads
+        ]
+
+    def write_refs(self, patch: Patch, writes: list[Write]) -> list[ArtifactRef]:
+        ops_by_id: dict[str, tuple[str, Any | None]] = {}
+        for op in patch.operations:
+            artifact_id = getattr(op, "artifact_id", None)
+            if artifact_id is None:
+                continue
+            if isinstance(op, Create):
+                model: Any | None = op.data
+            elif isinstance(op, Update):
+                model = op.new_data
+            else:
+                model = None
+            ops_by_id[artifact_id] = (op.to_dict().get("type", ""), model)
+        return [
+            self.artifact_ref(
+                w.artifact_id,
+                w.version,
+                ops_by_id.get(w.artifact_id, ("", None))[0],
+                ops_by_id.get(w.artifact_id, ("", None))[1],
+            )
+            for w in writes
+        ]
+
+    def relation_refs(self, patch: Patch) -> list[RelationRef]:
+        """Provenance edges (`patch.link`) recorded for the span (§34)."""
+        refs: list[RelationRef] = []
+        for op in patch.operations:
+            if not isinstance(op, Link):
+                continue
+            refs.append(
+                RelationRef(
+                    source_id=op.artifact_id,
+                    relation=op.relation,
+                    target_id=op.target_id,
+                    source_type=self._type_name(op.artifact_id, self._context),
+                    target_type=self._type_name(op.target_id, self._context),
+                )
+            )
+        return refs
+
+    # ---- per-turn lifecycle ----
+
+    def begin_turn(self, *, session_id: str) -> None:
+        if self.tracer is None:
+            return
+        self.run_id = str(uuid.uuid4())
+        self.spans = []
+        self._trace_data_cache = {}
+        self.tracer.on_turn_begin(
+            self.run_id, session_id=session_id, started_at=datetime.now(UTC)
+        )
+
+    def record_span(
+        self,
+        agent: Agent,
+        event: Event,
+        reads: list[Read],
+        latency_ms: float,
+        *,
+        error: BaseException | None = None,
+    ) -> AgentSpan | None:
+        """Builds, buffers and delivers one span — or a no-op if disabled.
+
+        `error is not None` covers the isolated-error path; the success path
+        (a span whose `writes`/`relations` are filled in once the patch is
+        applied, see `Runtime._commit_patches_to_apply`) passes it as `None`.
+        """
+        if self.tracer is None:
+            return None
+        span = AgentSpan(
+            agent=agent.name,
+            event_type=event.type.value,
+            reads=self.read_refs(reads),
+            latency_ms=latency_ms,
+            llm_calls=self._pending_llm.pop(agent.name, []),
+            error=f"{type(error).__name__}: {error}" if error is not None else None,
+            started_at=datetime.now(UTC),
+        )
+        self.spans.append(span)
+        self.tracer.on_span(span)
+        return span
+
+    async def end_turn(
+        self, *, session_id: str, duration_ms: float, outcome: str
+    ) -> None:
+        if self.tracer is None:
+            return
+        await self.tracer.on_turn_end(
+            RunTrace(
+                id=self.run_id,
+                session_id=session_id,
+                started_at=datetime.now(UTC),
+                duration_ms=duration_ms,
+                outcome=outcome,
+                spans=self.spans,
+            )
+        )

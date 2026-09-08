@@ -1,12 +1,8 @@
 import asyncio
-import json
 import logging
 import sys
 import time
-import uuid
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime
-from typing import Any
 
 from .agents import Agent
 from .budget import Budget, RunOutcome, RunStats
@@ -18,8 +14,8 @@ from .patches import Create, Delete, Link, Patch, Unlink, Update
 from .scheduler import Scheduler
 from .session import Session
 from .streaming import ProgressEvent
-from .tracing.models import AgentSpan, ArtifactRef, LLMCall, RelationRef, RunTrace
-from .tracing.tracer import CompositeTracer, RecordingLLM, Tracer, _clip
+from .tracing.models import AgentSpan
+from .tracing.tracer import CompositeTracer, RunTracer, Tracer
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +56,10 @@ class Runtime:
             if isinstance(tracer, Tracer) or tracer is None
             else CompositeTracer(tracer)
         )
-        # Tracing LLM calls: task → agent, accumulated LLMCall's.
-        self._agent_by_task: dict[asyncio.Task[Any], str] = {}
-        self._pending_llm: dict[str, list[LLMCall]] = {}
-        if self.tracer is not None and context.resources.llm is not None:
-            context.resources.llm = RecordingLLM(
-                context.resources.llm,
-                on_call=self._record_llm,
-                agent_of=self._current_agent_name,
-            )
+        # Tracing is fully delegated to RunTracer (§54): span/trace building,
+        # the RecordingLLM wrap, and the task→agent attribution it needs all
+        # live there — Runtime just calls into it at a few points below.
+        self._trace = RunTracer(context, self.tracer)
         self.outcome: RunOutcome = RunOutcome.COMPLETED
         self.last_stats: RunStats | None = None
         self._runs_used = 0
@@ -76,98 +67,11 @@ class Runtime:
         self._active_budget: Budget | None = None
         self._turn_started = False
         self._turn_started_at = 0.0
-        self._run_id = ""
-        self._spans: list[AgentSpan] = []
         self._no_runs_warned = False
         self._errors_used = 0
-        # Memo: (artifact_id, version) → serialized data for one turn.
-        self._trace_data_cache: dict[tuple[str, int], str] = {}
 
     def register(self, agent: Agent) -> None:
         self.agents.append(agent)
-
-    def _current_agent_name(self) -> str:
-        task = asyncio.current_task()
-        if task is None:
-            return ""
-        return self._agent_by_task.get(task, "")
-
-    def _record_llm(self, call: LLMCall) -> None:
-        self._pending_llm.setdefault(call.agent, []).append(call)
-
-    def _artifact_ref(
-        self,
-        artifact_id: str,
-        version: int,
-        op_type: str,
-        model: Any | None,
-    ) -> ArtifactRef:
-        data: str | None = None
-        if model is not None:
-            key = (artifact_id, version)
-            data = self._trace_data_cache.get(key)
-            if data is None:
-                data = _clip(
-                    json.dumps(model.model_dump(mode="json"), ensure_ascii=False)
-                )
-                self._trace_data_cache[key] = data
-        return ArtifactRef(
-            artifact_id=artifact_id,
-            version=version,
-            op_type=op_type,
-            data_type=type(model).__name__ if model is not None else "",
-            data=data,
-        )
-
-    def _artifact_data(self, artifact_id: str) -> Any | None:
-        artifact = self.context.get(artifact_id)
-        return artifact.data if artifact is not None else None
-
-    @staticmethod
-    def _type_name(artifact_id: str, context: Context | None) -> str:
-        artifact = context.get(artifact_id) if context is not None else None
-        data = artifact.data if artifact is not None else None
-        return type(data).__name__ if data is not None else ""
-
-    def _relation_refs(self, patch: Patch) -> list[RelationRef]:
-        """Provenance edges (`patch.link`) recorded for the span (§34)."""
-        refs: list[RelationRef] = []
-        for op in patch.operations:
-            if not isinstance(op, Link):
-                continue
-            refs.append(
-                RelationRef(
-                    source_id=op.artifact_id,
-                    relation=op.relation,
-                    target_id=op.target_id,
-                    source_type=self._type_name(op.artifact_id, self.context),
-                    target_type=self._type_name(op.target_id, self.context),
-                )
-            )
-        return refs
-
-    def _write_refs(self, patch: Patch, writes: list[Write]) -> list[ArtifactRef]:
-        ops_by_id: dict[str, tuple[str, Any | None]] = {}
-        for op in patch.operations:
-            artifact_id = getattr(op, "artifact_id", None)
-            if artifact_id is None:
-                continue
-            if isinstance(op, Create):
-                model: Any | None = op.data
-            elif isinstance(op, Update):
-                model = op.new_data
-            else:
-                model = None
-            ops_by_id[artifact_id] = (op.to_dict().get("type", ""), model)
-        return [
-            self._artifact_ref(
-                w.artifact_id,
-                w.version,
-                ops_by_id.get(w.artifact_id, ("", None))[0],
-                ops_by_id.get(w.artifact_id, ("", None))[1],
-            )
-            for w in writes
-        ]
 
     def _begin_turn(self, budget: Budget | None) -> None:
         self._runs_used = 0
@@ -184,17 +88,9 @@ class Runtime:
         ):
             self._deadline = self._turn_started_at + self._active_budget.max_seconds
         self._turn_started = True
-
-        # trace of the current run (§54): only if the tracer is enabled
-        if self.tracer is not None:
-            self._run_id = str(uuid.uuid4())
-            self._spans = []
-            self._trace_data_cache = {}
-            self.tracer.on_turn_begin(
-                self._run_id,
-                session_id=self.session.session_id if self.session is not None else "",
-                started_at=datetime.now(UTC),
-            )
+        self._trace.begin_turn(
+            session_id=self.session.session_id if self.session is not None else ""
+        )
 
     def _budget_exhausted(self) -> bool:
         if self._deadline is not None and time.monotonic() >= self._deadline:
@@ -327,53 +223,20 @@ class Runtime:
         patches_to_apply: list[PatchWork] = []
         runs = 0
         for patch, agent, event, reads, latency, error in results:
-            span: AgentSpan | None = None
             if self._budget_exhausted():
                 break
             runs += 1
             self._runs_used += 1
             if error is not None:
                 self._errors_used += 1
-                if self.tracer is not None:
-                    span = AgentSpan(
-                        agent=agent.name,
-                        event_type=event.type.value,
-                        reads=self._read_refs(reads),
-                        latency_ms=latency,
-                        llm_calls=self._pending_llm.pop(agent.name, []),
-                        error=f"{type(error).__name__}: {error}",
-                        started_at=datetime.now(UTC),
-                    )
-                    self._spans.append(span)
-                    self.tracer.on_span(span)
+                self._trace.record_span(agent, event, reads, latency, error=error)
                 continue
             if patch is None or patch.is_empty():
                 continue
-            if self.tracer is not None:
-                span = AgentSpan(
-                    agent=agent.name,
-                    event_type=event.type.value,
-                    reads=self._read_refs(reads),
-                    latency_ms=latency,
-                    llm_calls=self._pending_llm.pop(agent.name, []),
-                    started_at=datetime.now(UTC),
-                )
-                self._spans.append(span)
-                self.tracer.on_span(span)
+            span = self._trace.record_span(agent, event, reads, latency)
             self._validate_patch_types(patch, agent)
             patches_to_apply.append((patch, agent, reads, span))
         return patches_to_apply, runs
-
-    def _read_refs(self, reads: list[Read]) -> list[ArtifactRef]:
-        return [
-            self._artifact_ref(
-                read.artifact_id,
-                read.version,
-                "read",
-                self._artifact_data(read.artifact_id),
-            )
-            for read in reads
-        ]
 
     async def _commit_patches_to_apply(self, patches_to_apply: list[PatchWork]) -> None:
         """Applies each patch as a commit: provenance, span writes, persistence."""
@@ -386,8 +249,8 @@ class Runtime:
             )
             commit.writes = self._apply_patch(patch, commit)
             if span is not None:
-                span.writes = self._write_refs(patch, commit.writes)
-                span.relations = self._relation_refs(patch)
+                span.writes = self._trace.write_refs(patch, commit.writes)
+                span.relations = self._trace.relation_refs(patch)
             self.context.log_commit(commit)
             if self.session is not None:
                 # git-like persist after each commit: the session survives a crash
@@ -435,8 +298,7 @@ class Runtime:
         agent, event, reads = item
         started = time.monotonic()
         task = asyncio.current_task()
-        if task is not None:
-            self._agent_by_task[task] = agent.name
+        self._trace.register_task(task, agent.name)
         effects_token = set_effects(Effects(self.context))
         slot: Effects | None = None
         patch: Patch | None = None
@@ -462,8 +324,7 @@ class Runtime:
                     self.on_agent_error(agent, event, exc)
         finally:
             reset_effects(effects_token)
-            if task is not None and task in self._agent_by_task:
-                del self._agent_by_task[task]
+            self._trace.unregister_task(task)
         latency = (time.monotonic() - started) * 1000
         if error is not None:
             return None, agent, event, reads, latency, error
@@ -510,19 +371,11 @@ class Runtime:
         )
         if total_runs == 0:
             self._warn_no_runs()
-        if self.tracer is not None:
-            await self.tracer.on_turn_end(
-                RunTrace(
-                    id=self._run_id,
-                    session_id=(
-                        self.session.session_id if self.session is not None else ""
-                    ),
-                    started_at=datetime.now(UTC),
-                    duration_ms=time.monotonic() - self._turn_started_at,
-                    outcome=self.outcome.value,
-                    spans=self._spans,
-                )
-            )
+        await self._trace.end_turn(
+            session_id=self.session.session_id if self.session is not None else "",
+            duration_ms=time.monotonic() - self._turn_started_at,
+            outcome=self.outcome.value,
+        )
         return total_runs
 
     def run_once(self) -> int:
