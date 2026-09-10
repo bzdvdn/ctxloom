@@ -1,14 +1,14 @@
 """ScenarioLab scenarios for the repair assistant — run with:
 
-    ctxloom scenario examples.repair.scenarios
-    ctxloom scenario examples.repair.scenarios -k "estimate"
-    ctxloom scenario examples.repair.scenarios --mode record   # hits OpenRouter for real
-    ctxloom scenario examples.repair.scenarios --mode replay   # offline, from the fixture
+    reactifact scenario examples.repair.scenarios
+    reactifact scenario examples.repair.scenarios -k "estimate"
+    reactifact scenario examples.repair.scenarios --mode record   # hits OpenRouter for real
+    reactifact scenario examples.repair.scenarios --mode replay   # offline, from the fixture
 
 These do **not** run under `pytest` — scenarios are a separate track from the
-unit tests in `tests/`, run through the `ctxloom scenario` CLI, so a plain
+unit tests in `tests/`, run through the `reactifact scenario` CLI, so a plain
 `pytest` run never needs a model key or a network connection (see
-`ctxloom.testing`).
+`reactifact.testing`).
 
 Four scenarios over the staged pipeline (`collect -> design_choice -> plan ->
 estimate -> final_approval -> assistant`, see

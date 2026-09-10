@@ -1,8 +1,8 @@
 import asyncio
 
-from ctxloom import Agent, Consume, Context, Patch, Runtime, RuntimeResources
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.tracing import (
+from reactifact import Agent, Consume, Context, Patch, Runtime, RuntimeResources
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.tracing import (
     AgentSpan,
     ArtifactRef,
     LLMCall,
@@ -147,7 +147,7 @@ def test_runtime_records_spans_and_trace(tmp_path):
 
 
 def test_runtime_records_llm_calls(tmp_path):
-    from ctxloom.structured import structured_llm
+    from reactifact.structured import structured_llm
 
     class AnswerBody(BaseModel):
         text: str
@@ -274,7 +274,7 @@ class FakeClient:
 
 
 def test_langfuse_exports_trace_spans_and_llm():
-    from ctxloom.tracing import LangfuseTracer
+    from reactifact.tracing import LangfuseTracer
 
     client = FakeClient()
     langfuse = LangfuseTracer(
@@ -342,7 +342,7 @@ def test_postgres_store_requires_pg_extra():
     """PostgresStore without psycopg installed fails honestly (pg extra)."""
     import importlib.util
 
-    from ctxloom.tracing import PostgresStore
+    from reactifact.tracing import PostgresStore
 
     if importlib.util.find_spec("psycopg") is None:
         try:
@@ -360,7 +360,7 @@ def _basic(user: str, password: str) -> str:
 
 
 def test_trace_router_basic_auth(tmp_path):
-    from ctxloom.tracing.web import create_trace_router
+    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -387,7 +387,7 @@ def test_trace_router_basic_auth(tmp_path):
 
 
 def test_trace_router_open_without_auth(tmp_path):
-    from ctxloom.tracing.web import create_trace_router
+    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -399,7 +399,7 @@ def test_trace_router_open_without_auth(tmp_path):
 
 
 def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
-    from ctxloom.tracing.web import create_trace_router
+    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -427,8 +427,8 @@ def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
 
 
 def test_trace_run_page_embeds_provenance_graph(tmp_path):
-    from ctxloom.tracing.models import RelationRef
-    from ctxloom.tracing.web import create_trace_router
+    from reactifact.tracing.models import RelationRef
+    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -508,7 +508,7 @@ def test_postgres_store_roundtrip(tmp_path):
     import os
 
     import pytest
-    from ctxloom.tracing import PostgresStore
+    from reactifact.tracing import PostgresStore
 
     dsn = os.environ.get("TEST_PG_DSN")
     if not dsn:

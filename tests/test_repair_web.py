@@ -1,4 +1,4 @@
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.repair.web import create_app
 from fastapi.testclient import TestClient
 
@@ -130,8 +130,8 @@ def test_estimate_csv_endpoint_exports_worksheet(tmp_path):
     db = str(tmp_path / "sessions")
     import asyncio
 
-    from ctxloom.checkpoints import FileKVBackend
-    from ctxloom.session import SessionStore
+    from reactifact.checkpoints import FileKVBackend
+    from reactifact.session import SessionStore
 
     asyncio.run(SessionStore(FileKVBackend(db)).save_session("s1", __ctx(project)))
 
@@ -147,7 +147,7 @@ def test_estimate_csv_endpoint_exports_worksheet(tmp_path):
 
 
 def __ctx(project):
-    from ctxloom import Context, RuntimeResources
+    from reactifact import Context, RuntimeResources
 
     ctx = Context(resources=RuntimeResources())
     ctx.create(project)

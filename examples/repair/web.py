@@ -1,8 +1,8 @@
 """FastAPI + SSE backend for the repair assistant (CTXSPACE).
 
 A port of REPAIR_AI_CHAT (LangGraph) — to compare the pipeline and its effect
-head-to-head. The transport is the canonical ctxloom chat contract
-(`ctxloom.chat` + `ctxloom.web` router); the domain twist is the HITL approval
+head-to-head. The transport is the canonical reactifact chat contract
+(`reactifact.chat` + `reactifact.web` router); the domain twist is the HITL approval
 gate: a pending `approval` question → `waiting: true` instead of a reply.
 
 Run:  .venv/bin/python examples/repair/web.py
@@ -17,16 +17,16 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, Context, RuntimeResources, SessionStore
-from ctxloom.chat import ChatAssistant
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.providers import (
+from reactifact import Budget, Context, RuntimeResources, SessionStore
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.providers import (
     embedder_from_env,
     image_from_env,
     openai_llm,
     openrouter_llm,
 )
-from ctxloom.web import create_chat_router
+from reactifact.web import create_chat_router
 from dotenv import load_dotenv
 from examples.repair.agents import RepairFlow
 from examples.repair.models import ChatReply, Project, UserMsg
@@ -133,7 +133,7 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
         max_concurrency=2,
     )
 
-    app = FastAPI(title="repair-ai (ctxloom)")
+    app = FastAPI(title="repair-ai (reactifact)")
     app.include_router(create_chat_router(assistant))
 
     @app.get("/api/runs/{session_id}/estimate.csv")

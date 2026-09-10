@@ -3,7 +3,7 @@ import base64
 import json
 
 import httpx
-from ctxloom.providers.image import OpenAICompatImageProvider
+from reactifact.providers.image import OpenAICompatImageProvider
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"x" * 16
 

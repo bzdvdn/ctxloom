@@ -1,7 +1,7 @@
 import asyncio
 
-from ctxloom import Agent, Consume, Context, Patch, Runtime
-from ctxloom.events import EventType
+from reactifact import Agent, Consume, Context, Patch, Runtime
+from reactifact.events import EventType
 from pydantic import BaseModel
 
 
@@ -96,8 +96,8 @@ def test_staleness_survives_session_restart(tmp_path):
 
 
 async def _test_staleness_survives_session_restart(tmp_path):
-    from ctxloom import RuntimeResources, SessionStore
-    from ctxloom.checkpoints import FileKVBackend
+    from reactifact import RuntimeResources, SessionStore
+    from reactifact.checkpoints import FileKVBackend
 
     store = SessionStore(FileKVBackend(str(tmp_path)))
     session = await store.open("inval", resources=RuntimeResources())

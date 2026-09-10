@@ -1,7 +1,7 @@
 import asyncio
 
-from ctxloom import Agent, Consume, Patch, Runtime, SessionStore
-from ctxloom.checkpoints import FileKVBackend, SQLiteKVBackend
+from reactifact import Agent, Consume, Patch, Runtime, SessionStore
+from reactifact.checkpoints import FileKVBackend, SQLiteKVBackend
 from pydantic import BaseModel
 
 
@@ -25,7 +25,7 @@ class SimpleAnswerer(Agent):
 
 
 async def make_session(tmp_path, session_id="alice", backend_kind="file"):
-    from ctxloom.resources import RuntimeResources
+    from reactifact.resources import RuntimeResources
 
     if backend_kind == "file":
         backend = FileKVBackend(str(tmp_path / "sessions"))

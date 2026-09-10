@@ -2,7 +2,7 @@
 
 No LLM anywhere in this demo — it's deterministic by design (§67): the point
 is the dependency wiring, not generation. `Artifact.version` (built into
-every artifact, `ctxloom/artifacts.py`) is the proof: a formula that never
+every artifact, `reactifact/artifacts.py`) is the proof: a formula that never
 consumed the fact you changed is never even invoked for that edit — its
 version stays put, not "recomputed to the same number."
 
@@ -16,7 +16,7 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, Context, Runtime, RuntimeResources
+from reactifact import Budget, Context, Runtime, RuntimeResources
 
 from examples.ledger.agents import AGENTS
 from examples.ledger.models import (

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from ctxloom import Artifact, Context, Event, Produce
+from reactifact import Artifact, Context, Event, Produce
 
 from ..models import Calculation, ResearchTurn, Spreadsheet
 from .common import interesting_column_re

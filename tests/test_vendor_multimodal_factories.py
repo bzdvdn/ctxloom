@@ -4,7 +4,7 @@ same checks tests/test_vendor_factories.py runs for the chat factories."""
 
 import os
 
-from ctxloom.providers import (
+from reactifact.providers import (
     fireworks_embedder,
     groq_transcriber,
     nvidia_embedder,

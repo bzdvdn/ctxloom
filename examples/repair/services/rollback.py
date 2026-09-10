@@ -6,7 +6,7 @@ workflow's own field→stage table.
 
 from __future__ import annotations
 
-from ctxloom.recipes import earliest_stage
+from reactifact.recipes import earliest_stage
 
 #: Which project field a change belongs to → the stage it invalidates.
 _FIELD_STAGES: dict[str, str] = {

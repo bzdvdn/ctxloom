@@ -1,10 +1,10 @@
-"""with_retry (ctxloom.providers._retry): transient-failure retry/backoff."""
+"""with_retry (reactifact.providers._retry): transient-failure retry/backoff."""
 
 import asyncio
 
 import httpx
 import pytest
-from ctxloom.providers._retry import RETRYABLE_STATUS, with_retry
+from reactifact.providers._retry import RETRYABLE_STATUS, with_retry
 
 
 def _status_error(status: int) -> httpx.HTTPStatusError:

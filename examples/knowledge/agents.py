@@ -4,8 +4,8 @@ Logic lives in the Produce classes (`examples/knowledge/produce/`);
 here we only declare the consumes/produces contracts.
 """
 
-from ctxloom import Agent, Consume, Produce
-from ctxloom.sources import SourceRef
+from reactifact import Agent, Consume, Produce
+from reactifact.sources import SourceRef
 
 from .models import (
     Answer,

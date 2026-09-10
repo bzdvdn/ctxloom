@@ -3,7 +3,7 @@
 import asyncio
 
 import httpx
-from ctxloom.sources import WebSource
+from reactifact.sources import WebSource
 
 PAGES = {
     "https://example.org/infra": (
@@ -60,7 +60,7 @@ def test_no_fetch_until_needed():
 
 
 def test_html_to_text_strips_markup():
-    from ctxloom.sources import _html_to_text
+    from reactifact.sources import _html_to_text
 
     assert "hello" in _html_to_text(
         "<html><body><p>hello</p><script>x()</script></body></html>"
@@ -74,7 +74,7 @@ def test_html_to_text_strips_boilerplate_landmarks():
     """A page's nav/header/footer chrome must not outrank real content in the
     naive `[:200]`-style offline excerpt (real bug: a Wikipedia-shaped page's
     <nav> menu was landing ahead of the article text)."""
-    from ctxloom.sources import _html_to_text
+    from reactifact.sources import _html_to_text
 
     html = (
         "<html><body>"

@@ -1,31 +1,31 @@
 # API reference
 
-Top-level symbols exported by `ctxloom` (see `ctxloom/__init__.py`). The format
+Top-level symbols exported by `reactifact` (see `reactifact/__init__.py`). The format
 for each group: name — one-line role. Details live in the doc-strings of the
 modules.
 
 ## Stability
 
-As of `0.4.0`, ctxloom is pre-1.0 but no longer `rc` — the surface below is
+As of `0.4.0`, reactifact is pre-1.0 but no longer `rc` — the surface below is
 the stable contract, not a moving target.
 
-- **Public API = every name in `ctxloom.__all__`** (and each submodule's own
-  `__all__` — `ctxloom.recipes`, `ctxloom.providers`, `ctxloom.viz`, `ctxloom.eval`,
+- **Public API = every name in `reactifact.__all__`** (and each submodule's own
+  `__all__` — `reactifact.recipes`, `reactifact.providers`, `reactifact.viz`, `reactifact.eval`,
   …), which is exactly the set of symbols documented on this page. If it's
-  importable from `ctxloom` but not in `__all__`, it's an internal detail with
-  no compatibility guarantee — e.g. `ctxloom.relations.RelationGraph` and
-  `ctxloom.commit_log.CommitLog` exist because `Context` was split into
+  importable from `reactifact` but not in `__all__`, it's an internal detail with
+  no compatibility guarantee — e.g. `reactifact.relations.RelationGraph` and
+  `reactifact.commit_log.CommitLog` exist because `Context` was split into
   smaller modules for readability, but neither is exported: `Context` is the
   supported surface, they are not.
 - **SemVer, pre-1.0 style**: a minor bump (`0.4.0` → `0.5.0`) may add symbols
   or, rarely, change behavior in a way `CHANGELOG.md` marks `Breaking` — pre-1.0
-  minors are where ctxloom is still allowed to correct a design mistake. A
+  minors are where reactifact is still allowed to correct a design mistake. A
   patch bump (`0.4.0` → `0.4.1`) never removes or renames a public symbol and
   never changes documented behavior, only fixes bugs against it.
 - **Every breaking change is called out in `CHANGELOG.md` under a `### Breaking`
   heading**, even in a pre-1.0 release — see [release.md](release.md). If you
   only read one section before upgrading, read that one.
-- Anything under `ctxloom.cli.*` beyond the documented `python -m ctxloom …`
+- Anything under `reactifact.cli.*` beyond the documented `python -m reactifact …`
   subcommands, and anything in a module's tests-only helpers, is implementation
   detail regardless of whether it happens to be importable.
 
@@ -44,7 +44,7 @@ the stable contract, not a moving target.
 | --- | --- |
 | `Artifact` | the `(id, data)` pair; `data` is a pydantic model |
 | `Patch` | the runtime's compiled change-set (transport); produces write `self.effects`, `Patch` is assembled by the runtime |
-| `ctxloom.operations` (`Create`/`Update`/`Delete`/`Link`/`Unlink`/`Relation`) | the compiled operations a patch carries (§12) |
+| `reactifact.operations` (`Create`/`Update`/`Delete`/`Link`/`Unlink`/`Relation`) | the compiled operations a patch carries (§12) |
 | `Create`, `Update`, `Delete`, `Link`, `Unlink`, `Relation` | op records from which patches are built |
 
 ## Agents & produces
@@ -75,7 +75,7 @@ the stable contract, not a moving target.
 | `Scheduler` | filter → rank → LLM tie-break agent-selection policy, callable from the runtime each iteration (see [design notes](design-notes/adaptive.md)) |
 | `uncertainty_policy(...)` | builds the built-in hybrid `Scheduler` (filter → rank → LLM tie-break → top-k) |
 
-## Chat layer (ctxloom.chat + ctxloom.web)
+## Chat layer (reactifact.chat + reactifact.web)
 
 | Symbol | Role |
 | --- | --- |
@@ -84,19 +84,19 @@ the stable contract, not a moving target.
 | `run_message(runtime, text, *, user_message, reply)` | the turn building block: create input → stream statuses → terminal reply |
 | `default_session_state(ctx, user_message)` | generic history reader (any artifact with `.text`) |
 | `create_chat_router(assistant)` | FastAPI `APIRouter` for the canonical SSE contract (`/api/chat/stream`, `/api/runs/{id}`) — needs the `web` extra |
-| `ctxloom.web.sse(event, data)` | one SSE frame |
+| `reactifact.web.sse(event, data)` | one SSE frame |
 
-## Visualization (ctxloom.viz + python -m ctxloom)
+## Visualization (reactifact.viz + python -m reactifact)
 
 | Symbol | Role |
 | --- | --- |
 | `blueprint(agents)` | static map of consumes/produces as Mermaid `flowchart` |
 | `context_to_mermaid(context)` | live provenance graph of a context (artifacts + relations) |
 | `trace_to_mermaid(trace)` | one run as a Mermaid `sequenceDiagram` |
-| `python -m ctxloom graph\|context\|trace` | CLI printing the diagrams to stdout |
+| `python -m reactifact graph\|context\|trace` | CLI printing the diagrams to stdout |
 | `trace_provenance_to_mermaid(trace)` | a run's evidence graph (written artifacts + `patch.link` edges) |
 
-## Replay (ctxloom.replay, §55)
+## Replay (reactifact.replay, §55)
 
 | Symbol | Role |
 | --- | --- |
@@ -105,7 +105,7 @@ the stable contract, not a moving target.
 | `replay_context(store, session_id, version=None)` | reconstructs a saved session's state at a commit |
 | `replay_summary(context)` | compact state summary for the `replay` CLI |
 
-## Branching (ctxloom.context + ctxloom.branching, §39-§40)
+## Branching (reactifact.context + reactifact.branching, §39-§40)
 
 | Symbol | Role |
 | --- | --- |
@@ -113,9 +113,9 @@ the stable contract, not a moving target.
 | `Context.merge(other, message=…)` | atomic three-way merge; `MergeConflict` on diverged artifacts |
 | `MergeConflict` | raised when both sides changed an artifact differently since the fork |
 | `BranchStore(KVBackend)` | persists branches as `branch:<session>:<name>` over a KV backend |
-| `python -m ctxloom branch …` | CLI: `list` / `save` / `merge` |
+| `python -m reactifact branch …` | CLI: `list` / `save` / `merge` |
 
-## Evaluation (ctxloom.eval, §56)
+## Evaluation (reactifact.eval, §56)
 
 | Symbol | Role |
 | --- | --- |
@@ -133,14 +133,14 @@ the stable contract, not a moving target.
 | `llm_reply(context, *, system, user, attempts=…, on_error=…)` | plain-text completion → `str` or `None` (single-text schema under the hood) |
 | `parse_structured` | lenient JSON→model parser used internally |
 
-## Prompts (ctxloom.prompts, §68)
+## Prompts (reactifact.prompts, §68)
 
 | Symbol | Role |
 | --- | --- |
 | `PromptTemplate(template, *, defaults=…)` | strict `{var}` rendering: declared `variables`, `KeyError` on missing vars, model-attribute fields (`{question.text}`), `{{`/`}}` literals |
 | `MessagesPrompt([(role, template), …])` | renders a chat sequence to `list[Message]` |
 
-## Sources (ctxloom.sources)
+## Sources (reactifact.sources)
 
 | Symbol | Role |
 | --- | --- |
@@ -151,7 +151,7 @@ the stable contract, not a moving target.
 | `EmbeddingSource` | vector search over a prepared corpus |
 | `WebSource` | discovery + lazy remote document resolution |
 
-## Providers (ctxloom.providers)
+## Providers (reactifact.providers)
 
 | Symbol | Role |
 | --- | --- |
@@ -166,7 +166,7 @@ the stable contract, not a moving target.
 | `from_env(**overrides)` | one-call selection: `OPENROUTER_API_KEY` first, else `OPENAI_BASE_URL`, else `None` — the two-branch default every example's local `build_llm()` hand-rolls |
 | `FakeLLM`, `FakeEmbedder` | deterministic stand-ins for tests/demos |
 
-## Recipes (ctxloom.recipes)
+## Recipes (reactifact.recipes)
 
 | Symbol | Role |
 | --- | --- |
@@ -178,7 +178,7 @@ the stable contract, not a moving target.
 | `WindowPruner(message_type, keep=…)` | deletes messages older than the window; standalone-useful |
 | `llm_summarizer(system=…)` | builds a `WindowSummarizer(summarize=…)` callback from a system prompt via `llm_reply` |
 
-## Text & rollback helpers (ctxloom.recipes)
+## Text & rollback helpers (reactifact.recipes)
 
 | Symbol | Role |
 | --- | --- |
@@ -198,4 +198,4 @@ the stable contract, not a moving target.
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | full-context checkpoints |
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | tracing primitives (async sinks: `export`/`query`/`get`) |
 | `LangfuseTracer`, `PostgresStore` | external trace sinks — Postgres supports async read+write; the dashboard (`create_trace_router`) accepts any `TraceReader` |
-| `create_trace_router(store)` (`ctxloom.tracing.web`) | FastAPI dashboard router |
+| `create_trace_router(store)` (`reactifact.tracing.web`) | FastAPI dashboard router |

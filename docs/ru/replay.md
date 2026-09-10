@@ -10,7 +10,7 @@ Replay отвечает на конституционный вопрос — **�
 `ReplayLLM` — студия записи вызовов модели. Два прохода:
 
 ```python
-from ctxloom.replay import ReplayLLM
+from reactifact.replay import ReplayLLM
 
 # проход 1 — записать настоящий запуск
 resources = RuntimeResources(
@@ -41,9 +41,9 @@ runtime.run()                          # те же артефакты, те же
 конкретном коммите без исполнения агентов:
 
 ```python
-from ctxloom.replay import replay_context, replay_summary
-from ctxloom.checkpoints import SQLiteKVBackend
-from ctxloom.session import SessionStore
+from reactifact.replay import replay_context, replay_summary
+from reactifact.checkpoints import SQLiteKVBackend
+from reactifact.session import SessionStore
 
 store = SessionStore(SQLiteKVBackend("sessions.sqlite3"))
 context = await replay_context(store, session_id, version=7)   # состояние на коммите 7
@@ -53,7 +53,7 @@ print(replay_summary(context))                                  # счётчик
 ## CLI
 
 ```bash
-python -m ctxloom replay sessions.sqlite3 --session demo --diagram
+python -m reactifact replay sessions.sqlite3 --session demo --diagram
 ```
 
 Печатает сводку воспроизведённого состояния (`version · artifacts · relations ·

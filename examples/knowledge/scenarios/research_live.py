@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom.testing import ScenarioLab, ScenarioSkip, mode_from_env, scenario
+from reactifact.testing import ScenarioLab, ScenarioSkip, mode_from_env, scenario
 
 from ..agents import AGENTS
 from ..chat import build_llm

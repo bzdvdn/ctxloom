@@ -1,7 +1,7 @@
 """Research demo agents — thin containers, example-local (§48)."""
 
-from ctxloom import Agent, Consume, Produce
-from ctxloom.sources import SourceRef
+from reactifact import Agent, Consume, Produce
+from reactifact.sources import SourceRef
 
 from .models import (
     Answer,

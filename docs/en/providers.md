@@ -1,7 +1,7 @@
 # Providers
 
 Providers are *capabilities* — LLMs, embedders, image/speech/video models.
-They live in `ctxloom.providers`, never in the core package. The app wires the
+They live in `reactifact.providers`, never in the core package. The app wires the
 ones it needs into `RuntimeResources`; the core communicates with them only
 through narrow contracts (`LLMProvider`, `EmbeddingProvider`, …).
 
@@ -26,7 +26,7 @@ stand-ins so demos and tests run with no API keys.
 The simplest wiring is `*_from_env` factory functions that read `.env`:
 
 ```python
-from ctxloom.providers import (
+from reactifact.providers import (
     embedder_from_env,
     image_from_env,
     llm_from_env,
@@ -52,7 +52,7 @@ else `OPENAI_BASE_URL`, else `None`), for apps that want the common default
 without copying that block:
 
 ```python
-from ctxloom.providers import from_env
+from reactifact.providers import from_env
 
 llm = from_env(max_tokens=2048)  # openrouter_llm(...) or llm_from_env(...) or None
 ```
@@ -149,7 +149,7 @@ IMAGE_MODEL=google/gemini-2.0-flash-exp:free
 `GeminiProvider`, `OpenAICompatImageProvider`, `OpenAICompatSpeech`/
 `Transcriber`, all four video providers) takes `retry_attempts` (default `3`)
 and retries 429/5xx and transport errors with exponential backoff via
-`ctxloom.providers._retry.with_retry` — 4xx (auth/bad request) never retries,
+`reactifact.providers._retry.with_retry` — 4xx (auth/bad request) never retries,
 since retrying a misconfiguration just delays the real error. Pass
 `retry_attempts=1` to disable.
 
@@ -184,7 +184,7 @@ call. A `None` at both levels means the field is omitted from the request and
 the API applies its own default.
 
 ```python
-from ctxloom.providers import openai_llm, openrouter_llm
+from reactifact.providers import openai_llm, openrouter_llm
 
 # provider default for every request made through it
 llm = openai_llm(model="gpt-4o-mini", temperature=0.7, max_tokens=2048)

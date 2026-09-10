@@ -42,9 +42,9 @@ jobs:
         run: uv build
       - name: Wheel smoke (clean venv)
         run: |
-          uv venv /tmp/ctxloom-ci
-          uv pip install --python /tmp/ctxloom-ci/bin/python dist/ctxloom-*.whl
-          /tmp/ctxloom-ci/bin/python -c "import ctxloom; print('version', ctxloom.__version__)"
-          /tmp/ctxloom-ci/bin/ctxloom --help >/dev/null
-          /tmp/ctxloom-ci/bin/ctxloom graph examples.knowledge.agents >/dev/null 2>&1 || true
-          if unzip -l dist/ctxloom-*.whl | grep -qE "examples/|tests/"; then echo "examples/tests leaked into wheel"; exit 1; fi
+          uv venv /tmp/reactifact-ci
+          uv pip install --python /tmp/reactifact-ci/bin/python dist/reactifact-*.whl
+          /tmp/reactifact-ci/bin/python -c "import reactifact; print('version', reactifact.__version__)"
+          /tmp/reactifact-ci/bin/reactifact --help >/dev/null
+          /tmp/reactifact-ci/bin/reactifact graph examples.knowledge.agents >/dev/null 2>&1 || true
+          if unzip -l dist/reactifact-*.whl | grep -qE "examples/|tests/"; then echo "examples/tests leaked into wheel"; exit 1; fi

@@ -1,6 +1,6 @@
 """Ports of canonical framework examples — deterministic (offline) behavior."""
 
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 
 
 class ScriptedLLM(LLMProvider):

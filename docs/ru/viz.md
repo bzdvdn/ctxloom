@@ -1,6 +1,6 @@
 # Визуализация и CLI
 
-`ctxloom.viz` рендерит систему в **Mermaid**. Рисовать граф исполнения нечего —
+`reactifact.viz` рендерит систему в **Mermaid**. Рисовать граф исполнения нечего —
 runtime выводит исполнение из изменений состояния, — поэтому две честные
 диаграммы: *статическая карта* и *живое состояние*:
 
@@ -17,10 +17,10 @@ runtime выводит исполнение из изменений состоя
 ## CLI
 
 ```bash
-python -m ctxloom graph examples.knowledge.agents        # все агенты модуля
-python -m ctxloom graph examples.knowledge.agents:Planner # один агент
-python -m ctxloom context examples/knowledge/sessions/sessions.sqlite3
-python -m ctxloom trace traces.db [run_id]
+python -m reactifact graph examples.knowledge.agents        # все агенты модуля
+python -m reactifact graph examples.knowledge.agents:Planner # один агент
+python -m reactifact context examples/knowledge/sessions/sessions.sqlite3
+python -m reactifact trace traces.db [run_id]
 ```
 
 - `graph` инстансирует каждый подкласс `Agent`, определённый в модуле (или один

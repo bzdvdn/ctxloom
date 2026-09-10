@@ -7,7 +7,7 @@
 > Корректность провенанса · Корректность вычислений · Покрытие ответа ·
 > Покрытие источников
 
-`ctxloom.eval` — детерминированный, без LLM харнесс, оценивающий итоговое
+`reactifact.eval` — детерминированный, без LLM харнесс, оценивающий итоговое
 **состояние** прогона. Каждая метрика — чистая функция над итоговым `Context`
 (+ опциональный грёд-трус), поэтому правдивость измеряется там, где она живёт —
 в графе артефактов, — а не гладкость текста.
@@ -15,7 +15,7 @@
 ## Запуск сюита
 
 ```python
-from ctxloom.eval import EvalCase, calculation_correctness, core_metrics, run_suite
+from reactifact.eval import EvalCase, calculation_correctness, core_metrics, run_suite
 
 cases = [
     EvalCase(

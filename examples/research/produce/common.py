@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from ctxloom import Context, Event
+from reactifact import Context, Event
 
 from ..models import ResearchTurn, UserQuery
 

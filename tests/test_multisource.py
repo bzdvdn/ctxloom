@@ -1,6 +1,6 @@
 import asyncio
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Consume,
     Context,
@@ -8,7 +8,7 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
-from ctxloom.sources import FileSystemSource, SourceRef
+from reactifact.sources import FileSystemSource, SourceRef
 from pydantic import BaseModel
 
 
@@ -147,7 +147,7 @@ def test_patch_create_idempotent_by_id():
     class Number(BaseModel):
         value: int
 
-    from ctxloom import EventType, Trigger
+    from reactifact import EventType, Trigger
 
     class Counter(Agent):
         def __init__(self):

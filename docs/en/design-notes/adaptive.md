@@ -47,8 +47,8 @@ context, so the highest-value candidate's events drive the next round (§24).
 ## API
 
 ```python
-from ctxloom import Runtime
-from ctxloom.scheduler import uncertainty_policy
+from reactifact import Runtime
+from reactifact.scheduler import uncertainty_policy
 
 runtime = Runtime(
     ctx,
@@ -78,7 +78,7 @@ describe candidates; it changes nothing on its own.
 
 ## Shipped with the spike
 
-- `ctxloom/scheduler.py` — `Scheduler`, `uncertainty_policy`, types.
+- `reactifact/scheduler.py` — `Scheduler`, `uncertainty_policy`, types.
 - Runtime hook (`scheduler=` param), `Agent.capabilities`.
 - `examples/adaptive` — two competing artists + HITL approval.
 - `tests/test_adaptive.py` — ranking, pruning, fallback, LLM tie-break,

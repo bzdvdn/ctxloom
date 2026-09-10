@@ -1,7 +1,7 @@
 # Провайдеры
 
 Провайдеры — это *способности*: LLM, эмбеддеры, модели изображений/речи/видео.
-Они живут в `ctxloom.providers`, не в ядре. Приложение подключает нужные в
+Они живут в `reactifact.providers`, не в ядре. Приложение подключает нужные в
 `RuntimeResources`; ядро общается с ними только через узкие контракты
 (`LLMProvider`, `EmbeddingProvider`, …).
 
@@ -26,7 +26,7 @@
 Самая простая схема подключения — фабрики `*_from_env`, читающие `.env`:
 
 ```python
-from ctxloom.providers import (
+from reactifact.providers import (
     embedder_from_env,
     image_from_env,
     llm_from_env,
@@ -52,7 +52,7 @@ if img is not None:
 дефолт без копирования этого блока:
 
 ```python
-from ctxloom.providers import from_env
+from reactifact.providers import from_env
 
 llm = from_env(max_tokens=2048)  # openrouter_llm(...) или llm_from_env(...) или None
 ```
@@ -150,7 +150,7 @@ IMAGE_MODEL=google/gemini-2.0-flash-exp:free
 `AnthropicProvider`, `GeminiProvider`, `OpenAICompatImageProvider`,
 `OpenAICompatSpeech`/`Transcriber`, все четыре видео-провайдера) есть
 `retry_attempts` (по умолчанию `3`) — 429/5xx и сетевые ошибки повторяются с
-экспоненциальным backoff через `ctxloom.providers._retry.with_retry`; 4xx
+экспоненциальным backoff через `reactifact.providers._retry.with_retry`; 4xx
 (auth/bad request) никогда не повторяется, потому что повтор
 неправильной настройки только откладывает реальную ошибку. `retry_attempts=1`
 отключает ретраи.
@@ -186,7 +186,7 @@ app = FastAPI(lifespan=lifespan)
 отправляется в запрос и API применит свой дефолт.
 
 ```python
-from ctxloom.providers import openai_llm
+from reactifact.providers import openai_llm
 
 # дефолт провайдера для всех запросов через него
 llm = openai_llm(model="gpt-4o-mini", temperature=0.7, max_tokens=2048)

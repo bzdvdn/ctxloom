@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom.testing import ScenarioLab, scenario
+from reactifact.testing import ScenarioLab, scenario
 
 from ..agents import RepairFlow
 from ..models import ChatReply, UserMsg

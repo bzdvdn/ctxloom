@@ -7,7 +7,7 @@ Because state is structured, evaluation is **multi-level** — not just
 > Provenance grounding · Calculation correctness · Answer coverage ·
 > Source coverage
 
-`ctxloom.eval` is the deterministic, LLM-free harness that scores a run's final
+`reactifact.eval` is the deterministic, LLM-free harness that scores a run's final
 **state**. Each metric is a pure function over the resulting `Context` (+
 optional ground truth), so truthfulness is measured where it lives — the
 artifact graph — not the smoothness of the text.
@@ -15,7 +15,7 @@ artifact graph — not the smoothness of the text.
 ## Running a suite
 
 ```python
-from ctxloom.eval import EvalCase, calculation_correctness, core_metrics, run_suite
+from reactifact.eval import EvalCase, calculation_correctness, core_metrics, run_suite
 
 cases = [
     EvalCase(

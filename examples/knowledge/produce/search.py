@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.recipes import fan_out_sources, materialize_doc
-from ctxloom.sources import SourceRef
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.recipes import fan_out_sources, materialize_doc
+from reactifact.sources import SourceRef
 
 from ..models import ResearchTurn, SearchDone, Spreadsheet, TypedDoc
 from .common import SCOUT_LIMIT

@@ -1,6 +1,6 @@
 """llm-ladder: the three levels behave deterministically, with and without an LLM."""
 
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.llm_ladder.level1 import Answer as L1Answer
 from examples.llm_ladder.level1 import run as run_l1
 from examples.llm_ladder.level2 import (

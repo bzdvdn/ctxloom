@@ -50,11 +50,11 @@ are exactly what forces the clarifying question, HITL `type:"ask"`).
 
 Each agent declares what it `consumes`/`produces`; the runtime derives
 execution from state changes. This is the actual static map of this demo's 5
-agents (`python -m ctxloom graph examples.devops.agents`):
+agents (`python -m reactifact graph examples.devops.agents`):
 
 ```mermaid
 flowchart LR
-    subgraph SG["ctxloom blueprint"]
+    subgraph SG["reactifact blueprint"]
         direction LR
         A0["ansible<br/>ToolUseHITL · Produce · Produce · Produce · AnsibleReportBuilder"]
     ART0["AnsibleProblem"]
@@ -111,7 +111,7 @@ flowchart LR
 Each specialist (`k8s`/`gitlab`/`ansible`) consumes its own `*Problem` type
 *and* `ToolAnswer`/`Observation`/`PendingQuestion` — the self-consume that
 lets `HITLLMAgent`'s reactive ask/resume loop keep running without the
-specialist declaring that wiring itself (see `ctxloom/llm_agent.py`).
+specialist declaring that wiring itself (see `reactifact/llm_agent.py`).
 `render` fans in every `*Report` type into one `ChatReply`; a mandatory tool
 parameter that the router never captured is what forces the ask in the first
 place, not a manual "if missing, ask" branch anywhere in this demo's own code.

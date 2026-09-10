@@ -1,4 +1,4 @@
-"""`ctxloom.testing.mock` — generic resource-level fault injection.
+"""`reactifact.testing.mock` — generic resource-level fault injection.
 
 Two layers of coverage: direct/white-box tests of `_FailingProxy` and
 `ResourceFaultInstaller` (precise control over sync/async/async-generator
@@ -14,11 +14,11 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from ctxloom import Agent, Consume, RuntimeResources, tool
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.testing import ScenarioError, ScenarioLab
-from ctxloom.testing.mock import ResourceFault, ResourceFaultInstaller, _FailingProxy
-from ctxloom.tool_use import ToolAnswer, ToolUse
+from reactifact import Agent, Consume, RuntimeResources, tool
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.testing import ScenarioError, ScenarioLab
+from reactifact.testing.mock import ResourceFault, ResourceFaultInstaller, _FailingProxy
+from reactifact.tool_use import ToolAnswer, ToolUse
 from pydantic import BaseModel
 
 

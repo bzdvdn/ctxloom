@@ -7,8 +7,8 @@ import json
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse, LLMResponseChunk
-from ctxloom.resources import RuntimeResources
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse, LLMResponseChunk
+from reactifact.resources import RuntimeResources
 
 from ..services.catalog import Catalog
 

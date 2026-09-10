@@ -1,7 +1,7 @@
 # Рецепты
 
-`ctxloom.recipes` — переиспользуемые строительные блоки, кодифицирующие паттерны,
-которые повторяются во всех демо. Импорт `ctxloom.recipes` не тянет лишних
+`reactifact.recipes` — переиспользуемые строительные блоки, кодифицирующие паттерны,
+которые повторяются во всех демо. Импорт `reactifact.recipes` не тянет лишних
 зависимостей — всё построено на ядре.
 
 ## `find` / `find_all` — поиск типизированных артефактов в `inputs`
@@ -13,7 +13,7 @@
 типизированная замена в одну строку:
 
 ```python
-from ctxloom.recipes import find, find_all
+from reactifact.recipes import find, find_all
 
 question = find(inputs, Question)          # Artifact[Question] | None
 evidence = find_all(inputs, Evidence)       # list[Artifact[Evidence]]
@@ -22,7 +22,7 @@ evidence = find_all(inputs, Evidence)       # list[Artifact[Evidence]]
 ## `fan_out_sources` — реактивный поиск
 
 ```python
-from ctxloom.recipes import fan_out_sources
+from reactifact.recipes import fan_out_sources
 
 refs = await fan_out_sources(
     context,
@@ -54,7 +54,7 @@ refs = await fan_out_sources(
 ## `materialize_doc` — ленивое разрешение ссылок
 
 ```python
-from ctxloom.recipes import materialize_doc
+from reactifact.recipes import materialize_doc
 
 async def doc_from_ref(context, ref_artifact, content) -> TypedDoc:
     # постройте доменный документ из полученного содержимого
@@ -84,8 +84,8 @@ doc = await materialize_doc(
 графа переходов `StatusMachine` — **чистая функция текущего состояния**:
 
 ```python
-from ctxloom import Artifact, Context
-from ctxloom.recipes import StatusMachine
+from reactifact import Artifact, Context
+from reactifact.recipes import StatusMachine
 
 
 class EvaluateTurn(StatusMachine[ResearchTurn]):
@@ -131,7 +131,7 @@ class EvaluateTurn(StatusMachine[ResearchTurn]):
 домен владеет тем, *как* суммировать и *как выглядит* артефакт саммари:
 
 ```python
-from ctxloom.recipes import WindowPruner, WindowSummarizer, llm_summarizer
+from reactifact.recipes import WindowPruner, WindowSummarizer, llm_summarizer
 
 
 class Summary(BaseModel):
@@ -178,7 +178,7 @@ class Flow(Agent):
 фолбэк (английский чат `knowledge` и каталог `repair` используют именно его):
 
 ```python
-from ctxloom.recipes import EN_STOPWORDS, keyword_score, stem_words
+from reactifact.recipes import EN_STOPWORDS, keyword_score, stem_words
 
 keyword_score("How to set up authentication", "authentication")          # 1.0
 keyword_score("Установка аутентификации", "аутентификацию", use_stems=True)  # 1.0
@@ -198,7 +198,7 @@ stem_words("Ремонт комнаты и kitchen")  # {"ремонт", "ком
 формат), когда его описание совпадает с ситуацией:
 
 ```python
-from ctxloom.recipes import load_skills, match_skills
+from reactifact.recipes import load_skills, match_skills
 
 # --- один раз, при старте ---
 skills = load_skills("skills/")   # каждый *.md-файл, разобранный по фронтматтеру
@@ -245,7 +245,7 @@ not estimated — name the source and column it came from.
 (одобрение в `repair` — канонический пример):
 
 ```python
-from ctxloom.recipes import changed_fields, downstream_fields, earliest_stage
+from reactifact.recipes import changed_fields, downstream_fields, earliest_stage
 
 field_stages = {"room": "collect", "style": "design_choice",
                 "area": "plan", "budget": "estimate"}

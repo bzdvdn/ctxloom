@@ -10,8 +10,8 @@
 **патчей**.
 
 ```python
-from ctxloom import Context, RuntimeResources
-from ctxloom.sources import FileSystemSource
+from reactifact import Context, RuntimeResources
+from reactifact.sources import FileSystemSource
 
 ctx = Context(
     resources=RuntimeResources(
@@ -74,7 +74,7 @@ async def produce(self, context, inputs, event=None):
     return None
 ```
 
-**Скомпилированные операции** (`ctxloom.operations`):
+**Скомпилированные операции** (`reactifact.operations`):
 
 | Операция | Смысл |
 | --- | --- |

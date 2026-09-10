@@ -87,7 +87,7 @@ A decorator produce receives the same effects slot — name a parameter `effects
 and the runtime passes it in, exactly like `self.effects` in a class produce:
 
 ```python
-from ctxloom import produce
+from reactifact import produce
 
 @produce(Answer)
 async def answer_turn(context, inputs, event, effects):

@@ -2,9 +2,9 @@
 
 import asyncio
 
-from ctxloom import Context, MergeConflict, RuntimeResources
-from ctxloom.branching import BranchStore
-from ctxloom.checkpoints import SQLiteKVBackend
+from reactifact import Context, MergeConflict, RuntimeResources
+from reactifact.branching import BranchStore
+from reactifact.checkpoints import SQLiteKVBackend
 from pydantic import BaseModel
 
 

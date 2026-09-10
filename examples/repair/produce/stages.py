@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Context, Produce
-from ctxloom.artifacts import Artifact
-from ctxloom.events import Event
-from ctxloom.recipes import changed_fields
-from ctxloom.structured import llm_reply
+from reactifact import Context, Produce
+from reactifact.artifacts import Artifact
+from reactifact.events import Event
+from reactifact.recipes import changed_fields
+from reactifact.structured import llm_reply
 
 from ..models import ChatReply, Project, ProjectInfo, UserMsg
 from ..services.estimate import build_estimate, qa_budget_warning

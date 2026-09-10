@@ -4,7 +4,7 @@ After a milestone commit, the app forks the context ("time-travel") and runs
 two candidate experiments in parallel — each on its own branch. The branches
 are then merged three-way, and a deterministic picker chooses the better
 candidate and links the decision back to **both** (provenance is kept). The
-same root lets you replay to the middle with `python -m ctxloom replay`.
+same root lets you replay to the middle with `python -m reactifact replay`.
 
     uv run python -m examples.time_travel.main
 """
@@ -16,7 +16,7 @@ import asyncio
 import sys
 from typing import Any
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Artifact,
     Consume,
@@ -26,9 +26,9 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
-from ctxloom.prompts import PromptTemplate
-from ctxloom.providers import LLMProvider
-from ctxloom.structured import structured_llm
+from reactifact.prompts import PromptTemplate
+from reactifact.providers import LLMProvider
+from reactifact.structured import structured_llm
 from pydantic import BaseModel
 
 
@@ -37,7 +37,7 @@ def build_llm() -> LLMProvider | None:
     OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
     import os
 
-    from ctxloom.providers import openai_llm, openrouter_llm
+    from reactifact.providers import openai_llm, openrouter_llm
 
     if os.getenv("OPENROUTER_API_KEY"):
         return openrouter_llm(max_tokens=2048)

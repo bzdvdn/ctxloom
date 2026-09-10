@@ -1,6 +1,6 @@
 import asyncio
 
-from ctxloom.sources import FileSystemSource, SourceRef
+from reactifact.sources import FileSystemSource, SourceRef
 
 
 def test_filesystem_source_resolve(tmp_path):

@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from ctxloom import Agent, Consume, Context, Patch, Produce, Runtime
+from reactifact import Agent, Consume, Context, Patch, Produce, Runtime
 from pydantic import BaseModel
 
 

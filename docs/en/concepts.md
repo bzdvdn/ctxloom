@@ -10,8 +10,8 @@ the six building blocks and how they interact.
 commits, each commit being the result of applying one or more **patches**.
 
 ```python
-from ctxloom import Context, RuntimeResources
-from ctxloom.sources import FileSystemSource
+from reactifact import Context, RuntimeResources
+from reactifact.sources import FileSystemSource
 
 ctx = Context(
     resources=RuntimeResources(
@@ -73,7 +73,7 @@ async def produce(self, context, inputs, event=None):
     return None
 ```
 
-The **compiled operations** (`ctxloom.operations`):
+The **compiled operations** (`reactifact.operations`):
 
 | Op | Meaning |
 | --- | --- |

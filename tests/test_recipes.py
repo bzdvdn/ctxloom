@@ -3,10 +3,10 @@
 import asyncio
 from pathlib import Path
 
-from ctxloom import Agent, Consume, Context, Produce, Runtime, RuntimeResources
-from ctxloom.artifacts import Artifact
-from ctxloom.recipes import StatusMachine, fan_out_sources, materialize_doc
-from ctxloom.sources import FileSystemSource, SourceRef
+from reactifact import Agent, Consume, Context, Produce, Runtime, RuntimeResources
+from reactifact.artifacts import Artifact
+from reactifact.recipes import StatusMachine, fan_out_sources, materialize_doc
+from reactifact.sources import FileSystemSource, SourceRef
 from pydantic import BaseModel
 
 
@@ -150,7 +150,7 @@ def test_status_machine_advances_lifecycle():
 
 
 def test_keyword_score_english_ignores_stopwords():
-    from ctxloom.recipes import EN_STOPWORDS, keyword_score
+    from reactifact.recipes import EN_STOPWORDS, keyword_score
 
     text = "How to set up authentication and handle sessions securely"
     assert keyword_score(text, "set up authentication") == 1.0
@@ -160,7 +160,7 @@ def test_keyword_score_english_ignores_stopwords():
 
 
 def test_keyword_score_russian_stems_match_inflections():
-    from ctxloom.recipes import keyword_score
+    from reactifact.recipes import keyword_score
 
     # «аутентификацию» and «аутентификация» share the stem «аутентификац»
     score = keyword_score("Установка аутентификации", "аутентификацию", use_stems=True)
@@ -170,7 +170,7 @@ def test_keyword_score_russian_stems_match_inflections():
 
 
 def test_stem_words_splits_cyrillic_and_latin():
-    from ctxloom.recipes import stem_words
+    from reactifact.recipes import stem_words
 
     stems = stem_words("Ремонт комнаты и kitchen")
     assert "ремонт" in stems
@@ -199,7 +199,7 @@ class _Proj(BaseModel):
 
 
 def test_changed_fields_ignores_unknown_none():
-    from ctxloom.recipes import changed_fields
+    from reactifact.recipes import changed_fields
 
     old = _Proj(room="kitchen", budget=100)
     new = _Proj(room="bathroom", budget=None)  # budget unknown → not a change
@@ -207,7 +207,7 @@ def test_changed_fields_ignores_unknown_none():
 
 
 def test_earliest_stage_routes_to_the_first_affected():
-    from ctxloom.recipes import earliest_stage
+    from reactifact.recipes import earliest_stage
 
     assert (
         earliest_stage({"style"}, field_stages=_FIELD_STAGES, order=_STAGE_ORDER)
@@ -223,7 +223,7 @@ def test_earliest_stage_routes_to_the_first_affected():
 
 
 def test_downstream_fields_reset_inclusive_suffix():
-    from ctxloom.recipes import downstream_fields
+    from reactifact.recipes import downstream_fields
 
     resets = downstream_fields("plan", field_stages=_FIELD_STAGES, order=_STAGE_ORDER)
     assert resets == frozenset(

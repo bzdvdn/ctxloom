@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from ctxloom import (
+from reactifact import (
     Agent,
     Consume,
     Context,

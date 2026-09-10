@@ -1,7 +1,7 @@
 # Recipes
 
-`ctxloom.recipes` contains reusable building blocks that encode patterns which
-recur in every demo. Importing `ctxloom.recipes` does not pull in additional
+`reactifact.recipes` contains reusable building blocks that encode patterns which
+recur in every demo. Importing `reactifact.recipes` does not pull in additional
 dependencies — everything is built on the core.
 
 ## `find` / `find_all` — locate typed artifacts in `inputs`
@@ -12,7 +12,7 @@ is the same `next((a for a in inputs if isinstance(a.data, X)), None)` in
 nearly every produce. `find`/`find_all` are a typed one-liner for it:
 
 ```python
-from ctxloom.recipes import find, find_all
+from reactifact.recipes import find, find_all
 
 question = find(inputs, Question)          # Artifact[Question] | None
 evidence = find_all(inputs, Evidence)       # list[Artifact[Evidence]]
@@ -21,7 +21,7 @@ evidence = find_all(inputs, Evidence)       # list[Artifact[Evidence]]
 ## `fan_out_sources` — reactive search
 
 ```python
-from ctxloom.recipes import fan_out_sources
+from reactifact.recipes import fan_out_sources
 
 refs = await fan_out_sources(
     context,
@@ -52,7 +52,7 @@ duplicated. `on_start` / `on_count` give you progress announces over SSE.
 ## `materialize_doc` — lazy reference resolution
 
 ```python
-from ctxloom.recipes import materialize_doc
+from reactifact.recipes import materialize_doc
 
 async def doc_from_ref(context, ref_artifact, content) -> TypedDoc:
     # build your domain document from the fetched content
@@ -83,8 +83,8 @@ Status machines are the pattern for "an artifact that moves through states"
 transition graph, a `StatusMachine` is a **pure function of current state**:
 
 ```python
-from ctxloom import Artifact, Context
-from ctxloom.recipes import StatusMachine
+from reactifact import Artifact, Context
+from reactifact.recipes import StatusMachine
 
 
 class EvaluateTurn(StatusMachine[ResearchTurn]):
@@ -129,7 +129,7 @@ owns the window size, cadence, and idempotency; the domain owns *how* to
 summarize and *what* the summary artifact looks like:
 
 ```python
-from ctxloom.recipes import WindowPruner, WindowSummarizer, llm_summarizer
+from reactifact.recipes import WindowPruner, WindowSummarizer, llm_summarizer
 
 
 class Summary(BaseModel):
@@ -175,7 +175,7 @@ Where embeddings are optional, keyword coverage is the neutral fallback (the
 English `knowledge` chat and the Russian `repair` catalog use it):
 
 ```python
-from ctxloom.recipes import EN_STOPWORDS, keyword_score, stem_words
+from reactifact.recipes import EN_STOPWORDS, keyword_score, stem_words
 
 keyword_score("How to set up authentication", "authentication")          # 1.0
 keyword_score("Установка аутентификации", "аутентификацию", use_stems=True)  # 1.0
@@ -196,7 +196,7 @@ current turn is made (a rule to follow, a format to use) once its description
 matches the situation:
 
 ```python
-from ctxloom.recipes import load_skills, match_skills
+from reactifact.recipes import load_skills, match_skills
 
 # --- once, at startup ---
 skills = load_skills("skills/")   # every *.md file, parsed by frontmatter
@@ -242,7 +242,7 @@ downstream. The helpers are generic; the workflow is your `field_stages` map and
 stage order (the `repair` approval is the canonical usage):
 
 ```python
-from ctxloom.recipes import changed_fields, downstream_fields, earliest_stage
+from reactifact.recipes import changed_fields, downstream_fields, earliest_stage
 
 field_stages = {"room": "collect", "style": "design_choice",
                 "area": "plan", "budget": "estimate"}

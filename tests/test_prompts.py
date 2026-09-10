@@ -1,7 +1,7 @@
 """Prompt templating (§68): strict variables, defaults, model attributes, chat rows."""
 
-from ctxloom.prompts import MessagesPrompt, PromptTemplate
-from ctxloom.providers import Message
+from reactifact.prompts import MessagesPrompt, PromptTemplate
+from reactifact.providers import Message
 from pydantic import BaseModel
 
 
@@ -73,7 +73,7 @@ def test_messages_prompt_missing_anywhere_raises():
 
 
 def test_message_factories_build_typed_roles():
-    from ctxloom import Message
+    from reactifact import Message
 
     assert Message.system("s") == Message(role="system", content="s")
     assert Message.user("u") == Message(role="user", content="u")
@@ -82,7 +82,7 @@ def test_message_factories_build_typed_roles():
 
 
 def test_message_rejects_unknown_role():
-    from ctxloom import Message
+    from reactifact import Message
 
     for bad in ("assistan", "human", ""):
         try:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Agent, Consume
+from reactifact import Agent, Consume
 
 from .models import Review, Strategy
 from .produce import BreadthInvestigate, DepthInvestigate, Evaluate

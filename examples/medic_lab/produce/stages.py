@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.recipes import fan_out_sources, materialize_doc
-from ctxloom.sources import SourceRef
-from ctxloom.structured import StructuredLLM
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.recipes import fan_out_sources, materialize_doc
+from reactifact.sources import SourceRef
+from reactifact.structured import StructuredLLM
 from pydantic import BaseModel
 
 from ..models import (

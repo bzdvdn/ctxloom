@@ -25,7 +25,7 @@ Run the same gates CI and the release process run:
   error.
 - Docs live in `docs/en/` and `docs/ru/` as a 1:1 mirror; update both if you
   touch a documented symbol or behavior. `docs/en/api.md` / `docs/ru/api.md`
-  should stay in sync with `ctxloom/__init__.py`'s public exports.
+  should stay in sync with `reactifact/__init__.py`'s public exports.
 
 ## Design principles
 
@@ -38,4 +38,4 @@ working around it.
 ## Scope
 
 Domain-specific connectors (GitLab, Confluence, S3, etc.) belong in
-`examples/`, not in `ctxloom/` core — see docs/constitution.md §61.
+`examples/`, not in `reactifact/` core — see docs/constitution.md §61.

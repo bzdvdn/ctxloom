@@ -1,4 +1,4 @@
-# Port matrix — canonical agent patterns on ctxloom
+# Port matrix — canonical agent patterns on reactifact
 
 Which classic example from LangGraph / LangChain / CrewAI / AutoGen / Haystack
 / DSPy we express, and how. Each row maps a canonical idea to our idiom and to
@@ -16,7 +16,7 @@ a concrete example (`examples/`).
 | RAG (retrieve→augment→generate) | LangChain, Haystack, LlamaIndex | sources + `fan_out_sources` + `materialize_doc` + evidence→claims | `knowledge`, `research` |
 | Structured output / extraction / router | LangChain | `StructuredLLM` / `PromptTemplate` / `llm_reply` | everywhere |
 | Plan-and-execute | LangGraph | stage produce + `StatusMachine` lifecycle | `repair` |
-| Evaluation-driven dev (DSPy) | DSPy | `ctxloom.eval` multi-level metrics (§56) | `examples` + tests |
+| Evaluation-driven dev (DSPy) | DSPy | `reactifact.eval` multi-level metrics (§56) | `examples` + tests |
 | Tool budget / honesty on failure | — | `Budget` + deterministic fallbacks, `None` paths (§59) | `devops`, `repair` |
 
 Everything above runs **offline** (deterministic fallbacks) and, with a model

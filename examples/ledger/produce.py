@@ -1,6 +1,6 @@
 """ledger — one produce per formula, each declaring exactly which facts it
 depends on via `consumes`. Editing a fact fires `ARTIFACT_UPDATED` only for
-that fact's type (`ctxloom.context.Context.update`, §41/§42: a no-op edit
+that fact's type (`reactifact.context.Context.update`, §41/§42: a no-op edit
 doesn't even fire an event) — a formula that doesn't consume it is never
 invoked, not merely "invoked but decides not to recompute." No router, no
 `if name == "tax_rate"` branch anywhere: the dependency lives in the
@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, produce
-from ctxloom.effects import Effects
+from reactifact import Artifact, Context, produce
+from reactifact.effects import Effects
 
 from .models import Discount, DiscountRate, Hours, LaborCost, Rate, Tax, TaxRate, Total
 

@@ -2,7 +2,7 @@
 
 import asyncio
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Consume,
     Context,
@@ -10,8 +10,8 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
-from ctxloom.effects import Effects, Handle, current_effects
-from ctxloom.patches import Create, Link, Update
+from reactifact.effects import Effects, Handle, current_effects
+from reactifact.patches import Create, Link, Update
 from pydantic import BaseModel
 
 
@@ -141,8 +141,8 @@ def test_produce_effects_raises_outside_runtime():
 
 
 def test_effects_resume_answers_pending_question():
-    from ctxloom import PendingQuestion
-    from ctxloom.effects import current_effects
+    from reactifact import PendingQuestion
+    from reactifact.effects import current_effects
 
     class Resumer(Agent):
         consumes = [Consume(Doc)]

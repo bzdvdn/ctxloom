@@ -1,7 +1,7 @@
 """summarize — conversation memory as artifacts (§27, §37).
 
 Long-running chat memory is just state: `Msg` artifacts accumulate and
-`ctxloom.recipes.WindowSummarizer` condenses the recent window into a
+`reactifact.recipes.WindowSummarizer` condenses the recent window into a
 `Summary` artifact every N messages; `WindowPruner` keeps the window bounded
 by deleting the oldest messages. No chat buffer — the same artifacts feed the
 prompt builder and the summarizer. The recipe owns the window/cadence/
@@ -17,9 +17,9 @@ import argparse
 import asyncio
 import sys
 
-from ctxloom import Agent, Consume, Context, Runtime, RuntimeResources
-from ctxloom.providers import LLMProvider
-from ctxloom.recipes import WindowPruner, WindowSummarizer, llm_summarizer
+from reactifact import Agent, Consume, Context, Runtime, RuntimeResources
+from reactifact.providers import LLMProvider
+from reactifact.recipes import WindowPruner, WindowSummarizer, llm_summarizer
 from pydantic import BaseModel
 
 
@@ -28,7 +28,7 @@ def build_llm() -> LLMProvider | None:
     OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
     import os
 
-    from ctxloom.providers import openai_llm, openrouter_llm
+    from reactifact.providers import openai_llm, openrouter_llm
 
     if os.getenv("OPENROUTER_API_KEY"):
         return openrouter_llm(max_tokens=2048)

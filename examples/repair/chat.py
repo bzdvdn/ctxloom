@@ -15,9 +15,9 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, Runtime, RuntimeResources, SessionStore
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.providers import (
+from reactifact import Budget, Runtime, RuntimeResources, SessionStore
+from reactifact.checkpoints import FileKVBackend
+from reactifact.providers import (
     OpenAICompatProvider,
     image_from_env,
     openrouter_llm,

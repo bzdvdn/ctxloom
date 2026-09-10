@@ -1,7 +1,7 @@
 """recipes.skills: frontmatter parsing, directory loading, keyword matching."""
 
-from ctxloom.recipes import Skill, load_skills, match_skills
-from ctxloom.recipes.skills import parse_skill
+from reactifact.recipes import Skill, load_skills, match_skills
+from reactifact.recipes.skills import parse_skill
 
 
 def test_parse_skill_reads_frontmatter():

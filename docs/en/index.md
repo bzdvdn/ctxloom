@@ -1,8 +1,8 @@
-# ctxloom
+# reactifact
 
 **Reactive, artifact-driven agent runtime.**
 
-`ctxloom` builds agents as reactive, stateful processes that transform
+`reactifact` builds agents as reactive, stateful processes that transform
 **versioned, typed, provenance-aware artifacts** inside an **evolving context**.
 There is no execution graph: agents react to changes in state, and the runtime
 derives what can run next from those changes.
@@ -22,7 +22,7 @@ with them*. The runtime does the plumbing.
 
 ## The mental model
 
-| Traditional agent | ctxloom |
+| Traditional agent | reactifact |
 | --- | --- |
 | A program follows a graph / plan | Agents **react** to state changes |
 | Messages are strings | **Typed artifacts** (`Claim`, `Evidence`, `Answer`, …) |
@@ -34,7 +34,7 @@ with them*. The runtime does the plumbing.
 ## Why effects instead of "return a change"?
 
 At the heart of the loop is how a produce makes a change. Many frameworks ask a
-unit of work to *return* its result, and some orchestrator applies it. ctxloom
+unit of work to *return* its result, and some orchestrator applies it. reactifact
 inverts authorship: a produce **states what should change** via `self.effects`
 (create / update / link / ask) and returns `None`; the runtime compiles the
 effect set into one atomic patch — the whole step lands (or none of it does).
@@ -52,7 +52,7 @@ async def produce(self, context, inputs, event=None) -> None:
 Because handles are objects, not ids, one statement can reference the artifact
 created by another — and because the runtime owns the compilation, you never
 assemble a `Patch` by hand. Human-in-the-loop is just another effect
-(`effects.ask(...)`). See [Why ctxloom](why-ctxloom.md) for the full argument,
+(`effects.ask(...)`). See [Why reactifact](why-reactifact.md) for the full argument,
 and [The produce contract](effects.md) for details.
 
 ## Why artifacts instead of messages?
@@ -84,7 +84,7 @@ first one's output exists, and the answer carries *proof* of where it came from:
 ```python
 from pydantic import BaseModel
 
-from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
+from reactifact import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
 
 
 class Question(BaseModel):
@@ -151,10 +151,10 @@ it's trimmed from.
 
 **Understand the idea**
 
-- [Why ctxloom](why-ctxloom.md) — the *design argument*: why effects, why no
+- [Why reactifact](why-reactifact.md) — the *design argument*: why effects, why no
   graph, why determinism, why versioned state.
-- [Comparison](comparison.md) — ctxloom vs LangGraph/CrewAI, feature by
-  feature, and when *not* to use ctxloom.
+- [Comparison](comparison.md) — reactifact vs LangGraph/CrewAI, feature by
+  feature, and when *not* to use reactifact.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
 
 **Build with it**
@@ -180,7 +180,7 @@ it's trimmed from.
 - [Replay](replay.md) — reconstruct *why* the agent answered, deterministically,
   without re-running agents.
 - [Visualization & CLI](viz.md) — Mermaid diagrams of the artifact graph and
-  a run's trace; the `ctxloom` command-line tools.
+  a run's trace; the `reactifact` command-line tools.
 - [API reference](api.md) — every top-level symbol, one line each.
 
 **See it run**

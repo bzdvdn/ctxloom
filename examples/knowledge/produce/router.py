@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.structured import structured_llm
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.structured import structured_llm
 
 from ..models import AnswerBody, ChatReply, ResearchTurn, UserQuery
 from .common import GREETING_RE, GREETING_TEXT, RESEARCH_RE, user_query

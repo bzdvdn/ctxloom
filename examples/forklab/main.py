@@ -16,9 +16,9 @@ import argparse
 import sys
 from typing import Any
 
-from ctxloom import Context
-from ctxloom.providers import openai_llm, openrouter_llm
-from ctxloom.viz import context_to_mermaid
+from reactifact import Context
+from reactifact.providers import openai_llm, openrouter_llm
+from reactifact.viz import context_to_mermaid
 
 from .pipeline import result_data, run
 

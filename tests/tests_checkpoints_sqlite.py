@@ -2,8 +2,8 @@ import asyncio
 import os
 import tempfile
 
-from ctxloom import Context
-from ctxloom.checkpoints import SQLiteBackend
+from reactifact import Context
+from reactifact.checkpoints import SQLiteBackend
 from pydantic import BaseModel
 
 

@@ -18,9 +18,9 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, Context, Runtime, RuntimeResources
-from ctxloom.providers import openai_llm, openrouter_llm
-from ctxloom.sources import WebSource
+from reactifact import Budget, Context, Runtime, RuntimeResources
+from reactifact.providers import openai_llm, openrouter_llm
+from reactifact.sources import WebSource
 from dotenv import load_dotenv
 
 from examples.research.agents import research_agents

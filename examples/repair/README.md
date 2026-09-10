@@ -36,14 +36,14 @@ fast catalog demo. Both are Russian by design (see the note above).
 
 ## Scenarios
 
-`scenarios/` holds `ctxloom.testing.ScenarioLab` scenarios — a separate track
-from the unit tests in `tests/`, run through the `ctxloom scenario` CLI so a
+`scenarios/` holds `reactifact.testing.ScenarioLab` scenarios — a separate track
+from the unit tests in `tests/`, run through the `reactifact scenario` CLI so a
 plain `pytest` run never needs a model key or a network connection:
 
 ```bash
-.venv/bin/python -m ctxloom scenario examples.repair.scenarios
-.venv/bin/python -m ctxloom scenario examples.repair.scenarios --mode record   # real OpenRouter call
-.venv/bin/python -m ctxloom scenario examples.repair.scenarios --mode replay   # offline, from the fixture
+.venv/bin/python -m reactifact scenario examples.repair.scenarios
+.venv/bin/python -m reactifact scenario examples.repair.scenarios --mode record   # real OpenRouter call
+.venv/bin/python -m reactifact scenario examples.repair.scenarios --mode replay   # offline, from the fixture
 ```
 
 ## Structure

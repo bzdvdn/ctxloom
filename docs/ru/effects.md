@@ -87,7 +87,7 @@ guard → решить → описать (self.effects) → return None
 класс-форме:
 
 ```python
-from ctxloom import produce
+from reactifact import produce
 
 @produce(Answer)
 async def answer_turn(context, inputs, event, effects):

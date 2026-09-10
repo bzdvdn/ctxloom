@@ -1,6 +1,6 @@
 """forklab web: the fork → merge pipeline streams status events and a result."""
 
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.forklab.web import create_app
 from fastapi.testclient import TestClient
 

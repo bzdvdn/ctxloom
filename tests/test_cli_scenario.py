@@ -1,5 +1,5 @@
-"""`ctxloom scenario` (`ctxloom/cli/scenario.py`) — the CLI that runs
-`ctxloom.testing` scenarios. Complements `tests/test_cli.py` (which only
+"""`reactifact scenario` (`reactifact/cli/scenario.py`) — the CLI that runs
+`reactifact.testing` scenarios. Complements `tests/test_cli.py` (which only
 checks the subcommand is registered) and `tests/test_testing_lab.py` (which
 covers `ScenarioLab` itself) with end-to-end coverage of the CLI's own
 behavior: PASS/FAIL/ERROR/SKIP reporting, `-k` filtering, `--mode` plumbing,
@@ -13,8 +13,8 @@ from __future__ import annotations
 import os
 
 import pytest
-from ctxloom.cli import main
-from ctxloom.testing.record import MODE_ENV_VAR
+from reactifact.cli import main
+from reactifact.testing.record import MODE_ENV_VAR
 
 FIXTURE_MODULE = "tests.fixtures.scenario_cases"
 

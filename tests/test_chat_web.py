@@ -2,10 +2,10 @@ import asyncio
 import os
 
 import pytest
-from ctxloom import Consume, SessionStore, create_agent, produce
-from ctxloom.chat import ChatAssistant
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.web import create_chat_router
+from reactifact import Consume, SessionStore, create_agent, produce
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.web import create_chat_router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
@@ -120,8 +120,8 @@ def test_web_extra_error_is_readable(tmp_path, monkeypatch):
     for mod in [m for m in sys.modules if m == "fastapi" or m.startswith("fastapi.")]:
         monkeypatch.delitem(sys.modules, mod)
     monkeypatch.setattr(builtins, "__import__", blocked)
-    from ctxloom import Consume, create_agent, produce
-    from ctxloom.chat import ChatAssistant
+    from reactifact import Consume, create_agent, produce
+    from reactifact.chat import ChatAssistant
 
     class _Q(BaseModel):
         text: str
@@ -131,7 +131,7 @@ def test_web_extra_error_is_readable(tmp_path, monkeypatch):
         return None
 
     agent = create_agent("a", consumes=[Consume(_Q)], produces=[produce(_Q)(_m)])
-    with pytest.raises(ImportError, match=r"ctxloom\[web\]"):
+    with pytest.raises(ImportError, match=r"reactifact\[web\]"):
         create_chat_router(
             ChatAssistant(
                 store=None,
@@ -145,7 +145,7 @@ def test_web_extra_error_is_readable(tmp_path, monkeypatch):
 def test_runtime_crash_degrades_to_fallback_message(tmp_path, caplog):
     """A crashing produce must not escape as an exception from stream()."""
 
-    from ctxloom import Agent, Produce
+    from reactifact import Agent, Produce
 
     class Boom(Produce[A]):
         async def produce(self, context, inputs, event=None):
@@ -205,12 +205,12 @@ class _SpyLLM:
         self.closed = False
 
     async def complete(self, request):
-        from ctxloom.providers import LLMResponse
+        from reactifact.providers import LLMResponse
 
         return LLMResponse(text="ok")
 
     async def stream(self, request):
-        from ctxloom.providers import LLMResponseChunk
+        from reactifact.providers import LLMResponseChunk
 
         yield LLMResponseChunk(text="ok")
 
@@ -221,7 +221,7 @@ class _SpyLLM:
 def test_callable_resources_closed_after_each_turn(tmp_path):
     """resources= a callable is assumed turn-scoped: a fresh RuntimeResources
     is built per turn, and its provider must be closed after that turn."""
-    from ctxloom import RuntimeResources
+    from reactifact import RuntimeResources
 
     built: list[_SpyLLM] = []
 
@@ -250,7 +250,7 @@ def test_callable_resources_closed_after_each_turn(tmp_path):
 def test_shared_resources_instance_not_closed(tmp_path):
     """A plain (non-callable) resources= instance must survive the turn —
     it's shared across future turns/sessions, not closed automatically."""
-    from ctxloom import RuntimeResources
+    from reactifact import RuntimeResources
 
     llm = _SpyLLM()
     shared = RuntimeResources(llm=llm)

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.sources import SourceRef
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.sources import SourceRef
 
 from ..models import (
     Claim,

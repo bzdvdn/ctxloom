@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ctxloom"
+name = "reactifact"
 version = "0.5.0"
 description = "Reactive, artifact-driven agent runtime: agents transform versioned, typed, provenance-aware artifacts inside an evolving context"
 readme = "README.md"
@@ -15,9 +15,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bzdvdn/ctxloom"
-Repository = "https://github.com/bzdvdn/ctxloom"
-Documentation = "https://github.com/bzdvdn/ctxloom/tree/master/docs"
+Homepage = "https://github.com/bzdvdn/reactifact"
+Repository = "https://github.com/bzdvdn/reactifact"
+Documentation = "https://github.com/bzdvdn/reactifact/tree/master/docs"
 
 [project.optional-dependencies]
 dev = [
@@ -36,7 +36,7 @@ pg = [
 
 # uv-native groups mirror the extras so `uv run`/`uv sync` installs the web demo
 # deps by default (no `--extra` flag needed to boot the examples). Extras stay
-# for PyPI (`pip install ctxloom[web]`).
+# for PyPI (`pip install reactifact[web]`).
 [dependency-groups]
 dev = [
     "ruff>=0.8",
@@ -55,17 +55,17 @@ pg = [
 [tool.uv]
 default-groups = ["dev", "web"]
 
-# Публикация: в wheel едет только пакет `ctxloom`; examples/tests остаются
+# Публикация: в wheel едет только пакет `reactifact`; examples/tests остаются
 # в репозитории для демо и разработки, но не попадают в дистрибутив.
 [project.scripts]
-ctxloom = "ctxloom.__main__:main"
+reactifact = "reactifact.__main__:main"
 
 [tool.setuptools]
-packages = { find = { where = ["."], include = ["ctxloom*"], exclude = ["examples*", "tests*"] } }
+packages = { find = { where = ["."], include = ["reactifact*"], exclude = ["examples*", "tests*"] } }
 
 [tool.setuptools.package-data]
-ctxloom = ["py.typed"]
-"ctxloom.tracing" = ["templates/*.html"]
+reactifact = ["py.typed"]
+"reactifact.tracing" = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -73,7 +73,7 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py311"
 line-length = 88
-src = ["ctxloom", "examples"]
+src = ["reactifact", "examples"]
 
 [tool.ruff.lint]
 select = [
@@ -102,6 +102,6 @@ exclude = ["*.md"]
 
 [tool.mypy]
 python_version = "3.11"
-packages = ["ctxloom", "examples"]
+packages = ["reactifact", "examples"]
 strict = true
 warn_unused_ignores = true

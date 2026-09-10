@@ -1,6 +1,6 @@
-from ctxloom.context import Context
-from ctxloom.providers import FakeEmbedder, FakeLLM
-from ctxloom.resources import RuntimeResources
+from reactifact.context import Context
+from reactifact.providers import FakeEmbedder, FakeLLM
+from reactifact.resources import RuntimeResources
 
 
 def test_runtime_resources_init():

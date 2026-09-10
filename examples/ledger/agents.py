@@ -7,7 +7,7 @@ three derived types — it doesn't need to know `Hours`/`Rate`/`TaxRate`/
 `DiscountRate` exist at all.
 """
 
-from ctxloom import Consume, create_agent
+from reactifact import Consume, create_agent
 
 from .models import Discount, DiscountRate, Hours, LaborCost, Rate, Tax, TaxRate
 from .produce import compute_discount, compute_labor_cost, compute_tax, compute_total

@@ -6,8 +6,8 @@ Hermetic: the evidence pool is the local fixture pages (no network).
 import asyncio
 from pathlib import Path
 
-from ctxloom import Budget, Context, Runtime, RuntimeResources
-from ctxloom.sources import FileSystemSource
+from reactifact import Budget, Context, Runtime, RuntimeResources
+from reactifact.sources import FileSystemSource
 from examples.medic_lab.agents import medic_lab_agents
 from examples.medic_lab.models import (
     Claim,
@@ -35,7 +35,7 @@ def build():
 
 def run_until_report(ctx: Context, runtime: Runtime, answers: list[str]) -> Question:
     """Runs the lab, answering every steering question from `answers`."""
-    from ctxloom.interrupt import PendingQuestion
+    from reactifact.interrupt import PendingQuestion
 
     question = ctx.create(Question(text=QUESTION, session_id="test"))
     guard = 0
@@ -114,7 +114,7 @@ def test_human_can_deepen_by_plain_number():
 def test_topic_agnostic_hypotheses_from_llm(tmp_path):
     """With an LLM the lab works for any topic: hypotheses come from the model,
     polarity from the page content — not from file names."""
-    from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+    from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 
     class StubLLM(LLMProvider):
         text = (
@@ -167,7 +167,7 @@ def test_topic_agnostic_hypotheses_from_llm(tmp_path):
 def test_deepen_uses_model_queries_and_report_synthesis(tmp_path):
     """With an LLM, deepening asks the model for clarifying sub-questions (used
     by the next investigation round) and the reporter synthesizes the answer."""
-    from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+    from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 
     class StubLLM(LLMProvider):
         text = (

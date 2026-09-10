@@ -28,7 +28,7 @@ import asyncio
 import sys
 from typing import Any
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Artifact,
     Consume,
@@ -39,9 +39,9 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
-from ctxloom.providers import LLMProvider
-from ctxloom.scheduler import Rule, uncertainty_policy
-from ctxloom.structured import structured_llm
+from reactifact.providers import LLMProvider
+from reactifact.scheduler import Rule, uncertainty_policy
+from reactifact.structured import structured_llm
 from pydantic import BaseModel
 
 
@@ -50,7 +50,7 @@ def build_llm() -> LLMProvider | None:
     OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
     import os
 
-    from ctxloom.providers import openai_llm, openrouter_llm
+    from reactifact.providers import openai_llm, openrouter_llm
 
     if os.getenv("OPENROUTER_API_KEY"):
         return openrouter_llm(max_tokens=2048)

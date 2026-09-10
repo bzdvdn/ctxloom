@@ -1,8 +1,8 @@
-# ctxloom
+# reactifact
 
 **Реактивный runtime для агентов на артефактах.**
 
-`ctxloom` строит агентов как реактивные, сохраняемые процессы, которые
+`reactifact` строит агентов как реактивные, сохраняемые процессы, которые
 преобразуют **версионируемые, типизированные артефакты с провенансом** внутри
 **эволюционирующего контекста**. Здесь нет графа исполнения: агенты реагируют на
 изменения состояния, а runtime сам выводит, что может запуститься дальше.
@@ -22,7 +22,7 @@ CONTEXT ───────► ARTIFACTS ──► AGENTS REACT ──self.eff
 
 ## Ментальная модель
 
-| Традиционный агент               | ctxloom                                                           |
+| Традиционный агент               | reactifact                                                           |
 | -------------------------------- | ----------------------------------------------------------------- |
 | Программа идёт по графу/плану    | Агенты **реагируют на изменения состояния**                       |
 | Сообщения — строки               | **Типизированные артефакты** (`Claim`, `Evidence`, `Answer`, …)   |
@@ -34,7 +34,7 @@ CONTEXT ───────► ARTIFACTS ──► AGENTS REACT ──self.eff
 ## Почему effects вместо «вернуть изменение»?
 
 В центре цикла — то, как produce вносит изменение. Многие фреймворки просят производителя _вернуть_ результат, а какой-то оркестратор применяет его.
-ctxloom переворачивает авторство: produce **формулирует, что должно
+reactifact переворачивает авторство: produce **формулирует, что должно
 измениться**, через `self.effects` (create / update / link / ask) и возвращает
 `None`; runtime компилирует набор эффектов в один атомарный патч — либо
 применяется весь шаг, либо ничего.
@@ -52,7 +52,7 @@ async def produce(self, context, inputs, event=None) -> None:
 Поскольку handle — это объекты, а не id, одно выражение может ссылаться на
 артефакт, созданный другим. А так как компиляцией владеет runtime, ручной
 сборки `Patch` не бывает. Участие человека — просто ещё один эффект
-(`effects.ask(...)`). Подробнее — в [Почему ctxloom](why-ctxloom.md) и в
+(`effects.ask(...)`). Подробнее — в [Почему reactifact](why-reactifact.md) и в
 [контракте produce](effects.md).
 
 ## Почему артефакты вместо сообщений?
@@ -85,7 +85,7 @@ _«почему агент так сказал?»_, проходя по связ
 ```python
 from pydantic import BaseModel
 
-from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
+from reactifact import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
 
 
 class Question(BaseModel):
@@ -152,10 +152,10 @@ print("supported_by:", evidence.data.text)  # провенанс, который
 
 **Понять идею**
 
-- [Почему ctxloom](why-ctxloom.md) — _дизайн-аргумент_: почему effects, почему
+- [Почему reactifact](why-reactifact.md) — _дизайн-аргумент_: почему effects, почему
   без графа, почему детерминизм, почему версионируемое состояние.
-- [Сравнение](comparison.md) — ctxloom vs LangGraph/CrewAI по пунктам, и когда
-  ctxloom *не* стоит использовать.
+- [Сравнение](comparison.md) — reactifact vs LangGraph/CrewAI по пунктам, и когда
+  reactifact *не* стоит использовать.
 - [Concepts](concepts.md) — Context, Artifact, Patch, Agent, Produce.
 
 **Строить на этом**
@@ -181,7 +181,7 @@ print("supported_by:", evidence.data.text)  # провенанс, который
 - [Replay](replay.md) — детерминированная реконструкция «почему агент
   ответил именно так», без повторного запуска агентов.
 - [Visualization & CLI](viz.md) — Mermaid-диаграммы графа артефактов и трейса
-  запуска; CLI-утилиты `ctxloom`.
+  запуска; CLI-утилиты `reactifact`.
 - [API reference](api.md) — все верхнеуровневые символы, по строке на каждый.
 
 **Посмотреть в деле**

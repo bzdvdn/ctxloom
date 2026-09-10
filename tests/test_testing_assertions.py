@@ -1,4 +1,4 @@
-"""`ctxloom.testing.assertions` — the langgraph-scenario-lab-style sugar
+"""`reactifact.testing.assertions` — the langgraph-scenario-lab-style sugar
 methods (`contains`, `field_in`, `equals`, `PathAssertions.any_of`,
 `ToolAssertions.called_any`), plus a smoke check on the pre-existing ones
 they sit next to."""
@@ -6,14 +6,14 @@ they sit next to."""
 from __future__ import annotations
 
 import pytest
-from ctxloom.context import Context
-from ctxloom.testing.assertions import (
+from reactifact.context import Context
+from reactifact.testing.assertions import (
     ArtifactAssertions,
     PathAssertions,
     ToolAssertions,
 )
-from ctxloom.testing.exceptions import AssertionFailure
-from ctxloom.testing.fault import ToolCallRecord
+from reactifact.testing.exceptions import AssertionFailure
+from reactifact.testing.fault import ToolCallRecord
 from pydantic import BaseModel
 
 
@@ -63,7 +63,7 @@ def test_equals_reports_every_mismatch():
 
 
 def test_path_any_of_passes_when_one_agent_ran():
-    from ctxloom.tracing.models import AgentSpan, RunTrace
+    from reactifact.tracing.models import AgentSpan, RunTrace
 
     trace = RunTrace(
         id="t1",
@@ -75,7 +75,7 @@ def test_path_any_of_passes_when_one_agent_ran():
 
 
 def test_path_any_of_fails_when_none_ran():
-    from ctxloom.tracing.models import AgentSpan, RunTrace
+    from reactifact.tracing.models import AgentSpan, RunTrace
 
     trace = RunTrace(
         id="t1",

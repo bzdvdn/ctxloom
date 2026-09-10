@@ -1,4 +1,4 @@
-from ctxloom.artifacts import Artifact
+from reactifact.artifacts import Artifact
 from pydantic import BaseModel
 
 

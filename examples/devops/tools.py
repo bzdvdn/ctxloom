@@ -7,7 +7,7 @@ Mandatory parameters (namespace / project / role) force the LLM agent
 to ask the user for missing context (HITL, type:"ask").
 """
 
-from ctxloom import tool
+from reactifact import tool
 
 #: Tool call counter — for tests and observing the framework.
 CALLS: dict[str, int] = {}

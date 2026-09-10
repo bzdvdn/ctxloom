@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Literal
 
-from ctxloom import Context
-from ctxloom.structured import StructuredLLM
+from reactifact import Context
+from reactifact.structured import StructuredLLM
 from pydantic import BaseModel
 
 from ..prompts import ROUTE_SYSTEM

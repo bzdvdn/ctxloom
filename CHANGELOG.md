@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **ctxloom** are documented here as releases are cut.
+All notable changes to **reactifact** are documented here as releases are cut.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [SemVer](https://semver.org/) with `rc` marks for pre-releases.
 
@@ -13,11 +13,11 @@ tracking, session persistence, event-loop blocking, a budget-deadline gap in
 `ToolUse`, a `ChatAssistant` concurrency race), a breaking trim of the
 public API surface down to core primitives, an internal split of `Runtime`'s
 tracing and `Context`'s fork/merge logic into their own modules, and the new
-`ctxloom.testing` scenario harness.
+`reactifact.testing` scenario harness.
 
 ### Breaking
 
-- **`ctxloom/__init__.py` now exports only the core surface** — the
+- **`reactifact/__init__.py` now exports only the core surface** — the
   primitives from the README's "Core primitives" section plus tool calling,
   sessions, and the LLM provider protocol (~40 names, down from ~150).
   Eval, tracing, checkpoint/branch backends beyond the in-memory default,
@@ -26,24 +26,24 @@ tracing and `Context`'s fork/merge logic into their own modules, and the new
   level — import them from their own submodule instead, e.g.:
 
   ```python
-  from ctxloom.structured import structured_llm
-  from ctxloom.tracing import TraceStore
-  from ctxloom.chat import ChatAssistant
-  from ctxloom.checkpoints import FileKVBackend, SQLiteKVBackend
-  from ctxloom.eval import EvalCase, run_suite
-  from ctxloom.llm_agent import HITLLMAgent
-  from ctxloom.replay import ReplayLLM
-  from ctxloom.scheduler import Scheduler
-  from ctxloom.tool_use import ToolUse
-  from ctxloom.viz import blueprint
-  from ctxloom.branching import BranchStore
-  from ctxloom.prompts import PromptTemplate
-  from ctxloom.streaming import ProgressEvent
+  from reactifact.structured import structured_llm
+  from reactifact.tracing import TraceStore
+  from reactifact.chat import ChatAssistant
+  from reactifact.checkpoints import FileKVBackend, SQLiteKVBackend
+  from reactifact.eval import EvalCase, run_suite
+  from reactifact.llm_agent import HITLLMAgent
+  from reactifact.replay import ReplayLLM
+  from reactifact.scheduler import Scheduler
+  from reactifact.tool_use import ToolUse
+  from reactifact.viz import blueprint
+  from reactifact.branching import BranchStore
+  from reactifact.prompts import PromptTemplate
+  from reactifact.streaming import ProgressEvent
   ```
 
   Nothing moved or was renamed — every symbol still lives in the same
   module it always did; only the top-level re-export was removed. Grep your
-  codebase for the names above under `from ctxloom import` and repoint them
+  codebase for the names above under `from reactifact import` and repoint them
   at their submodule.
 
 ### Performance
@@ -93,7 +93,7 @@ tracing and `Context`'s fork/merge logic into their own modules, and the new
   reads every matching file under `root` — for a large corpus, that stalls
   the whole runtime (every concurrently-running agent) for as long as the
   scan takes. Each now offloads via `asyncio.to_thread`, the same pattern
-  `ctxloom/checkpoints.py`'s backends already use. `resolve()` on all three
+  `reactifact/checkpoints.py`'s backends already use. `resolve()` on all three
   is offloaded too. `search()` itself is unchanged (still synchronous,
   still directly usable/testable without an event loop).
 - **`EmbeddingSource.invalidate()`**: the vector index was built once,
@@ -135,7 +135,7 @@ tracing and `Context`'s fork/merge logic into their own modules, and the new
 
 ### Changed
 
-- **`Runtime`'s tracing plumbing moved to `ctxloom.tracing.RunTracer`.**
+- **`Runtime`'s tracing plumbing moved to `reactifact.tracing.RunTracer`.**
   Span/trace building (`ArtifactRef`/`RelationRef`/`AgentSpan`/`RunTrace`
   construction), the `RecordingLLM` wrap of `resources.llm`, and the
   task→agent attribution that wrap needs were previously interleaved with
@@ -150,29 +150,29 @@ tracing and `Context`'s fork/merge logic into their own modules, and the new
   Internal-only rename, not covered by the API-surface breaking change
   above: nothing here was ever part of the public API.
 
-- **`Context`'s fork/merge algorithm moved to `ctxloom.branching`.**
+- **`Context`'s fork/merge algorithm moved to `reactifact.branching`.**
   `clone()`/`branch()`/`merge_from()`/`merge()` used to carry the full
   three-way-merge implementation (~180 lines) inline in `context.py`,
   reaching into `_artifacts`/`_relations` directly. That logic is now
   `clone_context`/`fork_context`/`merge_context_from`/`merge_contexts` in
-  `ctxloom/branching.py`, next to `BranchStore` (which already persisted
+  `reactifact/branching.py`, next to `BranchStore` (which already persisted
   forks, just didn't own their semantics). `Context.clone()/.branch()/
   .merge_from()/.merge()` are now one-line delegations — same signatures,
   same behavior, including the pre-existing quirk where `merge_from()`
   mints a fresh id for an artifact absent from the target (not "fixed" as
   part of this move — a real behavior change belongs in its own change).
-  `MergeConflict` moved with the algorithm: `ctxloom.branching.MergeConflict`,
-  still re-exported as `ctxloom.MergeConflict` — code importing it from
-  `ctxloom.context` directly (nothing in this repo did) would need to
-  switch to `ctxloom.branching` or the top-level import. `context.py` drops
+  `MergeConflict` moved with the algorithm: `reactifact.branching.MergeConflict`,
+  still re-exported as `reactifact.MergeConflict` — code importing it from
+  `reactifact.context` directly (nothing in this repo did) would need to
+  switch to `reactifact.branching` or the top-level import. `context.py` drops
   by ~150 lines; conflict messages now say `target=`/`other=` instead of
   `self=`/`other=` (cosmetic — no test or example asserted on the old
   wording).
 
 ### Added
 
-- **`ctxloom.testing`**: a scenario-based behavioral testing harness for agent
-  pipelines. `ScenarioLab`/`Scenario` (`ctxloom scenario` CLI) seed artifacts
+- **`reactifact.testing`**: a scenario-based behavioral testing harness for agent
+  pipelines. `ScenarioLab`/`Scenario` (`reactifact scenario` CLI) seed artifacts
   into a fresh `Context`, run a `Runtime` to completion, and return a
   `ScenarioResult` with chained assertions (`.artifacts(...)`, `.tools`,
   `.path`, `.llm`, `.errors`). `Scenario` (`lab.scenario()`) supports
@@ -182,11 +182,11 @@ tracing and `Context`'s fork/merge logic into their own modules, and the new
   generic resource fault injection (`lab.fail_resource(name, error,
   method=None, times=None)`) — the latter fails the LLM, the embedder, a
   named source, or any `resources.set(...)` value via a duck-typed
-  reflection proxy (`ctxloom/testing/mock.py`) that correctly handles sync,
+  reflection proxy (`reactifact/testing/mock.py`) that correctly handles sync,
   async, and async-generator methods.
-- Record/replay LLM wrapping (`ctxloom/testing/record.py`, reusing
-  `ReplayLLM`) and a `@scenario` registry (`ctxloom/testing/registry.py`)
-  for discovering and running scenarios via `ctxloom scenario <module>...`.
+- Record/replay LLM wrapping (`reactifact/testing/record.py`, reusing
+  `ReplayLLM`) and a `@scenario` registry (`reactifact/testing/registry.py`)
+  for discovering and running scenarios via `reactifact scenario <module>...`.
 - Assertion sugar: `ArtifactAssertions.equals/.contains/.field_in`,
   `PathAssertions.any_of/.times`, `ToolAssertions.called_any`.
 - Worked examples: `examples/repair/scenarios/`, `examples/knowledge/scenarios/`.
@@ -222,7 +222,7 @@ checkpoint/session/branch layer. First stable (non-rc) release.
   the connection-per-operation overhead and the missing lock-wait timeout
   that could raise `sqlite3.OperationalError: database is locked` under
   concurrent writers.
-- `ctxloom/cli/` package: `graph`/`context`/`trace`/`replay`/`branch` are now
+- `reactifact/cli/` package: `graph`/`context`/`trace`/`replay`/`branch` are now
   one module each (`add_parser()` + handler) instead of living in a single
   334-line `__main__.py`, which is now a thin entry point.
 - `_openai_compat_llm()`/`_openai_compat_embedder()`/
@@ -266,15 +266,15 @@ checkpoint/session/branch layer. First stable (non-rc) release.
   bounded conversation memory (periodic summarization + pruning) as two
   parametrized `Produce`s, generalized from `examples/summarize/main.py`
   (which now uses them instead of its own hand-rolled Summarize/Prune pair).
-- `docs/{en,ru}/comparison.md` — ctxloom vs LangGraph/CrewAI, feature by
-  feature, and an explicit "where ctxloom is not the right choice" section.
+- `docs/{en,ru}/comparison.md` — reactifact vs LangGraph/CrewAI, feature by
+  feature, and an explicit "where reactifact is not the right choice" section.
 - `docs/{en,ru}/api.md`: a **Stability** section spelling out the pre-1.0
-  SemVer contract — public API is `ctxloom.__all__` (and each submodule's own
+  SemVer contract — public API is `reactifact.__all__` (and each submodule's own
   `__all__`), everything importable-but-unexported (e.g.
-  `ctxloom.relations.RelationGraph`, `ctxloom.commit_log.CommitLog`) carries
+  `reactifact.relations.RelationGraph`, `reactifact.commit_log.CommitLog`) carries
   no compatibility guarantee, and breaking changes are always called out in
   `CHANGELOG.md` even pre-1.0.
-- `tests/test_cli.py`: the `ctxloom/cli/` package (extracted this release)
+- `tests/test_cli.py`: the `reactifact/cli/` package (extracted this release)
   shipped with 0% test coverage — now covered end to end (parser wiring,
   `graph`/`context`/`replay`/`branch`/`trace`, happy paths and the shared
   "store not found" error path).
@@ -284,8 +284,8 @@ checkpoint/session/branch layer. First stable (non-rc) release.
 
 ### Changed
 
-- `Context` split: `RelationGraph` (`ctxloom/relations.py`) and `CommitLog`
-  (`ctxloom/commit_log.py`) extracted out of the 754-line `Context` god
+- `Context` split: `RelationGraph` (`reactifact/relations.py`) and `CommitLog`
+  (`reactifact/commit_log.py`) extracted out of the 754-line `Context` god
   object — same public API and behavior, verified against the full suite
   and forklab's branch/merge/conflict path byte-for-byte.
 - `SessionStore`/`BranchStore` no longer hand-roll their own
@@ -316,8 +316,8 @@ checkpoint/session/branch layer. First stable (non-rc) release.
   already-`async` chat/web request handlers (`chat.py`, `web.py`, the
   `medic_lab` example router) — silently blocking the event loop on every
   turn. Now real `await` calls against the async session API.
-- `ctxloom/__init__.py`: 15 public names (eval + replay helpers) were
-  importable but missing from `__all__`, so `from ctxloom import *` and
+- `reactifact/__init__.py`: 15 public names (eval + replay helpers) were
+  importable but missing from `__all__`, so `from reactifact import *` and
   doc/IDE tooling silently dropped them.
 - Minor example bugs across `knowledge`, `map_reduce`, `medic_lab`, and
   `repair` produces: a stale re-query re-running the same filter twice
@@ -400,8 +400,8 @@ Patch release on top of 0.3.0.
 - **`create_trace_router` accepts any `TraceReader`** — the dashboard now works
   against `PostgresStore(dsn)` directly, not just SQLite.
 - **`LangfuseTracer` is async** (`httpx.AsyncClient`); `RecordingLLM` unchanged.
-- **CLI `ctxloom trace` awaits** the async store.
-- Exported `RelationRef` from `ctxloom.tracing`.
+- **CLI `reactifact trace` awaits** the async store.
+- Exported `RelationRef` from `reactifact.tracing`.
 
 ### Changed
 
@@ -419,17 +419,17 @@ about the ergonomics around it.
 
 ### Added
 
-- **Chat layer** — `ChatAssistant` (`ctxloom.chat`): session-persisted turns
+- **Chat layer** — `ChatAssistant` (`reactifact.chat`): session-persisted turns
   (`stream`/`invoke`/`history`) driven by hooks (`agents`, `user_message`,
   `reply`, `session_state`, `create_message`, `tracer`); transport-agnostic
   building blocks (`run_message`, `default_session_state`).
-- **Web router** — `ctxloom.web.create_chat_router(assistant)` mounts the
+- **Web router** — `reactifact.web.create_chat_router(assistant)` mounts the
   canonical SSE chat contract (`/api/chat/stream`, `/api/runs/{id}`, `health`,
   delete) on *your* FastAPI app. FastAPI is imported lazily with a readable
-  `pip install "ctxloom[web]"` error when the extra is missing.
+  `pip install "reactifact[web]"` error when the extra is missing.
 - **Error resilience** — the chat layer never leaks a 500: runtime crashes,
   failing reply hooks and session-open errors degrade to a fallback `message`
-  (`error: true`) and are logged via the `ctxloom.chat` logger.
+  (`error: true`) and are logged via the `reactifact.chat` logger.
 - **`create_agent`** — constructor-style agent factory: `Agent` is a thin
   container, no subclassing needed for the common case.
 - **Function produces with effects** — `@produce(…)` functions may declare an
@@ -438,13 +438,13 @@ about the ergonomics around it.
 - **`Context.latest(type)`** — the most recent artifact of a type.
 - **Zero-run diagnostic** — a run where no agent reacted prints a one-time hint
   (agents present / consumed types) instead of failing silently.
-- **CLI friendliness** — `ctxloom` with no args prints a welcome + how-to,
-  `ctxloom --version` reports the release.
+- **CLI friendliness** — `reactifact` with no args prints a welcome + how-to,
+  `reactifact --version` reports the release.
 
 ### Refactored
 
 - **Examples** — `knowledge`, `research`, `devops`, `repair` web layers rebuilt
-  on `ctxloom.chat` + `create_chat_router` (~60% less code each; domain hooks
+  on `reactifact.chat` + `create_chat_router` (~60% less code each; domain hooks
   only). medic-lab/forkLab stay custom by design.
 
 ---
@@ -458,9 +458,9 @@ now ready for wider adoption.
 
 - **PostgreSQL session backend** — `PostgreSQLKVBackend` (behind the `pg`
   extra): sessions stored in the same Postgres as the application.
-- **Readable optional-dependency errors** — `ctxloom._extras.require_extra`:
+- **Readable optional-dependency errors** — `reactifact._extras.require_extra`:
   missing `pg`/other extras now say
-  `pip install "ctxloom[pg]"` / `uv sync --extra pg` instead of a bare
+  `pip install "reactifact[pg]"` / `uv sync --extra pg` instead of a bare
   `ModuleNotFoundError` (applies to the Postgres KV and trace sink).
 
 ### Internal
@@ -468,7 +468,7 @@ now ready for wider adoption.
 - **CI** — GitHub Actions: checks + wheel smoke (`ci.yml`) and release-on-tag
   (`release.yml`).
 - **Release process** — `docs/en|ru/release.md` (versioning, changelog,
-  build/verify/publish) and the `ctxloom` console script.
+  build/verify/publish) and the `reactifact` console script.
 
 ---
 
@@ -483,16 +483,16 @@ LLM via `.env`.
 - **Effects authoring (§24)**: `Produce` writes `self.effects.create/update/
   link/ask/resume` and returns `None`; the runtime compiles the effect set into
   one atomic `Patch` (commit, events, validation, trace). `Patch` is the
-  runtime's transport; `Operation` types moved to `ctxloom.operations`.
+  runtime's transport; `Operation` types moved to `reactifact.operations`.
 - **HITL (§60)**: `effects.ask(...)` → `PendingQuestion`, answered with
   `effects.resume(...)`; `InterruptPatch` removed.
-- **Recipes `ctxloom.recipes`**: `fan_out_sources`, `materialize_doc`,
+- **Recipes `reactifact.recipes`**: `fan_out_sources`, `materialize_doc`,
   `StatusMachine`, `keyword_score`/`stem_words` (EN/RU), change→rebuild
   rollback helpers.
 - **Branching & merge (§39-§40)**: `Context.branch()`, three-way `merge()`
   with explicit `MergeConflict`, `BranchStore` over KV, CLI.
 - **Replay (§55)**: `ReplayLLM` record/replay, deterministic state replay.
-- **Evaluation harness (§56)**: `ctxloom.eval` — multi-level metrics over the
+- **Evaluation harness (§56)**: `reactifact.eval` — multi-level metrics over the
   final state.
 - **Adaptive scheduling (§26, §24)**: `Runtime(scheduler=…)` —
   filter (rules) → deterministic rank → LLM tie-break (app-owned system
@@ -503,10 +503,10 @@ LLM via `.env`.
 - **Observability (§54)**: SQLite trace store, dashboard with sequence and
   evidence-graph (Mermaid), Langfuse/Postgres sinks.
 - **Viz & CLI**: `blueprint`/`context_to_mermaid`/`trace_to_mermaid` and
-  `python -m ctxloom {graph,context,trace,replay,branch}`.
+  `python -m reactifact {graph,context,trace,replay,branch}`.
 - **Providers**: OpenAI-compatible chat/embedder + Anthropic, Gemini, Mistral,
   OpenRouter, Groq, xAI, DeepSeek, Azure, and more; image/speech/video; fakes.
-- **`ctxloom` console script** (`uv add` → `ctxloom graph …`).
+- **`reactifact` console script** (`uv add` → `reactifact graph …`).
 
 ### Added — examples (in-repo, not shipped)
 
@@ -519,7 +519,7 @@ design, with plan/estimate UI + CSV export) · `forklab` (branch/merge) ·
 
 - `Produce` no longer returns `Patch`; effects are the authoring surface.
 - `Agent.execute` runs produces; the runtime compiles the effects slot.
-- `MergeConflict`, `ReplayLLM`, `ctxloom.eval`, scheduler — new core surface.
+- `MergeConflict`, `ReplayLLM`, `reactifact.eval`, scheduler — new core surface.
 
 ### Removed
 
@@ -528,4 +528,4 @@ design, with plan/estimate UI + CSV export) · `forklab` (branch/merge) ·
 ### Notes
 
 - Requires Python ≥ 3.11; only `pydantic>=2.13` is mandatory at runtime.
-- `uv build` ships only the `ctxloom` package (examples/tests stay in-repo).
+- `uv build` ships only the `reactifact` package (examples/tests stay in-repo).

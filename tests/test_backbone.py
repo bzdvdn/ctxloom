@@ -1,7 +1,7 @@
 import asyncio
 
-from ctxloom import Agent, Consume, Context, EventType, Patch, Runtime, Trigger
-from ctxloom.commit import Read, Write
+from reactifact import Agent, Consume, Context, EventType, Patch, Runtime, Trigger
+from reactifact.commit import Read, Write
 from pydantic import BaseModel
 
 

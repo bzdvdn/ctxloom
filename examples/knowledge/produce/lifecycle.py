@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.recipes import StatusMachine, match_skills
-from ctxloom.sources import SourceRef
-from ctxloom.structured import structured_llm
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.recipes import StatusMachine, match_skills
+from reactifact.sources import SourceRef
+from reactifact.structured import structured_llm
 
 from ..models import (
     Answer,

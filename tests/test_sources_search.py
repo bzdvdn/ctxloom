@@ -1,4 +1,4 @@
-from ctxloom.sources import FileSystemSource, Source, SourceRef
+from reactifact.sources import FileSystemSource, Source, SourceRef
 
 
 def test_filesystem_keyword_search(tmp_path):

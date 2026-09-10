@@ -2,7 +2,7 @@
 
 import os
 
-from ctxloom.providers import (
+from reactifact.providers import (
     cerebras_llm,
     github_models_llm,
     groq_llm,

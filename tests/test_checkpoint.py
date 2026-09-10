@@ -3,9 +3,9 @@ import os
 import tempfile
 
 import pytest
-from ctxloom.commit import Commit
-from ctxloom.context import Context
-from ctxloom.patches import Update
+from reactifact.commit import Commit
+from reactifact.context import Context
+from reactifact.patches import Update
 from pydantic import BaseModel
 
 
@@ -61,7 +61,7 @@ def test_postgres_kv_requires_dsn_and_lazy_driver():
     """The backend exists in the public API; psycopg is imported only at use.
 
     Run against a real Postgres with TEST_PG_DSN set:
-      TEST_PG_DSN=postgresql://user:pass@localhost/ctxloom pytest tests/test_checkpoint.py
+      TEST_PG_DSN=postgresql://user:pass@localhost/reactifact pytest tests/test_checkpoint.py
     """
     import os
 
@@ -74,7 +74,7 @@ def test_postgres_kv_requires_dsn_and_lazy_driver():
 
 
 async def _test_postgres_kv_roundtrip(dsn: str) -> None:
-    from ctxloom.checkpoints import PostgreSQLKVBackend
+    from reactifact.checkpoints import PostgreSQLKVBackend
 
     backend = PostgreSQLKVBackend(dsn)
     try:
@@ -91,17 +91,17 @@ def test_require_extra_readable_error():
     """Missing extra dependency → a hint, not a bare ModuleNotFoundError."""
     from unittest import mock
 
-    from ctxloom._extras import require_extra
+    from reactifact._extras import require_extra
 
     def _boom(name, *a, **kw):
         raise ModuleNotFoundError(f"No module named '{name}'", name=name)
 
-    with mock.patch("ctxloom._extras.importlib.import_module", side_effect=_boom):
+    with mock.patch("reactifact._extras.importlib.import_module", side_effect=_boom):
         try:
             require_extra("PostgreSQLKVBackend", "psycopg", "pg")
         except ImportError as exc:
             message = str(exc)
-            assert 'pip install "ctxloom[pg]"' in message
+            assert 'pip install "reactifact[pg]"' in message
             assert "PostgreSQLKVBackend requires" in message
         else:  # pragma: no cover
             raise AssertionError("expected ImportError with the install hint")

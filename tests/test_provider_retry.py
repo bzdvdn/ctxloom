@@ -6,14 +6,14 @@ fails once (503) then succeeds."""
 import asyncio
 
 import httpx
-from ctxloom.providers import (
+from reactifact.providers import (
     OpenAICompatEmbedder,
     OpenAICompatProvider,
     embedder_from_env,
 )
-from ctxloom.providers.image import OpenAICompatImageProvider
-from ctxloom.providers.speech import OpenAICompatSpeech, OpenAICompatTranscriber
-from ctxloom.providers.video import SoraVideoProvider, VideoResult
+from reactifact.providers.image import OpenAICompatImageProvider
+from reactifact.providers.speech import OpenAICompatSpeech, OpenAICompatTranscriber
+from reactifact.providers.video import SoraVideoProvider, VideoResult
 
 
 def _fail_once_then(ok_response: httpx.Response) -> httpx.MockTransport:
@@ -48,7 +48,7 @@ def test_chat_complete_retries_transient_error(monkeypatch):
     provider = OpenAICompatProvider(
         base_url="https://llm.example/v1", model="m", transport=transport
     )
-    from ctxloom.providers import LLMRequest, Message
+    from reactifact.providers import LLMRequest, Message
 
     response = asyncio.run(provider.complete(LLMRequest(messages=[Message.user("hi")])))
     assert response.text == "ok"

@@ -1,9 +1,9 @@
 import asyncio
 
-from ctxloom import Consume, Context, Runtime, RuntimeResources
-from ctxloom.llm_agent import StructuredGenerateAgent
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.structured import parse_structured, structured_llm
+from reactifact import Consume, Context, Runtime, RuntimeResources
+from reactifact.llm_agent import StructuredGenerateAgent
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.structured import parse_structured, structured_llm
 from pydantic import BaseModel
 
 
@@ -113,7 +113,7 @@ def test_structured_llm_without_llm_returns_none():
 
 
 def test_llm_reply_returns_plain_text():
-    from ctxloom.structured import llm_reply
+    from reactifact.structured import llm_reply
 
     llm = ScriptedLLM(['{"text": "просто ответ"}'])
     ctx = Context(resources=RuntimeResources(llm=llm))
@@ -122,7 +122,7 @@ def test_llm_reply_returns_plain_text():
 
 
 def test_llm_reply_is_none_on_honest_failure():
-    from ctxloom.structured import llm_reply
+    from reactifact.structured import llm_reply
 
     llm = ScriptedLLM(["не json", "тоже не json"])
     ctx = Context(resources=RuntimeResources(llm=llm))
@@ -131,7 +131,7 @@ def test_llm_reply_is_none_on_honest_failure():
 
 
 def test_llm_reply_without_model_returns_none():
-    from ctxloom.structured import llm_reply
+    from reactifact.structured import llm_reply
 
     ctx = Context()
     assert asyncio.run(llm_reply(ctx, user="х")) is None
@@ -212,7 +212,7 @@ def test_on_error_reports_parse_error():
 
 
 def test_prompt_binds_system_and_schema():
-    from ctxloom.structured import StructuredLLM
+    from reactifact.structured import StructuredLLM
 
     seen = {}
 

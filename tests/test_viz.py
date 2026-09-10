@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from ctxloom import Agent, Consume, Context, Patch, Produce, RuntimeResources
-from ctxloom.recipes import StatusMachine
-from ctxloom.tracing.models import (
+from reactifact import Agent, Consume, Context, Patch, Produce, RuntimeResources
+from reactifact.recipes import StatusMachine
+from reactifact.tracing.models import (
     AgentSpan,
     ArtifactRef,
     LLMCall,
     RelationRef,
     RunTrace,
 )
-from ctxloom.viz import (
+from reactifact.viz import (
     blueprint,
     context_to_mermaid,
     trace_provenance_to_mermaid,

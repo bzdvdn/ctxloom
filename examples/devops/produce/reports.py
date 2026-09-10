@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.tool_use import ToolAnswer
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.tool_use import ToolAnswer
 from pydantic import BaseModel
 
 from ..models import AnsibleReport, GitlabReport, K8sReport

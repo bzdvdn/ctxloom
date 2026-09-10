@@ -11,7 +11,7 @@ uv run python -m examples.time_travel.main
 ```
 
 The same session can be replayed to the milestone with
-`python -m ctxloom replay <sessions> --session … --version …` (§55).
+`python -m reactifact replay <sessions> --session … --version …` (§55).
 
 Demonstrates: `Context.branch()`, parallel runtimes, explicit three-way
 `merge()`, provenance kept across forks, deterministic ranking (§67).

@@ -1,13 +1,13 @@
 import asyncio
 
-from ctxloom import (
+from reactifact import (
     Budget,
     Context,
     PendingQuestion,
     Runtime,
     RuntimeResources,
 )
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.devops.agents import (
     AnsibleAgent,
     GitlabAgent,

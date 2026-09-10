@@ -1,6 +1,6 @@
 """Repair assistant agent — a container over the staged Produce (§71)."""
 
-from ctxloom import Agent, Consume, PendingQuestion, Produce
+from reactifact import Agent, Consume, PendingQuestion, Produce
 
 from .models import ChatReply, Project, UserMsg
 from .produce import (

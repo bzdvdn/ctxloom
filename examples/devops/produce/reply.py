@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Produce
+from reactifact import Artifact, Context, Event, Produce
 
 from ..models import AnsibleReport, ChatReply, GitlabReport, K8sReport
 

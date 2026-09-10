@@ -1,7 +1,7 @@
 """FastAPI + SSE for the devops assistant (k8s / GitLab / Ansible).
 
-The transport is the canonical ctxloom chat contract (`ctxloom.chat` +
-`ctxloom.web` router). The one domain twist: when an agent is waiting for
+The transport is the canonical reactifact chat contract (`reactifact.chat` +
+`reactifact.web` router). The one domain twist: when an agent is waiting for
 clarification (HITL), the next user message is an *answer* — `create_message`
 resumes the pending question instead of appending a new artifact.
 
@@ -18,13 +18,13 @@ from typing import Any
 if __package__ in (None, ""):  # running as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, RuntimeResources, SessionStore
-from ctxloom.chat import ChatAssistant
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.providers import openai_llm, openrouter_llm
-from ctxloom.tracing import Tracer, TraceStore
-from ctxloom.tracing.web import create_trace_router
-from ctxloom.web import create_chat_router
+from reactifact import Budget, RuntimeResources, SessionStore
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.providers import openai_llm, openrouter_llm
+from reactifact.tracing import Tracer, TraceStore
+from reactifact.tracing.web import create_trace_router
+from reactifact.web import create_chat_router
 from dotenv import load_dotenv
 from examples.devops.agents import (
     AnsibleAgent,
@@ -127,7 +127,7 @@ def create_app(db=None, llm=None, store_dir: str | None = None) -> FastAPI:
         status_kinds=("status", "agent"),
     )
 
-    app = FastAPI(title="devops-ai (ctxloom)")
+    app = FastAPI(title="devops-ai (reactifact)")
     app.include_router(
         create_trace_router(
             trace_store,

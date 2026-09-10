@@ -16,7 +16,7 @@ import asyncio
 import sys
 from typing import Any
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Artifact,
     Consume,
@@ -26,9 +26,9 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
-from ctxloom.prompts import PromptTemplate
-from ctxloom.providers import LLMProvider
-from ctxloom.structured import structured_llm
+from reactifact.prompts import PromptTemplate
+from reactifact.providers import LLMProvider
+from reactifact.structured import structured_llm
 from pydantic import BaseModel
 
 
@@ -37,7 +37,7 @@ def build_llm() -> LLMProvider | None:
     OpenAI-compatible endpoint; `None` when no key is configured -> offline."""
     import os
 
-    from ctxloom.providers import openai_llm, openrouter_llm
+    from reactifact.providers import openai_llm, openrouter_llm
 
     if os.getenv("OPENROUTER_API_KEY"):
         return openrouter_llm(max_tokens=2048)
@@ -198,7 +198,7 @@ class Flow(Agent):
 
 
 DEFAULT_SOURCE = (
-    "Ctxloom treats an agent system as versioned artifacts and reactions, "
+    "Reactifact treats an agent system as versioned artifacts and reactions, "
     "not a hand-drawn execution graph wired node by node.\n\n"
     "Every agent declares only what it consumes and produces; the runtime "
     "works out execution order from state changes as they happen.\n\n"

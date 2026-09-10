@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import re
 
-from ctxloom import Artifact, Context, Event
-from ctxloom.interrupt import PendingQuestion
+from reactifact import Artifact, Context, Event
+from reactifact.interrupt import PendingQuestion
 
 from ..models import (
     Claim,

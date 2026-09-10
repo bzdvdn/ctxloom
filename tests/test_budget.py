@@ -1,6 +1,6 @@
 import asyncio
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Budget,
     Context,

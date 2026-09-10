@@ -2,9 +2,9 @@
 
 import asyncio
 
-from ctxloom import Context, PendingQuestion, RuntimeResources
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.scheduler import uncertainty_policy
+from reactifact import Context, PendingQuestion, RuntimeResources
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.scheduler import uncertainty_policy
 from examples.adaptive.main import RULES, ArtistA, ArtistB, Task, _metric
 
 
@@ -121,7 +121,7 @@ def test_adaptive_demo_rule_prunes_candidate():
 
 
 def test_scheduler_uses_custom_llm_system():
-    from ctxloom.scheduler import uncertainty_policy
+    from reactifact.scheduler import uncertainty_policy
 
     class Capture(LLMProvider):
         def __init__(self):

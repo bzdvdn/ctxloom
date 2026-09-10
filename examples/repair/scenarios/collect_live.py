@@ -5,8 +5,8 @@ key in CI. With no `--mode` flag it skips itself rather than guessing."""
 
 from __future__ import annotations
 
-from ctxloom.providers import LLMProvider, openrouter_llm
-from ctxloom.testing import ScenarioLab, ScenarioSkip, mode_from_env, scenario
+from reactifact.providers import LLMProvider, openrouter_llm
+from reactifact.testing import ScenarioLab, ScenarioSkip, mode_from_env, scenario
 
 from ..agents import RepairFlow
 from ..models import Project, UserMsg

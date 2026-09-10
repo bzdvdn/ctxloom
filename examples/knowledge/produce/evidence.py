@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.structured import structured_llm
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.structured import structured_llm
 
 from ..models import AnswerBody, Claim, Evidence, TypedDoc
 from .common import (

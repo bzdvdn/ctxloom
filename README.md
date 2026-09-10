@@ -1,10 +1,10 @@
-# ctxloom
+# reactifact
 
 **Stop drawing the graph. Build agents as reactions to versioned, provable artifacts.**
 
-[![CI](https://github.com/bzdvdn/ctxloom/actions/workflows/ci.yml/badge.svg)](https://github.com/bzdvdn/ctxloom/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://github.com/bzdvdn/ctxloom)
-[![PyPI version](https://img.shields.io/pypi/v/ctxloom)](https://pypi.org/project/ctxloom/)
+[![CI](https://github.com/bzdvdn/reactifact/actions/workflows/ci.yml/badge.svg)](https://github.com/bzdvdn/reactifact/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://github.com/bzdvdn/reactifact)
+[![PyPI version](https://img.shields.io/pypi/v/reactifact)](https://pypi.org/project/reactifact/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Most agent frameworks make you **draw the graph**: connect nodes, wire memory,
@@ -12,12 +12,12 @@ declare control flow. But a knowledge question — *"why did infra costs jump in
 Q2?"* — needs Confluence + GitLab + CSV + calculations + verification, and the
 *next* question needs a different path. There is no universal graph to draw.
 
-ctxloom flips the model. You describe **what artifacts exist and what agents can
+reactifact flips the model. You describe **what artifacts exist and what agents can
 do with them**; the runtime derives what runs next from **state changes**. Agents
 react to events — there is no graph, no node pipeline.
 
 ```bash
-pip install ctxloom
+pip install reactifact
 ```
 
 Runs offline, no API key needed — paste this straight into a `.py` file. Two
@@ -28,7 +28,7 @@ from:
 ```python
 from pydantic import BaseModel
 
-from ctxloom import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
+from reactifact import Budget, Consume, Context, Runtime, RuntimeResources, create_agent, produce
 
 
 class Question(BaseModel):
@@ -102,7 +102,7 @@ actual state.
 
 ## What makes it different
 
-| Traditional agent (LangGraph / CrewAI / LangChain) | ctxloom |
+| Traditional agent (LangGraph / CrewAI / LangChain) | reactifact |
 | --- | --- |
 | A program follows a graph / plan | Agents **react** to state changes |
 | Messages are strings | **Typed, versioned artifacts** (`Claim`, `Evidence`, `Answer`) |
@@ -114,7 +114,7 @@ actual state.
 
 Reactive. Deterministic. Accountable.
 
-Full breakdown, including where ctxloom is *not* the right choice:
+Full breakdown, including where reactifact is *not* the right choice:
 [docs/en/comparison.md](docs/en/comparison.md).
 
 ## Core primitives
@@ -148,7 +148,7 @@ Full breakdown, including where ctxloom is *not* the right choice:
   `Skill`/`match_skills` (Claude-Skills-shaped instructions, keyword-triggered)
   — pure and LLM-free, except the summarizer, which takes your callback.
 - **Viz & CLI** — Mermaid `blueprint`/`context_to_mermaid`/`trace_to_mermaid`;
-  `ctxloom` with `graph`/`context`/`trace`/`replay`/`branch`.
+  `reactifact` with `graph`/`context`/`trace`/`replay`/`branch`.
 
 ## Run a demo
 
@@ -182,8 +182,8 @@ Classic-pattern ports run as one-liners too:
   providers, recipes, patterns, observability, eval, branching, replay, viz/CLI, API.
 - [Quickstart](docs/en/quickstart.md) — three runnable snippets: tool-calling
   agent, retrieval over your docs, session-persisted chat bot.
-- [Why ctxloom](docs/en/why-ctxloom.md) — the *design argument*: why effects, why no graph, why determinism.
-- [Comparison](docs/en/comparison.md) — ctxloom vs LangGraph/CrewAI, feature by feature, and when *not* to use ctxloom.
+- [Why reactifact](docs/en/why-reactifact.md) — the *design argument*: why effects, why no graph, why determinism.
+- [Comparison](docs/en/comparison.md) — reactifact vs LangGraph/CrewAI, feature by feature, and when *not* to use reactifact.
 - [Tutorial · llm-ladder](docs/en/examples.md#tutorial-ladder) — learn the workflow.
 - [docs/constitution.md](docs/constitution.md) — the full design rationale and invariants.
 

@@ -8,8 +8,8 @@ the top findings are printed verbatim (honest fallback, §59).
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.structured import structured_llm
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.structured import structured_llm
 
 from ..models import Answer, AnswerBody, Evidence, Question, Review
 from ..prompts import synthesis_system

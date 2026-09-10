@@ -1,6 +1,6 @@
 # Constitution of the Artifact-Driven Agent Runtime
 
-> **Status:** Foundational design document, aligned with the public `ctxloom` release
+> **Status:** Foundational design document, aligned with the public `reactifact` release
 > **Version:** 0.2
 > **Purpose:** Define the architectural philosophy, invariants, terminology, design rules, examples, and decision criteria for a new agent framework based on evolving typed artifacts and context rather than explicit execution graphs.
 
@@ -2486,7 +2486,7 @@ The primary programming model, as shipped:
 ```python
 from pydantic import BaseModel
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Budget,
     Consume,
@@ -2496,7 +2496,7 @@ from ctxloom import (
     Runtime,
     RuntimeResources,
 )
-from ctxloom.sources import FileSystemSource, SourceRef
+from reactifact.sources import FileSystemSource, SourceRef
 
 
 class Question(BaseModel):
@@ -3080,7 +3080,7 @@ Everything else — tools, RAG, APIs, planners, schedulers, multi-agent executio
 
 # Appendix — Implementation Status
 
-State of the public `ctxloom` codebase, aligned with this constitution (ver 0.2).
+State of the public `reactifact` codebase, aligned with this constitution (ver 0.2).
 Verification: 413 tests; mypy (strict) and ruff clean.
 
 | Area | Section(s) | Status |
@@ -3104,8 +3104,8 @@ Verification: 413 tests; mypy (strict) and ruff clean.
 | Conversation memory via views | §37-§38 | implemented (`context.view` based chat memory) |
 | Turn lifecycle / honest fallbacks | §24, §59, §69 | implemented in demos (outcomes, linguistic fallbacks) |
 | Branching (`context.branch()`) | §39-§40 | implemented — three-way `merge()` with `MergeConflict`, `BranchStore` over KV, CLI |
-| Replay (§55) | §55 | implemented — `ReplayLLM` record/replay, state replay + `python -m ctxloom replay` |
-| Evaluation harness | §56 | implemented — `ctxloom.eval`: multi-level metrics (evidence/claim/provenance/calc/answer/sources) over the final state |
+| Replay (§55) | §55 | implemented — `ReplayLLM` record/replay, state replay + `python -m reactifact replay` |
+| Evaluation harness | §56 | implemented — `reactifact.eval`: multi-level metrics (evidence/claim/provenance/calc/answer/sources) over the final state |
 | Security / access control | §57 | planned |
 | Adaptive / uncertainty-driven scheduling | §26, §24 | partial — budget + LLM tool router (devops demo); uncertainty-driven selection planned |
 

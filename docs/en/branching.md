@@ -11,7 +11,7 @@ an execution graph.
 ## Fork
 
 ```python
-from ctxloom import Context, RuntimeResources
+from reactifact import Context, RuntimeResources
 
 base = Context(resources=RuntimeResources())
 base.create(Note(text="v1"), id="note:1")
@@ -50,7 +50,7 @@ no partial state is ever left behind. A merge that succeeds is logged as a
 other side edited is a conflict; a clean delete propagates.
 
 ```python
-from ctxloom import MergeConflict
+from reactifact import MergeConflict
 
 try:
     hypothesis_a.merge(hypothesis_b)
@@ -67,8 +67,8 @@ Branches survive restarts as named keys over the **same KV backend** — no new
 storage, the semantics live in `Context` operations:
 
 ```python
-from ctxloom.branching import BranchStore
-from ctxloom.checkpoints import SQLiteKVBackend
+from reactifact.branching import BranchStore
+from reactifact.checkpoints import SQLiteKVBackend
 
 store = BranchStore(SQLiteKVBackend("sessions.sqlite3"))
 await store.save_branch(hypothesis_a, session_id="demo", name="hypothesis-a")
@@ -82,9 +82,9 @@ conflict detection after a reload.
 ## CLI
 
 ```bash
-python -m ctxloom branch sessions.sqlite3 demo list
-python -m ctxloom branch sessions.sqlite3 demo save hypothesis-a
-python -m ctxloom branch sessions.sqlite3 demo merge --into a --source b --as merged
+python -m reactifact branch sessions.sqlite3 demo list
+python -m reactifact branch sessions.sqlite3 demo save hypothesis-a
+python -m reactifact branch sessions.sqlite3 demo merge --into a --source b --as merged
 ```
 
 ## When to use which

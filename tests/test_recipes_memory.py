@@ -1,4 +1,4 @@
-"""`ctxloom.recipes.memory` — bounded conversation memory (§27, §37).
+"""`reactifact.recipes.memory` — bounded conversation memory (§27, §37).
 
 `WindowSummarizer` + `WindowPruner` replace the hand-rolled Summarize/Prune
 pair that used to live only in `examples/summarize/main.py` — same behavior,
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import asyncio
 
-from ctxloom import Agent, Consume, Context, Runtime, create_agent
-from ctxloom.recipes import WindowPruner, WindowSummarizer
+from reactifact import Agent, Consume, Context, Runtime, create_agent
+from reactifact.recipes import WindowPruner, WindowSummarizer
 from pydantic import BaseModel
 
 

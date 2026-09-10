@@ -2,12 +2,12 @@
 
 import asyncio
 
-from ctxloom import Agent, Budget, Consume, Context, Produce, Runtime, RuntimeResources
-from ctxloom.checkpoints import SQLiteKVBackend
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.replay import ReplayLLM, ReplayMiss, replay_context, replay_summary
-from ctxloom.session import SessionStore
-from ctxloom.structured import structured_llm
+from reactifact import Agent, Budget, Consume, Context, Produce, Runtime, RuntimeResources
+from reactifact.checkpoints import SQLiteKVBackend
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.replay import ReplayLLM, ReplayMiss, replay_context, replay_summary
+from reactifact.session import SessionStore
+from reactifact.structured import structured_llm
 from pydantic import BaseModel
 
 
@@ -84,7 +84,7 @@ def test_record_then_replay_reproduces_responses(tmp_path):
 
 
 def test_replay_misses_raise_not_silently_wrong(tmp_path):
-    from ctxloom.providers import Message
+    from reactifact.providers import Message
 
     recording = tmp_path / "calls.jsonl"
     recorder = ReplayLLM(recording, mode="record", inner=ScriptedLLM(['{"text": "a"}']))

@@ -248,7 +248,7 @@ toml = [
 ]
 
 [[package]]
-name = "ctxloom"
+name = "reactifact"
 version = "0.5.0"
 source = { editable = "." }
 dependencies = [

@@ -11,7 +11,7 @@ All demos run **with or without API keys**: configure `.env` (copy
 deterministic demo mode.
 
 The session-chat demos (`knowledge`, `devops`, `research`, `repair`) build
-their web layer on the canonical `ctxloom.chat` + `ctxloom.web` contract —
+their web layer on the canonical `reactifact.chat` + `reactifact.web` contract —
 each supplies only the domain hooks (agents, input model, terminal reply),
 the SSE transport and session persistence come from the framework. Ports
 (`reflection` …) and `adaptive` are CLI-only by design.
@@ -127,7 +127,7 @@ uv run python -m examples.ledger.main
 
 ## `adaptive` — hybrid scheduling
 
-**What it shows:** the adaptive planner (`ctxloom.scheduler`) in action — hard
+**What it shows:** the adaptive planner (`reactifact.scheduler`) in action — hard
 filter rules prune capabilities, a deterministic metric ranks the rest, an
 optional LLM breaks ties, `rank_limit` caps the number of agents that actually
 run; HITL-enabled agents are pinned, none starve.
@@ -160,4 +160,4 @@ Small, self-contained ports of the classic agent patterns — every one runs
 ```
 
 `uv sync` installs the dev+web groups from `pyproject.toml`; `uv build` ships
-only the `ctxloom` wheel (examples and docs are not packaged).
+only the `reactifact` wheel (examples and docs are not packaged).

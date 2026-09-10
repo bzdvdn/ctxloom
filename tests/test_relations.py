@@ -1,7 +1,7 @@
 import asyncio
 
-from ctxloom import Agent, Consume, Context, Patch, Runtime
-from ctxloom.patches import Link, Relation, Unlink, operation_from_dict
+from reactifact import Agent, Consume, Context, Patch, Runtime
+from reactifact.patches import Link, Relation, Unlink, operation_from_dict
 from pydantic import BaseModel
 
 

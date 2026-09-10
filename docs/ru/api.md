@@ -1,33 +1,33 @@
 # Справочник API
 
-Символы верхнего уровня, экспортируемые `ctxloom` (см. `ctxloom/__init__.py`).
+Символы верхнего уровня, экспортируемые `reactifact` (см. `reactifact/__init__.py`).
 Формат по группам: имя — роль в одну строку. Детали — в док-строках модулей.
 
 ## Стабильность
 
-Начиная с `0.4.0` ctxloom всё ещё pre-1.0, но уже не `rc` — поверхность ниже
+Начиная с `0.4.0` reactifact всё ещё pre-1.0, но уже не `rc` — поверхность ниже
 это стабильный контракт, а не движущаяся цель.
 
-- **Публичный API = каждое имя в `ctxloom.__all__`** (и в `__all__` каждого
-  подмодуля — `ctxloom.recipes`, `ctxloom.providers`, `ctxloom.viz`,
-  `ctxloom.eval`, …) — это ровно тот набор символов, что задокументирован на
-  этой странице. Если что-то импортируется из `ctxloom`, но не входит в
+- **Публичный API = каждое имя в `reactifact.__all__`** (и в `__all__` каждого
+  подмодуля — `reactifact.recipes`, `reactifact.providers`, `reactifact.viz`,
+  `reactifact.eval`, …) — это ровно тот набор символов, что задокументирован на
+  этой странице. Если что-то импортируется из `reactifact`, но не входит в
   `__all__` — это внутренняя деталь без гарантий совместимости. Например,
-  `ctxloom.relations.RelationGraph` и `ctxloom.commit_log.CommitLog`
+  `reactifact.relations.RelationGraph` и `reactifact.commit_log.CommitLog`
   существуют потому, что `Context` разбили на модули поменьше ради
   читаемости, но ни один из них не экспортируется: поддерживаемая
   поверхность — это `Context`, а не они.
 - **SemVer в pre-1.0-стиле**: минорный бамп (`0.4.0` → `0.5.0`) может добавить
   символы или, в редких случаях, изменить поведение так, что `CHANGELOG.md`
   явно пометит это `Breaking` — минорные релизы до 1.0 всё ещё позволяют
-  ctxloom исправить архитектурную ошибку. Патч (`0.4.0` → `0.4.1`) никогда не
+  reactifact исправить архитектурную ошибку. Патч (`0.4.0` → `0.4.1`) никогда не
   убирает и не переименовывает публичный символ и никогда не меняет
   задокументированное поведение — только чинит баги относительно него.
 - **Любое ломающее изменение помечено в `CHANGELOG.md` заголовком
   `### Breaking`**, даже в pre-1.0 релизе — см. [release.md](release.md). Если
   перед апгрейдом читать только один раздел — читайте этот.
-- Всё, что находится под `ctxloom.cli.*` за пределами задокументированных
-  подкоманд `python -m ctxloom …`, а также любые тест-хелперы модулей —
+- Всё, что находится под `reactifact.cli.*` за пределами задокументированных
+  подкоманд `python -m reactifact …`, а также любые тест-хелперы модулей —
   деталь реализации, даже если формально импортируется.
 
 ## Context и состояние
@@ -45,7 +45,7 @@
 | --- | --- |
 | `Artifact` | пара `(id, data)`; `data` — модель pydantic |
 | `Patch` | скомпилированный набор изменений рантайма (транспорт); produces пишут `self.effects`, `Patch` собирает рантайм |
-| `ctxloom.operations` (`Create`/`Update`/`Delete`/`Link`/`Unlink`/`Relation`) | скомпилированные операции, которые несёт патч (§12) |
+| `reactifact.operations` (`Create`/`Update`/`Delete`/`Link`/`Unlink`/`Relation`) | скомпилированные операции, которые несёт патч (§12) |
 | `Create`, `Update`, `Delete`, `Link`, `Unlink`, `Relation` | записи операций, из которых строятся патчи |
 
 ## Агенты и produce
@@ -76,7 +76,7 @@
 | `Scheduler` | политика выбора агента filter → rank → LLM tie-break, вызывается рантаймом на каждой итерации (см. [design notes](../en/design-notes/adaptive.md), пока только на английском) |
 | `uncertainty_policy(...)` | собирает встроенную гибридную политику `Scheduler` (filter → rank → LLM tie-break → top-k) |
 
-## Чат-слой (ctxloom.chat + ctxloom.web)
+## Чат-слой (reactifact.chat + reactifact.web)
 
 | Символ | Роль |
 | --- | --- |
@@ -85,19 +85,19 @@
 | `run_message(runtime, text, *, user_message, reply)` | строительный блок хода: создать вход → стримить статусы → терминальный ответ |
 | `default_session_state(ctx, user_message)` | универсальный читатель истории (любой артефакт с `.text`) |
 | `create_chat_router(assistant)` | FastAPI `APIRouter` канонического SSE-контракта (`/api/chat/stream`, `/api/runs/{id}`) — нужен extra `web` |
-| `ctxloom.web.sse(event, data)` | один SSE-фрейм |
+| `reactifact.web.sse(event, data)` | один SSE-фрейм |
 
-## Визуализация (ctxloom.viz + python -m ctxloom)
+## Визуализация (reactifact.viz + python -m reactifact)
 
 | Символ | Роль |
 | --- | --- |
 | `blueprint(agents)` | статическая карта consumes/produces как Mermaid `flowchart` |
 | `context_to_mermaid(context)` | живой граф провенанса контекста (артефакты + связи) |
 | `trace_to_mermaid(trace)` | один запуск как Mermaid `sequenceDiagram` |
-| `python -m ctxloom graph\|context\|trace` | CLI, печатающий диаграммы в stdout |
+| `python -m reactifact graph\|context\|trace` | CLI, печатающий диаграммы в stdout |
 | `trace_provenance_to_mermaid(trace)` | граф доказательств запуска (записанные артефакты + рёбра `patch.link`) |
 
-## Replay (ctxloom.replay, §55)
+## Replay (reactifact.replay, §55)
 
 | Символ | Роль |
 | --- | --- |
@@ -106,7 +106,7 @@
 | `replay_context(store, session_id, version=None)` | восстанавливает состояние сохранённой сессии на коммите |
 | `replay_summary(context)` | компактная сводка состояния для CLI `replay` |
 
-## Ветвление (ctxloom.context + ctxloom.branching, §39-§40)
+## Ветвление (reactifact.context + reactifact.branching, §39-§40)
 
 | Символ | Роль |
 | --- | --- |
@@ -114,9 +114,9 @@
 | `Context.merge(other, message=…)` | атомарное трёхстороннее слияние; `MergeConflict` при разошедшихся артефактах |
 | `MergeConflict` | бросается, когда обе стороны изменили артефакт по-разному после форка |
 | `BranchStore(KVBackend)` | хранит ветки как `branch:<session>:<name>` поверх KV-бэкенда |
-| `python -m ctxloom branch …` | CLI: `list` / `save` / `merge` |
+| `python -m reactifact branch …` | CLI: `list` / `save` / `merge` |
 
-## Оценка (ctxloom.eval, §56)
+## Оценка (reactifact.eval, §56)
 
 | Символ | Роль |
 | --- | --- |
@@ -134,14 +134,14 @@
 | `llm_reply(context, *, system, user, attempts=…, on_error=…)` | обычный (неструктурный) вызов → `str` или `None` (под капотом схема с одним полем) |
 | `parse_structured` | допускающий JSON→модель парсер, используемый внутри |
 
-## Промпты (ctxloom.prompts, §68)
+## Промпты (reactifact.prompts, §68)
 
 | Символ | Роль |
 | --- | --- |
 | `PromptTemplate(template, *, defaults=…)` | строгий рендер `{var}`: объявленные `variables`, `KeyError` при нехватке, поля атрибутов модели (`{question.text}`), литералы `{{`/`}}` |
 | `MessagesPrompt([(role, template), …])` | рендерит чат-последовательность в `list[Message]` |
 
-## Источники (ctxloom.sources)
+## Источники (reactifact.sources)
 
 | Символ | Роль |
 | --- | --- |
@@ -152,7 +152,7 @@
 | `EmbeddingSource` | векторный поиск по подготовленному корпусу |
 | `WebSource` | открытие ресурсов + ленивое разрешение удалённых документов |
 
-## Провайдеры (ctxloom.providers)
+## Провайдеры (reactifact.providers)
 
 | Символ | Роль |
 | --- | --- |
@@ -167,7 +167,7 @@
 | `from_env(**overrides)` | выбор в один вызов: сперва `OPENROUTER_API_KEY`, иначе `OPENAI_BASE_URL`, иначе `None` — тот самый двухветочный дефолт, что каждый пример вручную собирает в своём `build_llm()` |
 | `FakeLLM`, `FakeEmbedder` | детерминированные заглушки для тестов/демо |
 
-## Рецепты (ctxloom.recipes)
+## Рецепты (reactifact.recipes)
 
 | Символ | Роль |
 | --- | --- |
@@ -179,7 +179,7 @@
 | `WindowPruner(message_type, keep=…)` | удаляет сообщения старше окна; полезен и сам по себе |
 | `llm_summarizer(system=…)` | строит колбэк `WindowSummarizer(summarize=…)` из системного промпта через `llm_reply` |
 
-## Хелперы текста и отката (ctxloom.recipes)
+## Хелперы текста и отката (reactifact.recipes)
 
 | Символ | Роль |
 | --- | --- |
@@ -199,4 +199,4 @@
 | `CheckpointBackend`, `FileBackend`, `SQLiteBackend` | чекпоинты всего контекста |
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | примитивы трейсинга (async-приёмники: `export`/`query`/`get`) |
 | `LangfuseTracer`, `PostgresStore` | внешние приёмники трейсов — Postgres поддерживает async чтение+запись; дашборд (`create_trace_router`) принимает любой `TraceReader` |
-| `create_trace_router(store)` (`ctxloom.tracing.web`) | FastAPI-роутер дашборда |
+| `create_trace_router(store)` (`reactifact.tracing.web`) | FastAPI-роутер дашборда |

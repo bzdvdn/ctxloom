@@ -6,7 +6,7 @@ from `gpu_usage.csv`, not a guess."""
 
 from __future__ import annotations
 
-from ctxloom.testing import ScenarioLab, scenario
+from reactifact.testing import ScenarioLab, scenario
 
 from ..agents import AGENTS
 from ..models import Answer, Calculation, UserQuery

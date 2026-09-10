@@ -1,7 +1,7 @@
 """FastAPI + SSE for the research demo (goes to the web for data, §32).
 
-The transport is the canonical ctxloom chat contract (`ctxloom.chat` +
-`ctxloom.web` router); this file only supplies the domain hooks: agents,
+The transport is the canonical reactifact chat contract (`reactifact.chat` +
+`reactifact.web` router); this file only supplies the domain hooks: agents,
 input artifact type, terminal reply and history.
 
 Run:  .venv/bin/python examples/research/web.py
@@ -16,10 +16,10 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, SessionStore
-from ctxloom.chat import ChatAssistant
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.web import create_chat_router
+from reactifact import Budget, SessionStore
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.web import create_chat_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -67,7 +67,7 @@ def create_app(store_dir: str | None = None) -> FastAPI:
         max_concurrency=4,
     )
 
-    app = FastAPI(title="research-ai (ctxloom)")
+    app = FastAPI(title="research-ai (reactifact)")
     app.include_router(create_chat_router(assistant))
 
     web_dir = ROOT / "web"

@@ -1,7 +1,7 @@
 """FastAPI + SSE for a knowledge chat (multi-source assistant, CTXSPACE).
 
-The transport is the canonical ctxloom chat contract (owned by `ctxloom.chat`
-+ the router in `ctxloom.web`):
+The transport is the canonical reactifact chat contract (owned by `reactifact.chat`
++ the router in `reactifact.web`):
 
   event: session  — session id
   event: status   — progress («Searching for info…», «Found N…», «Assembling the answer…»)
@@ -22,10 +22,10 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, SessionStore
-from ctxloom.chat import ChatAssistant
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.web import create_chat_router
+from reactifact import Budget, SessionStore
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.web import create_chat_router
 from dotenv import load_dotenv
 from examples.knowledge.agents import AGENTS
 from examples.knowledge.chat import _UNSET, build_resources
@@ -120,7 +120,7 @@ def create_app(db=None, llm: Any = _UNSET, store_dir: str | None = None) -> Fast
     """App factory. `llm` and `store_dir` are for tests; the default resolves
     providers from .env (OpenRouter·DeepSeek for chat). `db` is kept for CLI
     compatibility."""
-    app = FastAPI(title="knowledge-ai (ctxloom)")
+    app = FastAPI(title="knowledge-ai (reactifact)")
     app.include_router(
         create_chat_router(_build_assistant(llm=llm, store_dir=store_dir))
     )

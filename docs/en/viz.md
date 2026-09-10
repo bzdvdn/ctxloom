@@ -1,6 +1,6 @@
 # Visualization & CLI
 
-`ctxloom.viz` renders the system as **Mermaid** strings. There is no execution
+`reactifact.viz` renders the system as **Mermaid** strings. There is no execution
 graph to draw — the runtime derives execution from state changes — so the two
 honest diagrams are the *static map* and the *dynamic state*:
 
@@ -17,10 +17,10 @@ GitHub, Notion, or [mermaid.live](https://mermaid.live).
 ## CLI
 
 ```bash
-python -m ctxloom graph examples.knowledge.agents        # all agents of a module
-python -m ctxloom graph examples.knowledge.agents:Planner # one agent
-python -m ctxloom context examples/knowledge/sessions/sessions.sqlite3
-python -m ctxloom trace traces.db [run_id]
+python -m reactifact graph examples.knowledge.agents        # all agents of a module
+python -m reactifact graph examples.knowledge.agents:Planner # one agent
+python -m reactifact context examples/knowledge/sessions/sessions.sqlite3
+python -m reactifact trace traces.db [run_id]
 ```
 
 - `graph` instantiates every `Agent` subclass defined in the module (or a

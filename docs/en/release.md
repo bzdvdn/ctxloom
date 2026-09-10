@@ -1,6 +1,6 @@
 # Release management
 
-How a `ctxloom` version is cut, built, verified, and published.
+How a `reactifact` version is cut, built, verified, and published.
 
 ## Versioning
 
@@ -8,7 +8,7 @@ How a `ctxloom` version is cut, built, verified, and published.
   `0.5.0rc1`), dropped for the stable cut (`0.5.0`).
 - The version lives in **two places** and must stay in sync:
   - `pyproject.toml` → `[project] version`;
-  - `ctxloom/__init__.py` → `__version__`.
+  - `reactifact/__init__.py` → `__version__`.
 
 ## Changelog rule
 
@@ -25,7 +25,7 @@ There's no separate migration doc — `CHANGELOG.md` is the source of truth for
 what changed between versions, and breaking entries are marked per the rule
 above. Two changes worth knowing if you're crossing them:
 
-- **0.5.0** — `ctxloom/__init__.py` re-exports only the core surface
+- **0.5.0** — `reactifact/__init__.py` re-exports only the core surface
   (~40 names, down from ~150); eval, tracing, checkpoint/branch backends,
   the chat/web layer, the adaptive scheduler, replay, structured-LLM
   helpers, viz, and prompt templates moved to their own submodule imports.
@@ -53,16 +53,16 @@ above. Two changes worth knowing if you're crossing them:
 # 2) version + changelog (see above)
 
 # 3) build artifacts
-uv build                     # dist/ctxloom-0.5.0-py3-none-any.whl + sdist
+uv build                     # dist/reactifact-0.5.0-py3-none-any.whl + sdist
 
 # 4) verify the wheel in a scratch venv (not the workspace, so no PYTHONPATH)
-uv venv /tmp/ctxloom-rc
-/tmp/ctxloom-rc/bin/python -m pip install --quiet dist/ctxloom-0.5.0-py3-none-any.whl
-/tmp/ctxloom-rc/bin/python -c "import ctxloom; print(ctxloom.__version__)"
-/tmp/ctxloom-rc/bin/python -m ctxloom graph examples.knowledge.agents 2>/dev/null \
-    || /tmp/ctxloom-rc/bin/ctxloom --help >/dev/null   # console script present
-# confirm the wheel contains ctxloom + tracing templates and NOT examples/tests:
-unzip -l dist/ctxloom-0.5.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates" 
+uv venv /tmp/reactifact-rc
+/tmp/reactifact-rc/bin/python -m pip install --quiet dist/reactifact-0.5.0-py3-none-any.whl
+/tmp/reactifact-rc/bin/python -c "import reactifact; print(reactifact.__version__)"
+/tmp/reactifact-rc/bin/python -m reactifact graph examples.knowledge.agents 2>/dev/null \
+    || /tmp/reactifact-rc/bin/reactifact --help >/dev/null   # console script present
+# confirm the wheel contains reactifact + tracing templates and NOT examples/tests:
+unzip -l dist/reactifact-0.5.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates" 
 
 # 5) tag
 git tag v0.5.0
@@ -74,9 +74,9 @@ uv publish --publish-url https://upload.pypi.org/legacy/
 
 ## What ships
 
-`uv build` packages only the `ctxloom` package (setuptools `packages.find`
+`uv build` packages only the `reactifact` package (setuptools `packages.find`
 excludes `examples`/`tests`) plus the trace dashboard templates
-(`ctxloom/tracing/templates/*.html`). Examples, tests and docs stay in the
+(`reactifact/tracing/templates/*.html`). Examples, tests and docs stay in the
 repository and are the documentation-by-example.
 
 ## Rollback

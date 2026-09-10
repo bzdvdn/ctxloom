@@ -8,7 +8,7 @@ exactly what actually consumed it, and nothing else, for free.
 
 No LLM anywhere in this demo — deterministic by design (§67), so the
 proof is unambiguous: `Artifact.version` (built into every artifact,
-`ctxloom/artifacts.py`) increments only when something is genuinely
+`reactifact/artifacts.py`) increments only when something is genuinely
 recomputed.
 
 ## Run

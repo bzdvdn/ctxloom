@@ -10,7 +10,7 @@ recorded, a run can be *reproduced exactly*.
 `ReplayLLM` is a recording studio for the model calls. Two passes:
 
 ```python
-from ctxloom.replay import ReplayLLM
+from reactifact.replay import ReplayLLM
 
 # pass 1 — record a real run
 resources = RuntimeResources(
@@ -41,9 +41,9 @@ A session checkpoint carries the full commit chain. Reconstruct the state at a
 specific commit without agent execution:
 
 ```python
-from ctxloom.replay import replay_context, replay_summary
-from ctxloom.checkpoints import SQLiteKVBackend
-from ctxloom.session import SessionStore
+from reactifact.replay import replay_context, replay_summary
+from reactifact.checkpoints import SQLiteKVBackend
+from reactifact.session import SessionStore
 
 store = SessionStore(SQLiteKVBackend("sessions.sqlite3"))
 context = await replay_context(store, session_id, version=7)   # state at commit 7
@@ -53,7 +53,7 @@ print(replay_summary(context))                                  # counts, by typ
 ## CLI
 
 ```bash
-python -m ctxloom replay sessions.sqlite3 --session demo --diagram
+python -m reactifact replay sessions.sqlite3 --session demo --diagram
 ```
 
 Prints the replayed state summary (`version · artifacts · relations · pending

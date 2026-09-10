@@ -4,8 +4,8 @@ Base chat router + three LLM agents (k8s / gitlab / ansible), each with its own
 tools and report builder, + render of the answer into the chat. Logic lives in produce.
 """
 
-from ctxloom import Agent, Consume, Produce
-from ctxloom.llm_agent import HITLLMAgent
+from reactifact import Agent, Consume, Produce
+from reactifact.llm_agent import HITLLMAgent
 
 from .models import (
     AnsibleProblem,

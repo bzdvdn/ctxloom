@@ -3,8 +3,8 @@
 import asyncio
 from pathlib import Path
 
-from ctxloom import Context, RuntimeResources
-from ctxloom.eval import (
+from reactifact import Context, RuntimeResources
+from reactifact.eval import (
     EvalCase,
     answer_coverage,
     answer_present,
@@ -163,9 +163,9 @@ def test_report_render_and_dict():
 
 
 def _run_knowledge_calc() -> Context:
-    from ctxloom import Budget, Runtime
-    from ctxloom.recipes import keyword_score
-    from ctxloom.sources import CSVSource, FileSystemSource
+    from reactifact import Budget, Runtime
+    from reactifact.recipes import keyword_score
+    from reactifact.sources import CSVSource, FileSystemSource
     from examples.knowledge.agents import (
         AnswerBuilder,
         CalculatorAgent,

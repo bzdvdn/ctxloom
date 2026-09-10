@@ -1,6 +1,6 @@
 import asyncio
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Budget,
     Consume,
@@ -11,9 +11,9 @@ from ctxloom import (
     RuntimeResources,
     tool,
 )
-from ctxloom.llm_agent import HITLLMAgent, LLMAgent
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.tool_use import ToolAnswer, ToolUse
+from reactifact.llm_agent import HITLLMAgent, LLMAgent
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.tool_use import ToolAnswer, ToolUse
 from pydantic import BaseModel
 
 

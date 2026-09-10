@@ -2,8 +2,8 @@ import asyncio
 import hashlib
 import re
 
-from ctxloom.providers import EmbeddingProvider
-from ctxloom.sources import EmbeddingSource
+from reactifact.providers import EmbeddingProvider
+from reactifact.sources import EmbeddingSource
 
 
 class WordEmbedder(EmbeddingProvider):

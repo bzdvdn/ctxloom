@@ -3,7 +3,7 @@
 import asyncio
 
 import httpx
-from ctxloom.providers import (
+from reactifact.providers import (
     OpenAICompatSpeech,
     OpenAICompatTranscriber,
     speech_from_env,

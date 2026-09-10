@@ -3,14 +3,14 @@ model forced to fail, the assistant stage still answers from the approved
 plan instead of crashing or stalling.
 
 Uses `lab.fail_resource("llm", ...)` (the general-purpose mock-and-fail
-primitive, `ctxloom.testing.mock`) rather than a hand-rolled failing
+primitive, `reactifact.testing.mock`) rather than a hand-rolled failing
 `LLMProvider` subclass — the same pattern as `lab.fail(tool, ...)`, just for
 a resource instead of a tool.
 """
 
 from __future__ import annotations
 
-from ctxloom.testing import ScenarioLab, scenario
+from reactifact.testing import ScenarioLab, scenario
 
 from ..agents import RepairFlow
 from ..models import ChatReply, PlanStep, Project, UserMsg

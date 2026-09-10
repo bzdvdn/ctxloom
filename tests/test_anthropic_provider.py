@@ -2,9 +2,9 @@ import asyncio
 import json
 
 import httpx
-from ctxloom.providers import AnthropicProvider
-from ctxloom.providers.anthropic import anthropic_llm
-from ctxloom.providers.contracts import LLMRequest, Message
+from reactifact.providers import AnthropicProvider
+from reactifact.providers.anthropic import anthropic_llm
+from reactifact.providers.contracts import LLMRequest, Message
 
 COMPLETION = {
     "content": [{"type": "text", "text": "привет от Claude"}],

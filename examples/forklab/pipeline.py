@@ -11,14 +11,14 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from ctxloom import (
+from reactifact import (
     Budget,
     Context,
     MergeConflict,
     Runtime,
     RuntimeResources,
 )
-from ctxloom.providers import LLMProvider
+from reactifact.providers import LLMProvider
 
 from .agents import EvaluatorAgent, StrategyAgent
 from .models import (

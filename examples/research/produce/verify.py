@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ctxloom import Artifact, Context, Event, Produce
+from reactifact import Artifact, Context, Event, Produce
 
 from ..models import Claim, Evidence
 from .common import split_sentences, token_support

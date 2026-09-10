@@ -1,4 +1,4 @@
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.devops.web import create_app
 from fastapi.testclient import TestClient
 
@@ -142,7 +142,7 @@ def test_traces_ui_and_api(tmp_path):
 
     page = client.get("/traces")
     assert page.status_code == 200
-    assert "ctxloom" in page.text
+    assert "reactifact" in page.text
 
     run_page = client.get("/traces/" + traces[0]["id"])
     assert run_page.status_code == 200

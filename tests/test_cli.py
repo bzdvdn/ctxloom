@@ -1,4 +1,4 @@
-"""`ctxloom/cli/*` — end-to-end smoke coverage for every subcommand.
+"""`reactifact/cli/*` — end-to-end smoke coverage for every subcommand.
 
 Extracted from a single 334-line `__main__.py` into one module per subcommand
 (§0.4.0 changelog); this module was the one part of the release shipped with
@@ -13,12 +13,12 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from ctxloom import Context
-from ctxloom.checkpoints import FileKVBackend, SQLiteKVBackend
-from ctxloom.cli import build_parser, main
-from ctxloom.cli.common import load_agents, open_store
-from ctxloom.session import SessionStore
-from ctxloom.tracing import RunTrace, TraceStore
+from reactifact import Context
+from reactifact.checkpoints import FileKVBackend, SQLiteKVBackend
+from reactifact.cli import build_parser, main
+from reactifact.cli.common import load_agents, open_store
+from reactifact.session import SessionStore
+from reactifact.tracing import RunTrace, TraceStore
 from pydantic import BaseModel
 
 
@@ -52,7 +52,7 @@ def test_build_parser_registers_every_subcommand():
 def test_main_no_command_prints_help_and_returns_zero(capsys):
     assert main([]) == 0
     out = capsys.readouterr().out
-    assert "ctxloom" in out
+    assert "reactifact" in out
     assert "graph" in out
 
 
@@ -153,7 +153,7 @@ def test_trace_command_happy_path(tmp_path, capsys):
 def test_trace_command_empty_store_reports_no_traces(tmp_path, capsys):
     # TraceStore(path) always creates the schema, so this hits "no traces
     # found" rather than the sqlite3.OperationalError branch — still the
-    # error path a fresh `ctxloom trace some.db` actually takes.
+    # error path a fresh `reactifact trace some.db` actually takes.
     missing = str(tmp_path / "missing.db")
     assert main(["trace", missing]) == 1
     assert "no traces found" in capsys.readouterr().out

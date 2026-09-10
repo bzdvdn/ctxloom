@@ -22,7 +22,7 @@ Langfuse или Postgres.
 ### SQLite-хранилище + веб-дашборд (локально, офлайн)
 
 ```python
-from ctxloom.tracing import TraceStore
+from reactifact.tracing import TraceStore
 
 store = TraceStore("traces.db")   # SQLite-приёмник; также отдаёт запуски UI
 ```
@@ -34,7 +34,7 @@ store = TraceStore("traces.db")   # SQLite-приёмник; также отда
 Дашборд — это FastAPI-роутер, монтируемый на ваше приложение:
 
 ```python
-from ctxloom.tracing.web import create_trace_router
+from reactifact.tracing.web import create_trace_router
 
 app.include_router(create_trace_router(store), prefix="/traces")
 ```
@@ -52,8 +52,8 @@ app.include_router(create_trace_router(store), prefix="/traces")
 (I/O выполняет только `on_turn_end`; приёмники экспортируют асинхронно).
 
 ```python
-from ctxloom import Runtime
-from ctxloom.tracing import LangfuseTracer, PostgresStore, TraceStore
+from reactifact import Runtime
+from reactifact.tracing import LangfuseTracer, PostgresStore, TraceStore
 
 runtime = Runtime(
     ctx,

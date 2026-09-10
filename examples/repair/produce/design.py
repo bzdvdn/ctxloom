@@ -13,8 +13,8 @@ import logging
 import uuid
 from typing import Any
 
-from ctxloom.context import Context
-from ctxloom.structured import structured_llm
+from reactifact.context import Context
+from reactifact.structured import structured_llm
 
 from ..fallbacks import fallback_options
 from ..image_prompt import build_image_prompt

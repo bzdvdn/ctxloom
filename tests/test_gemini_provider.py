@@ -4,8 +4,8 @@ import asyncio
 import json
 
 import httpx
-from ctxloom.providers import LLMRequest, Message, gemini_llm
-from ctxloom.providers.gemini import GeminiImageProvider, GeminiProvider
+from reactifact.providers import LLMRequest, Message, gemini_llm
+from reactifact.providers.gemini import GeminiImageProvider, GeminiProvider
 
 COMPLETION = {
     "candidates": [

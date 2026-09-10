@@ -1,4 +1,4 @@
-"""`ctxloom.testing.registry.collect()` — repeated calls in one process must
+"""`reactifact.testing.registry.collect()` — repeated calls in one process must
 keep returning the same scenarios.
 
 Regression: `collect()` used to clear `_REGISTRY` and then call a plain
@@ -12,7 +12,7 @@ live in already-imported submodules, not the package's own `__init__.py`.
 
 from __future__ import annotations
 
-from ctxloom.testing.registry import collect
+from reactifact.testing.registry import collect
 
 
 def test_collect_is_idempotent_for_a_flat_module():

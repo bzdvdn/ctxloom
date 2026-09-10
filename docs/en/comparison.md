@@ -1,6 +1,6 @@
-# ctxloom vs. LangGraph / CrewAI / plain function calls
+# reactifact vs. LangGraph / CrewAI / plain function calls
 
-This page is a comparison, not a pitch. ctxloom is pre-1.0 (`0.5.0`), the
+This page is a comparison, not a pitch. reactifact is pre-1.0 (`0.5.0`), the
 ecosystem is one maintainer, and there is no hosted platform, no managed
 tracing SaaS, no marketplace of pre-built agents. If any of those are what you
 need today, the honest answer is: use LangGraph or CrewAI, they're mature and
@@ -8,7 +8,7 @@ well-supported. Read on if the comparison below still tips your way.
 
 ## TL;DR
 
-| | LangGraph | CrewAI | ctxloom |
+| | LangGraph | CrewAI | reactifact |
 | --- | --- | --- | --- |
 | Primary abstraction | explicit state graph (nodes + edges) | role-based crew of agents | typed artifacts + reactive agents |
 | Control flow | you draw it | mostly fixed (sequential/hierarchical) | derived from state changes |
@@ -19,7 +19,7 @@ well-supported. Read on if the comparison below still tips your way.
 | Maturity / ecosystem | high — used in production widely | high — large community | pre-1.0, one maintainer, small examples set |
 | Managed hosting | LangGraph Platform | CrewAI Enterprise | none |
 
-## Where ctxloom is *not* the right choice
+## Where reactifact is *not* the right choice
 
 Being upfront about this matters more than the feature table:
 
@@ -27,14 +27,14 @@ Being upfront about this matters more than the feature table:
   with no branching by data, a graph framework (or a plain function) is less
   ceremony than modeling artifacts and consumes/produces.
 - **You need a managed platform today** — hosted execution, a UI for
-  non-engineers, an enterprise support contract. ctxloom is a library; there is
+  non-engineers, an enterprise support contract. reactifact is a library; there is
   no SaaS behind it.
 - **You need a large pre-built agent/tool ecosystem.** LangGraph and CrewAI
   both have more third-party integrations, more Stack Overflow answers, more
-  production war stories. ctxloom's `Source` abstraction is intentionally
+  production war stories. reactifact's `Source` abstraction is intentionally
   small (filesystem, CSV, embeddings, web) — you write the rest.
 - **Your team already has deep LangGraph investment.** Rewriting a working
-  system for architectural purity is rarely worth it. ctxloom is a better fit
+  system for architectural purity is rarely worth it. reactifact is a better fit
   for a *new* agent, not necessarily a migration target for an old one.
 
 ## Where the difference actually matters
@@ -46,7 +46,7 @@ and mutate. That's flexible, but it means "what shape does the state have
 right now" is a runtime fact, not something the type checker can verify, and
 "who last touched this field" is not tracked unless you add it yourself.
 
-ctxloom artifacts are pydantic models. Every artifact has a type, an id, a
+reactifact artifacts are pydantic models. Every artifact has a type, an id, a
 version, and a `created_at`. Nothing is deleted-and-overwritten in place — an
 `Update` produces a *new* version, so `context.diff(v1, v2)` is a real,
 inspectable operation, not something you have to reconstruct from logs.
@@ -61,12 +61,12 @@ might need Confluence *and* GitLab *and* a CSV calculation *and* human
 confirmation, and the *next* question needs a different subset. Encoding every
 combination as graph edges turns into a combinatorial wiring exercise.
 
-ctxloom agents declare `consumes`/`produces` — what artifact types they react
+reactifact agents declare `consumes`/`produces` — what artifact types they react
 to and what they can create. The runtime derives execution from **which
 artifacts actually exist**, not from a pre-declared path. Two agents that have
 never heard of each other compose correctly as long as one produces what the
 other consumes. This is also why there's no `viz.blueprint()` node-and-edge
-picture to keep in sync by hand — see [Why ctxloom](why-ctxloom.md) for the
+picture to keep in sync by hand — see [Why reactifact](why-reactifact.md) for the
 full argument.
 
 ### 3. Provenance: bolt-on vs. built-in
@@ -76,7 +76,7 @@ logs, message history, or a custom trace you added yourself. There's no
 first-class notion of "this Answer artifact is *derived from* this Evidence,
 which was *extracted from* this Doc."
 
-In ctxloom, `effects.create(...).link("supported_by", evidence)` is a normal
+In reactifact, `effects.create(...).link("supported_by", evidence)` is a normal
 part of writing a produce, and the resulting graph is queryable:
 `context.related(answer.id, "supported_by")`, or rendered as a Mermaid graph
 via `context_to_mermaid()`. This isn't a logging add-on — it's the same
@@ -90,7 +90,7 @@ this is not a prompting problem, it's what generative token-by-token math
 does. Both LangGraph and CrewAI leave this entirely up to you (write a tool,
 remember to call it, remember to trust its output over the model's).
 
-ctxloom's design bias — not a hard rule — is that a `Produce` doing arithmetic
+reactifact's design bias — not a hard rule — is that a `Produce` doing arithmetic
 over structured data (a CSV, a query result) should compute it in plain Python
 and hand the LLM the *result* to explain, not the raw numbers to guess from.
 The [`knowledge` example](examples.md) does exactly this: the LLM writes the
@@ -99,7 +99,7 @@ prose, `calc.py` does the arithmetic.
 ### 5. Rollback and branching: checkpointer vs. git-like context
 
 LangGraph has checkpointers for persistence and time-travel through
-checkpoint history. ctxloom's `Context` is versioned more literally: you can
+checkpoint history. reactifact's `Context` is versioned more literally: you can
 `context.branch()` to fork a parallel exploration, run different agents on
 each fork, and three-way `merge()` them back — see
 [Branching](branching.md) and the `forklab` example, which runs two
@@ -109,8 +109,8 @@ strategies on their own forks and merges the result.
 
 A reasonable trial: take one agent from your LangGraph/CrewAI project that
 does non-trivial branching (not a fixed 3-step pipeline) and port just that
-one to ctxloom. If the artifact model and reactive dispatch make that agent's
+one to reactifact. If the artifact model and reactive dispatch make that agent's
 logic *shorter and more honest about failure* (no silent wrong-number
 hallucination, real "why" for its answer), the rest of the system is probably
 worth porting too. If it mostly adds ceremony for a genuinely linear flow,
-that agent was never the graph-heavy case ctxloom is built for.
+that agent was never the graph-heavy case reactifact is built for.

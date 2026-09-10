@@ -1,14 +1,14 @@
 """ScenarioLab scenarios for the knowledge chat — run with:
 
-    ctxloom scenario examples.knowledge.scenarios
-    ctxloom scenario examples.knowledge.scenarios -k "greeting"
-    ctxloom scenario examples.knowledge.scenarios --mode record   # hits the real model
-    ctxloom scenario examples.knowledge.scenarios --mode replay   # offline, from the fixture
+    reactifact scenario examples.knowledge.scenarios
+    reactifact scenario examples.knowledge.scenarios -k "greeting"
+    reactifact scenario examples.knowledge.scenarios --mode record   # hits the real model
+    reactifact scenario examples.knowledge.scenarios --mode replay   # offline, from the fixture
 
 These do **not** run under `pytest` — scenarios are a separate track from the
-unit tests in `tests/`, run through the `ctxloom scenario` CLI, so a plain
+unit tests in `tests/`, run through the `reactifact scenario` CLI, so a plain
 `pytest` run never needs a model key or a network connection (see
-`ctxloom.testing`).
+`reactifact.testing`).
 
 Three scenarios over the multi-source pipeline (`search -> evidence -> claim
 verification -> calc -> answer`, see `examples/knowledge/produce/`), one per

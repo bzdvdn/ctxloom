@@ -1,4 +1,4 @@
-# Матрица портов — канонические паттерны агентов на ctxloom
+# Матрица портов — канонические паттерны агентов на reactifact
 
 Какие классические примеры LangGraph / LangChain / CrewAI / AutoGen / Haystack
 / DSPy мы выражаем и как. Каждая строка сопоставляет каноническую идею с нашим
@@ -16,7 +16,7 @@
 | RAG (retrieve→augment→generate) | LangChain, Haystack, LlamaIndex | sources + `fan_out_sources` + `materialize_doc` + evidence→claims | `knowledge`, `research` |
 | Структурный вывод / extraction / роутер | LangChain | `StructuredLLM` / `PromptTemplate` / `llm_reply` | везде |
 | Plan-and-execute | LangGraph | производитель стадии + `StatusMachine` lifecycle | `repair` |
-| Eval-driven разработка (DSPy) | DSPy | многоуровневые метрики `ctxloom.eval` (§56) | `examples` + тесты |
+| Eval-driven разработка (DSPy) | DSPy | многоуровневые метрики `reactifact.eval` (§56) | `examples` + тесты |
 | Бюджет инструментов / честность сбоя | — | `Budget` + детерминированные фолбэки, пути `None` (§59) | `devops`, `repair` |
 
 Всё выше работает **офлайн** (детерминированные фолбэки) и, с моделью через

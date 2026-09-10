@@ -19,10 +19,10 @@ missing, ask" branch anywhere in your own code:
 import asyncio
 from pydantic import BaseModel
 
-from ctxloom import Consume, Context, Runtime, RuntimeResources
-from ctxloom.llm_agent import HITLLMAgent
-from ctxloom.providers import from_env
-from ctxloom.tools import tool
+from reactifact import Consume, Context, Runtime, RuntimeResources
+from reactifact.llm_agent import HITLLMAgent
+from reactifact.providers import from_env
+from reactifact.tools import tool
 
 
 class Ticket(BaseModel):
@@ -48,7 +48,7 @@ async def main():
     ctx.create(Ticket(text="is checkout-api healthy?"))
     await runtime.arun()
 
-    from ctxloom.tool_use import ToolAnswer
+    from reactifact.tool_use import ToolAnswer
     answer = ctx.latest(ToolAnswer)
     print("answer:", answer.data.text if answer else None)
 
@@ -58,12 +58,12 @@ asyncio.run(main())
 
 No API key configured (`from_env()` returns `None`) → the agent honestly
 says `"Could not reach a decision."` instead of guessing (§59) — that's not a
-bug, it's the same honest-fallback contract every generative step in ctxloom
+bug, it's the same honest-fallback contract every generative step in reactifact
 follows. With a key in `.env`, the model actually decides to call
 `check_status` and answers from its result. To see the full loop run
 deterministically offline (no key, no guessing), swap `resources.llm` for a
 scripted `LLMProvider` the way `tests/test_tools.py`'s `ScriptedLLM` does, or
-reach for `ctxloom.testing.ScenarioLab` if you're writing this as a test.
+reach for `reactifact.testing.ScenarioLab` if you're writing this as a test.
 
 **Full version**: `examples/devops` — three specialist agents (k8s/GitLab/
 Ansible) behind one router, a trace dashboard, a web UI. Run it:
@@ -81,10 +81,10 @@ citation string built by hand:
 import asyncio
 from pydantic import BaseModel
 
-from ctxloom import Consume, Context, Runtime, RuntimeResources, create_agent
-from ctxloom.produce import produce
-from ctxloom.recipes import fan_out_sources, materialize_doc, find, keyword_score
-from ctxloom.sources import FileSystemSource, SourceRef
+from reactifact import Consume, Context, Runtime, RuntimeResources, create_agent
+from reactifact.produce import produce
+from reactifact.recipes import fan_out_sources, materialize_doc, find, keyword_score
+from reactifact.sources import FileSystemSource, SourceRef
 
 
 class Question(BaseModel):
@@ -165,17 +165,17 @@ skill. Run it: `.venv/bin/python examples/knowledge/chat.py`.
 
 `ChatAssistant` owns sessions, the turn loop, and history reconstruction —
 your app supplies only the domain hooks. The same object works as a plain
-async call (`invoke`) or, mounted via `ctxloom.web.create_chat_router`, as an
+async call (`invoke`) or, mounted via `reactifact.web.create_chat_router`, as an
 SSE endpoint on your own FastAPI app:
 
 ```python
 import asyncio
 from pydantic import BaseModel
 
-from ctxloom import Consume, RuntimeResources, SessionStore, create_agent
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.chat import ChatAssistant
-from ctxloom.produce import produce
+from reactifact import Consume, RuntimeResources, SessionStore, create_agent
+from reactifact.checkpoints import FileKVBackend
+from reactifact.chat import ChatAssistant
+from reactifact.produce import produce
 
 
 class UserMsg(BaseModel):
@@ -228,7 +228,7 @@ To serve this over HTTP instead of calling `invoke` directly:
 
 ```python
 from fastapi import FastAPI
-from ctxloom.web import create_chat_router
+from reactifact.web import create_chat_router
 
 app = FastAPI()
 app.include_router(create_chat_router(assistant))

@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ctxloom import Artifact, Context, Event
+from reactifact import Artifact, Context, Event
 
 from ..models import Answer, ChatReply, UserQuery
 

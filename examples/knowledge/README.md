@@ -4,7 +4,7 @@ An English demo that answers questions over local docs (guide/pricing) and a
 CSV cost table: search → evidence → claim verification → answer with source and
 provenance (§17, §34-§36), plus deterministic calculation over structured data
 (§29, §67) and a keyword-triggered skill for reporting that calculation
-(§67, `ctxloom.recipes.skills`).
+(§67, `reactifact.recipes.skills`).
 
 ## Structure
 
@@ -30,8 +30,8 @@ knowledge/
 
 ## Scenarios
 
-`scenarios/` holds `ctxloom.testing.ScenarioLab` scenarios — a separate track
-from the unit tests in `tests/`, run through the `ctxloom scenario` CLI so a
+`scenarios/` holds `reactifact.testing.ScenarioLab` scenarios — a separate track
+from the unit tests in `tests/`, run through the `reactifact scenario` CLI so a
 plain `pytest` run never needs a model key or a network connection. One of
 them locks down exactly the flagship question below — the GPU total (3580)
 is asserted straight from `Calculation.value`, no model involved. A
@@ -40,9 +40,9 @@ still holds the first question and its answer by the time a follow-up is
 asked, all without a model:
 
 ```bash
-.venv/bin/python -m ctxloom scenario examples.knowledge.scenarios
-.venv/bin/python -m ctxloom scenario examples.knowledge.scenarios --mode record   # real model call
-.venv/bin/python -m ctxloom scenario examples.knowledge.scenarios --mode replay   # offline, from the fixture
+.venv/bin/python -m reactifact scenario examples.knowledge.scenarios
+.venv/bin/python -m reactifact scenario examples.knowledge.scenarios --mode record   # real model call
+.venv/bin/python -m reactifact scenario examples.knowledge.scenarios --mode replay   # offline, from the fixture
 ```
 
 ## Run
@@ -64,7 +64,7 @@ one turn.
 There is no orchestration to wire up: each agent declares what it
 `consumes`/`produces`, and the runtime derives execution from state changes.
 This is the actual static map of this demo's 9 agents
-(`python -m ctxloom graph examples.knowledge.agents`):
+(`python -m reactifact graph examples.knowledge.agents`):
 
 ```mermaid
 flowchart LR
@@ -126,7 +126,7 @@ flowchart LR
 Ask `how much does gpu cost in total?` and the answer is not a string pulled
 from nowhere — every derived artifact links back to what produced it (§34).
 Below is the actual relation graph from that run (via
-`python -m ctxloom context <sessions-db>`; node ids shortened here for
+`python -m reactifact context <sessions-db>`; node ids shortened here for
 readability — see [docs/en/viz.md](../../docs/en/viz.md) to render your own):
 
 ```mermaid
@@ -183,7 +183,7 @@ add-on — `Answer.sources` and this graph come from the same state.
 `skills/cost-reporting.md` is a Claude-Skills-shaped file: a `name`/
 `description` frontmatter plus a body of procedural instructions.
 `chat.py`'s `build_resources()` loads every file in `skills/` once
-(`ctxloom.recipes.load_skills`) into `resources.get("skills")`; `BuildAnswer`
+(`reactifact.recipes.load_skills`) into `resources.get("skills")`; `BuildAnswer`
 (`produce/lifecycle.py`) only *matches* a skill against the situation when it
 has a `Calculation` to report:
 
@@ -197,6 +197,6 @@ for skill in match_skills(skills, situation):
 This is the same reactive shape as everything else here: a skill fires
 because of *what state exists* (a `Calculation` artifact), not because the
 code branches on the user's phrasing. `match_skills` is deterministic keyword
-overlap (`ctxloom.recipes.keyword_score`, §67) over the skill's own
+overlap (`reactifact.recipes.keyword_score`, §67) over the skill's own
 description — no embeddings, no new core primitive (§61). See
 [docs/en/recipes.md](../../docs/en/recipes.md#skills).

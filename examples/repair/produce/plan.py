@@ -6,8 +6,8 @@ the deterministic `fallback_plan` covers demo mode without a model.
 
 from __future__ import annotations
 
-from ctxloom.context import Context
-from ctxloom.structured import structured_llm
+from reactifact.context import Context
+from reactifact.structured import structured_llm
 
 from ..fallbacks import fallback_plan
 from ..models import PlanStep, Project, RepairPlan

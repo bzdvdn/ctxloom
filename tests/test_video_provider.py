@@ -3,7 +3,7 @@
 import asyncio
 
 import httpx
-from ctxloom.providers import (
+from reactifact.providers import (
     RunwayVideoProvider,
     SoraVideoProvider,
     VideoResult,
@@ -136,7 +136,7 @@ def luma_transport() -> httpx.MockTransport:
 
 
 def test_luma_generate_poll_and_download():
-    from ctxloom.providers import LumaVideoProvider
+    from reactifact.providers import LumaVideoProvider
 
     provider = LumaVideoProvider(api_key="luma", transport=luma_transport())
     task_id = asyncio.run(provider.generate("waves"))
@@ -164,7 +164,7 @@ def test_video_from_env_luma():
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = saved[k]
-    from ctxloom.providers import LumaVideoProvider
+    from reactifact.providers import LumaVideoProvider
 
     assert isinstance(provider, LumaVideoProvider)
     assert provider.api_key == "luma-env"
@@ -186,7 +186,7 @@ def openrouter_video_transport() -> httpx.MockTransport:
 
 
 def test_openrouter_video_generate_and_fetch():
-    from ctxloom.providers import OpenRouterVideoProvider
+    from reactifact.providers import OpenRouterVideoProvider
 
     provider = OpenRouterVideoProvider(
         api_key="or", transport=openrouter_video_transport()
@@ -216,7 +216,7 @@ def test_video_from_env_openrouter():
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = saved[k]
-    from ctxloom.providers import OpenRouterVideoProvider
+    from reactifact.providers import OpenRouterVideoProvider
 
     assert isinstance(provider, OpenRouterVideoProvider)
     assert provider.api_key == "or-env"

@@ -1,6 +1,6 @@
-"""`ctxloom.testing.ScenarioLab`/`Scenario` — the core of `ctxloom.testing`
+"""`reactifact.testing.ScenarioLab`/`Scenario` — the core of `reactifact.testing`
 had zero direct pytest coverage (only indirect, via the example scenarios
-run through the `ctxloom scenario` CLI, which `pytest` never executes). This
+run through the `reactifact scenario` CLI, which `pytest` never executes). This
 module exercises `ScenarioLab.run()`, fault injection + tool restoration,
 and multi-turn `Scenario` continuity directly, the way `tests/test_tools.py`
 and `tests/test_runtime_errors.py` exercise the primitives they wrap.
@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import asyncio
 
-from ctxloom import Agent, Consume, Patch, Produce, RuntimeResources, tool
-from ctxloom.providers import LLMProvider, LLMRequest, LLMResponse
-from ctxloom.testing import ScenarioLab
-from ctxloom.tool_use import ToolAnswer, ToolUse
+from reactifact import Agent, Consume, Patch, Produce, RuntimeResources, tool
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
+from reactifact.testing import ScenarioLab
+from reactifact.tool_use import ToolAnswer, ToolUse
 from pydantic import BaseModel
 
 
@@ -111,7 +111,7 @@ def test_fresh_context_per_run_does_not_leak_state():
 
 def test_fail_injects_a_tool_error_then_recovers_on_retry():
     """The agent's LLM sees a tool-failure message and retries — the
-    documented caveat in `ctxloom/testing/fault.py`: an injected fault does
+    documented caveat in `reactifact/testing/fault.py`: an injected fault does
     not abort the run, it surfaces to the LLM like a real transient failure.
     """
     tool_calls.clear()

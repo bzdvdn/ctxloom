@@ -50,8 +50,8 @@ filter (жёсткие правила → МОГУТ отсеять) → rank (�
 ## API
 
 ```python
-from ctxloom import Runtime
-from ctxloom.scheduler import uncertainty_policy
+from reactifact import Runtime
+from reactifact.scheduler import uncertainty_policy
 
 runtime = Runtime(
     ctx,
@@ -81,7 +81,7 @@ runtime = Runtime(
 
 ## Что поставляется со спайком
 
-- `ctxloom/scheduler.py` — `Scheduler`, `uncertainty_policy`, типы.
+- `reactifact/scheduler.py` — `Scheduler`, `uncertainty_policy`, типы.
 - Хук в runtime (параметр `scheduler=`), `Agent.capabilities`.
 - `examples/adaptive` — два конкурирующих «художника» + HITL-подтверждение.
 - `tests/test_adaptive.py` — ранжирование, отсев, fallback, LLM-разруливание,

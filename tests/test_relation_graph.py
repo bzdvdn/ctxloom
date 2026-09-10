@@ -2,7 +2,7 @@
 tests/test_relations.py through the public Context API; these lock in the
 extracted unit directly."""
 
-from ctxloom.relations import RelationGraph
+from reactifact.relations import RelationGraph
 
 
 def test_link_returns_relation_and_is_queryable():

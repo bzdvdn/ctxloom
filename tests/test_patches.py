@@ -1,5 +1,5 @@
-from ctxloom.artifacts import Artifact
-from ctxloom.patches import Create, Patch, Update
+from reactifact.artifacts import Artifact
+from reactifact.patches import Create, Patch, Update
 from pydantic import BaseModel
 
 

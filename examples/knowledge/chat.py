@@ -13,11 +13,11 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import Budget, Runtime, RuntimeResources, SessionStore
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.providers import openai_llm, openrouter_llm
-from ctxloom.recipes import keyword_score, load_skills
-from ctxloom.sources import CSVSource, FileSystemSource
+from reactifact import Budget, Runtime, RuntimeResources, SessionStore
+from reactifact.checkpoints import FileKVBackend
+from reactifact.providers import openai_llm, openrouter_llm
+from reactifact.recipes import keyword_score, load_skills
+from reactifact.sources import CSVSource, FileSystemSource
 from dotenv import load_dotenv
 from examples.knowledge.agents import AGENTS
 from examples.knowledge.models import Answer, ChatReply, ResearchTurn, UserQuery
@@ -71,7 +71,7 @@ def build_resources(llm: Any = _UNSET) -> RuntimeResources:
             "costs": CSVSource(str(KNOWLEDGE_DOCS / "costs"), source_id="costs"),
         },
     )
-    # Skills (§67, ctxloom.recipes.skills): loaded once, matched per-turn in
+    # Skills (§67, reactifact.recipes.skills): loaded once, matched per-turn in
     # BuildAnswer against the situation, not the raw question.
     resources.set("skills", load_skills(KNOWLEDGE_SKILLS))
     return resources

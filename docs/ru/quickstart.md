@@ -19,10 +19,10 @@ ask/tool/answer — модель на каждом шаге решает: выз
 import asyncio
 from pydantic import BaseModel
 
-from ctxloom import Consume, Context, Runtime, RuntimeResources
-from ctxloom.llm_agent import HITLLMAgent
-from ctxloom.providers import from_env
-from ctxloom.tools import tool
+from reactifact import Consume, Context, Runtime, RuntimeResources
+from reactifact.llm_agent import HITLLMAgent
+from reactifact.providers import from_env
+from reactifact.tools import tool
 
 
 class Ticket(BaseModel):
@@ -48,7 +48,7 @@ async def main():
     ctx.create(Ticket(text="is checkout-api healthy?"))
     await runtime.arun()
 
-    from ctxloom.tool_use import ToolAnswer
+    from reactifact.tool_use import ToolAnswer
     answer = ctx.latest(ToolAnswer)
     print("answer:", answer.data.text if answer else None)
 
@@ -59,11 +59,11 @@ asyncio.run(main())
 Без ключа API (`from_env()` вернёт `None`) агент честно ответит
 `"Could not reach a decision."` вместо угадывания (§59) — это не баг, а тот же
 контракт честного фолбэка, которому следует любой генеративный шаг в
-ctxloom. С ключом в `.env` модель реально решит вызвать `check_status` и
+reactifact. С ключом в `.env` модель реально решит вызвать `check_status` и
 ответит по его результату. Чтобы увидеть весь цикл детерминированно и
 офлайн (без ключа, без угадывания), подставьте в `resources.llm` заскриптованный
 `LLMProvider` — так же, как это делает `ScriptedLLM` в `tests/test_tools.py`,
-или используйте `ctxloom.testing.ScenarioLab`, если пишете это как тест.
+или используйте `reactifact.testing.ScenarioLab`, если пишете это как тест.
 
 **Полная версия**: `examples/devops` — три специалиста (k8s/GitLab/Ansible)
 за одним роутером, трейс-дашборд, веб-UI. Запуск:
@@ -81,10 +81,10 @@ ctxloom. С ключом в `.env` модель реально решит выз
 import asyncio
 from pydantic import BaseModel
 
-from ctxloom import Consume, Context, Runtime, RuntimeResources, create_agent
-from ctxloom.produce import produce
-from ctxloom.recipes import fan_out_sources, materialize_doc, find, keyword_score
-from ctxloom.sources import FileSystemSource, SourceRef
+from reactifact import Consume, Context, Runtime, RuntimeResources, create_agent
+from reactifact.produce import produce
+from reactifact.recipes import fan_out_sources, materialize_doc, find, keyword_score
+from reactifact.sources import FileSystemSource, SourceRef
 
 
 class Question(BaseModel):
@@ -166,16 +166,16 @@ keyword-триггерный skill. Запуск: `.venv/bin/python examples/kno
 `ChatAssistant` сам владеет сессиями, циклом хода и восстановлением
 истории — ваше приложение поставляет только доменные хуки. Тот же объект
 работает и как обычный async-вызов (`invoke`), и, будучи смонтированным через
-`ctxloom.web.create_chat_router`, как SSE-эндпоинт на вашем FastAPI:
+`reactifact.web.create_chat_router`, как SSE-эндпоинт на вашем FastAPI:
 
 ```python
 import asyncio
 from pydantic import BaseModel
 
-from ctxloom import Consume, RuntimeResources, SessionStore, create_agent
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.chat import ChatAssistant
-from ctxloom.produce import produce
+from reactifact import Consume, RuntimeResources, SessionStore, create_agent
+from reactifact.checkpoints import FileKVBackend
+from reactifact.chat import ChatAssistant
+from reactifact.produce import produce
 
 
 class UserMsg(BaseModel):
@@ -228,7 +228,7 @@ asyncio.run(main())
 
 ```python
 from fastapi import FastAPI
-from ctxloom.web import create_chat_router
+from reactifact.web import create_chat_router
 
 app = FastAPI()
 app.include_router(create_chat_router(assistant))

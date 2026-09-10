@@ -22,8 +22,8 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add repo root to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom.providers import LLMProvider, openai_llm, openrouter_llm
-from ctxloom.viz import context_to_mermaid
+from reactifact.providers import LLMProvider, openai_llm, openrouter_llm
+from reactifact.viz import context_to_mermaid
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -74,7 +74,7 @@ def _sse(event: str, data: dict[str, Any]) -> str:
 def create_app(llm: LLMProvider | None = None) -> FastAPI:
     """App factory. `llm` is for tests; by default it comes from `.env` (§68)."""
     active_llm = llm if llm is not None else build_llm()
-    app = FastAPI(title="fork-lab (ctxloom)")
+    app = FastAPI(title="fork-lab (reactifact)")
 
     @app.get("/api/health")
     async def health() -> dict[str, Any]:

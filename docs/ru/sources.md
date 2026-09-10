@@ -6,8 +6,8 @@
 `Context.resources.sources`.
 
 ```python
-from ctxloom import Context, RuntimeResources
-from ctxloom.sources import CSVSource, EmbeddingSource, FileSystemSource, WebSource
+from reactifact import Context, RuntimeResources
+from reactifact.sources import CSVSource, EmbeddingSource, FileSystemSource, WebSource
 
 ctx = Context(
     resources=RuntimeResources(

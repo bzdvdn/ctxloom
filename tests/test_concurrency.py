@@ -1,7 +1,7 @@
 import asyncio
 import time
 
-from ctxloom import Agent, Budget, Consume, Context, Patch, Runtime
+from reactifact import Agent, Budget, Consume, Context, Patch, Runtime
 from pydantic import BaseModel
 
 

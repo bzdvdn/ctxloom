@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ctxloom import Artifact, Context, Event, Produce
-from ctxloom.interrupt import PendingQuestion
-from ctxloom.structured import StructuredLLM
+from reactifact import Artifact, Context, Event, Produce
+from reactifact.interrupt import PendingQuestion
+from reactifact.structured import StructuredLLM
 from pydantic import BaseModel
 
 from ..models import (

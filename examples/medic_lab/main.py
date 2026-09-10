@@ -15,10 +15,10 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ctxloom import SessionStore
-from ctxloom.checkpoints import FileKVBackend
-from ctxloom.tracing import TraceStore
-from ctxloom.tracing.web import create_trace_router
+from reactifact import SessionStore
+from reactifact.checkpoints import FileKVBackend
+from reactifact.tracing import TraceStore
+from reactifact.tracing.web import create_trace_router
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -44,7 +44,7 @@ def create_app(store_dir: str | None = None, llm: Any = _UNSET) -> FastAPI:
         str(Path(store_dir) / "traces.db") if store_dir else str(ROOT / "traces.db")
     )
 
-    app = FastAPI(title="medic-lab (ctxloom)")
+    app = FastAPI(title="medic-lab (reactifact)")
     app.include_router(
         create_trace_router(
             trace_store,

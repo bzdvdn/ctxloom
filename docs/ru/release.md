@@ -1,6 +1,6 @@
 # Релиз-менеджмент
 
-Как режется, собирается, проверяется и публикуется версия `ctxloom`.
+Как режется, собирается, проверяется и публикуется версия `reactifact`.
 
 ## Версионирование
 
@@ -8,7 +8,7 @@
   `0.5.0rc1`), для стабильного релиза `rc` убирается (`0.5.0`).
 - Версия живёт в **двух местах** и должна совпадать:
   - `pyproject.toml` → `[project] version`;
-  - `ctxloom/__init__.py` → `__version__`.
+  - `reactifact/__init__.py` → `__version__`.
 
 ## Правило чейджлога
 
@@ -25,7 +25,7 @@ Changelog). При бампе версии:
 `CHANGELOG.md`, ломающие изменения помечены по правилу выше. Два изменения,
 о которых стоит знать при переходе через них:
 
-- **0.5.0** — `ctxloom/__init__.py` реэкспортирует только core-поверхность
+- **0.5.0** — `reactifact/__init__.py` реэкспортирует только core-поверхность
   (~40 имён вместо ~150); eval, tracing, checkpoint/branch-бэкенды, chat/web
   слой, адаптивный scheduler, replay, structured-LLM хелперы, viz и
   prompt-шаблоны переехали в импорты из своих сабмодулей. Ничего не
@@ -51,14 +51,14 @@ Changelog). При бампе версии:
 # 2) версия и чейджлог
 
 # 3) сборка
-uv build                         # dist/ctxloom-0.5.0-py3-none-any.whl + sdist
+uv build                         # dist/reactifact-0.5.0-py3-none-any.whl + sdist
 
 # 4) проверка wheel в чистом venv (не workspace — чтобы не цеплял PYTHONPATH)
-uv venv /tmp/ctxloom-rc
-/tmp/ctxloom-rc/bin/python -m pip install dist/ctxloom-0.5.0-py3-none-any.whl
-/tmp/ctxloom-rc/bin/python -c "import ctxloom; print(ctxloom.__version__)"
-/tmp/ctxloom-rc/bin/ctxloom --help          # console-скрипт на месте
-unzip -l dist/ctxloom-0.5.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates"
+uv venv /tmp/reactifact-rc
+/tmp/reactifact-rc/bin/python -m pip install dist/reactifact-0.5.0-py3-none-any.whl
+/tmp/reactifact-rc/bin/python -c "import reactifact; print(reactifact.__version__)"
+/tmp/reactifact-rc/bin/reactifact --help          # console-скрипт на месте
+unzip -l dist/reactifact-0.5.0-py3-none-any.whl | grep -E "examples/|tests/|tracing/templates"
 
 # 5) тег
 git tag v0.5.0 && git push origin v0.5.0
@@ -69,9 +69,9 @@ uv publish --publish-url https://upload.pypi.org/legacy/
 
 ## Что входит в дистрибутив
 
-`uv build` пакует только пакет `ctxloom` (setuptools `packages.find` исключает
+`uv build` пакует только пакет `reactifact` (setuptools `packages.find` исключает
 `examples`/`tests`) плюс шаблоны трейс-дашборда
-(`ctxloom/tracing/templates/*.html`). Примеры, тесты и docs остаются в
+(`reactifact/tracing/templates/*.html`). Примеры, тесты и docs остаются в
 репозитории и служат документацией-примером.
 
 ## Откат

@@ -3,15 +3,15 @@
 import asyncio
 
 import httpx
-from ctxloom.providers import (
+from reactifact.providers import (
     AnthropicProvider,
     LLMRequest,
     Message,
     OpenAICompatEmbedder,
     OpenAICompatProvider,
 )
-from ctxloom.providers.contracts import auth_value
-from ctxloom.providers.image import OpenAICompatImageProvider
+from reactifact.providers.contracts import auth_value
+from reactifact.providers.image import OpenAICompatImageProvider
 
 COMPLETION = {
     "choices": [{"message": {"content": "ok", "finish_reason": "stop"}}],
@@ -177,7 +177,7 @@ def test_env_knobs_are_read(tmp_path):
         os.environ["OPENAI_PROXY"] = "http://proxy.example:8080"
         os.environ["OPENAI_AUTH_HEADER"] = "X-Api-Key"
         os.environ["OPENAI_AUTH_SCHEME"] = "Bearer"
-        from ctxloom.providers import llm_from_env
+        from reactifact.providers import llm_from_env
 
         provider = llm_from_env()
     finally:
@@ -199,7 +199,7 @@ def test_llm_from_env_forwards_extra_overrides():
     saved = os.environ.get("OPENAI_BASE_URL")
     try:
         os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
-        from ctxloom.providers import llm_from_env
+        from reactifact.providers import llm_from_env
 
         provider = llm_from_env(temperature=0.2, max_tokens=256)
     finally:
@@ -220,7 +220,7 @@ def test_from_env_prefers_openrouter_key():
     try:
         os.environ["OPENROUTER_API_KEY"] = "or-key"
         os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
-        from ctxloom.providers import from_env
+        from reactifact.providers import from_env
 
         provider = from_env(max_tokens=128)
     finally:
@@ -242,7 +242,7 @@ def test_from_env_falls_back_to_openai_base_url():
     try:
         os.environ.pop("OPENROUTER_API_KEY", None)
         os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
-        from ctxloom.providers import from_env
+        from reactifact.providers import from_env
 
         provider = from_env()
     finally:
@@ -263,7 +263,7 @@ def test_from_env_none_when_unconfigured():
     try:
         for k in keys:
             os.environ.pop(k, None)
-        from ctxloom.providers import from_env
+        from reactifact.providers import from_env
 
         assert from_env() is None
     finally:
@@ -289,7 +289,7 @@ def test_env_auth_scheme_empty_is_raw_key():
         os.environ["OPENAI_BASE_URL"] = "https://llm.example/v1"
         os.environ["OPENAI_API_KEY"] = "raw"
         os.environ["OPENAI_AUTH_SCHEME"] = ""
-        from ctxloom.providers import llm_from_env
+        from reactifact.providers import llm_from_env
 
         provider = llm_from_env()
     finally:

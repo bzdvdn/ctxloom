@@ -22,7 +22,7 @@ code** — just wire it at resources time.
 ### SQLite store + web dashboard (local, offline)
 
 ```python
-from ctxloom.tracing import TraceStore
+from reactifact.tracing import TraceStore
 
 store = TraceStore("traces.db")   # SQLite sink; also serves runs back to the UI
 ```
@@ -33,7 +33,7 @@ a worker thread, so the same object works in a web app and in plain sync code.
 The dashboard is a FastAPI router mounted on your app:
 
 ```python
-from ctxloom.tracing.web import create_trace_router
+from reactifact.tracing.web import create_trace_router
 
 app.include_router(create_trace_router(store), prefix="/traces")
 ```
@@ -51,8 +51,8 @@ A trace can go to several places at once via `CompositeTracer`, passed to the
 (only `on_turn_end` performs I/O; sinks `export` asynchronously).
 
 ```python
-from ctxloom import Runtime
-from ctxloom.tracing import LangfuseTracer, PostgresStore, TraceStore
+from reactifact import Runtime
+from reactifact.tracing import LangfuseTracer, PostgresStore, TraceStore
 
 runtime = Runtime(
     ctx,

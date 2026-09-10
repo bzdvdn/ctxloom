@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 
-from ctxloom.checkpoints import SQLiteKVBackend
+from reactifact.checkpoints import SQLiteKVBackend
 
 
 async def _write_many(backend: SQLiteKVBackend, prefix: str, count: int) -> None:

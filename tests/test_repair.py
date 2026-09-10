@@ -1,8 +1,8 @@
 import asyncio
 from pathlib import Path
 
-from ctxloom import Budget, Context, Runtime, RuntimeResources
-from ctxloom.providers import (
+from reactifact import Budget, Context, Runtime, RuntimeResources
+from reactifact.providers import (
     ImageProvider,
     LLMProvider,
     LLMRequest,

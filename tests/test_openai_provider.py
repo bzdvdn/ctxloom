@@ -2,7 +2,7 @@ import asyncio
 import json
 
 import httpx
-from ctxloom.providers import (
+from reactifact.providers import (
     LLMRequest,
     LLMResponse,
     Message,

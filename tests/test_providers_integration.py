@@ -1,6 +1,6 @@
 import asyncio
 
-from ctxloom import (
+from reactifact import (
     Agent,
     Context,
     EventType,
@@ -9,7 +9,7 @@ from ctxloom import (
     RuntimeResources,
     Trigger,
 )
-from ctxloom.providers import FakeEmbedder
+from reactifact.providers import FakeEmbedder
 from pydantic import BaseModel
 
 

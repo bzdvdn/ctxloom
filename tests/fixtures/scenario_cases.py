@@ -1,16 +1,16 @@
 """Fixture scenarios for `tests/test_cli_scenario.py`.
 
-Exercises every status the `ctxloom scenario` CLI can report (PASS/FAIL/
+Exercises every status the `reactifact scenario` CLI can report (PASS/FAIL/
 ERROR/SKIP) plus `--mode` plumbing through `mode_from_env()`, without
 touching any real example, model, or network call.
 """
 
 from __future__ import annotations
 
-from ctxloom.testing import ScenarioSkip, mode_from_env, scenario
+from reactifact.testing import ScenarioSkip, mode_from_env, scenario
 
 #: Set by `reports_mode()` below — read back by the test to confirm `--mode`
-#: actually reached `CTXLOOM_SCENARIO_MODE` before this module's scenarios ran.
+#: actually reached `REACTIFACT_SCENARIO_MODE` before this module's scenarios ran.
 last_seen_mode: str | None = None
 
 
