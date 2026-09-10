@@ -1,9 +1,9 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Patch, Runtime, SessionStore
 from reactifact.checkpoints import FileKVBackend
 from reactifact.interrupt import PendingQuestion
-from pydantic import BaseModel
 
 
 class Project(BaseModel):

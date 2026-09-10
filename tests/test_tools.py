@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Budget,
@@ -14,7 +15,6 @@ from reactifact import (
 from reactifact.llm_agent import HITLLMAgent, LLMAgent
 from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from reactifact.tool_use import ToolAnswer, ToolUse
-from pydantic import BaseModel
 
 
 class K8sProblems(BaseModel):

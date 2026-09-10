@@ -1,8 +1,8 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Patch, Runtime, SessionStore
 from reactifact.checkpoints import FileKVBackend, SQLiteKVBackend
-from pydantic import BaseModel
 
 
 class Question(BaseModel):

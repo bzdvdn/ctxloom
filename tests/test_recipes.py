@@ -3,11 +3,11 @@
 import asyncio
 from pathlib import Path
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Produce, Runtime, RuntimeResources
 from reactifact.artifacts import Artifact
 from reactifact.recipes import StatusMachine, fan_out_sources, materialize_doc
 from reactifact.sources import FileSystemSource, SourceRef
-from pydantic import BaseModel
 
 
 class Job(BaseModel):

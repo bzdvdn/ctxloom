@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Patch, Produce, RuntimeResources
 from reactifact.recipes import StatusMachine
 from reactifact.tracing.models import (
@@ -17,7 +18,6 @@ from reactifact.viz import (
     trace_provenance_to_mermaid,
     trace_to_mermaid,
 )
-from pydantic import BaseModel
 
 
 class Question(BaseModel):

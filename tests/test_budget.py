@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Budget,
@@ -10,7 +11,6 @@ from reactifact import (
     Runtime,
     Trigger,
 )
-from pydantic import BaseModel
 
 
 class Number(BaseModel):

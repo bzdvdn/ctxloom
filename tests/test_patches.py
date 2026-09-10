@@ -1,6 +1,6 @@
+from pydantic import BaseModel
 from reactifact.artifacts import Artifact
 from reactifact.patches import Create, Patch, Update
-from pydantic import BaseModel
 
 
 class Item(BaseModel):

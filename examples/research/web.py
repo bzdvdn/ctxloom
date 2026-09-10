@@ -16,12 +16,12 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from reactifact import Budget, SessionStore
 from reactifact.chat import ChatAssistant
 from reactifact.checkpoints import FileKVBackend
 from reactifact.web import create_chat_router
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from examples.research.agents import research_agents
 from examples.research.chat import build_resources

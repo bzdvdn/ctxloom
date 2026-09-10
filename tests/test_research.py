@@ -6,10 +6,10 @@ Hermetic: WebSource uses an injected MockTransport, so no real network.
 import asyncio
 
 import httpx
-from reactifact import Budget, Context, Runtime, RuntimeResources
-from reactifact.sources import WebSource
 from examples.research.agents import research_agents
 from examples.research.models import Answer, Claim, Evidence, UserQuery
+from reactifact import Budget, Context, Runtime, RuntimeResources
+from reactifact.sources import WebSource
 
 PAGES = {
     "https://example.org/gpu": (

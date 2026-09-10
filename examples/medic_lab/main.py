@@ -15,13 +15,13 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from reactifact import SessionStore
 from reactifact.checkpoints import FileKVBackend
 from reactifact.tracing import TraceStore
 from reactifact.tracing.web import create_trace_router
-from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from examples.medic_lab.agents import medic_lab_agents
 from examples.medic_lab.api import create_router

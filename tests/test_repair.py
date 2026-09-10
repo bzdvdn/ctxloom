@@ -1,6 +1,9 @@
 import asyncio
 from pathlib import Path
 
+from examples.repair.agents import RepairFlow
+from examples.repair.models import ChatReply, Project, ProjectInfo, UserMsg
+from examples.repair.services import FAST_ABILITIES_TEXT, Catalog
 from reactifact import Budget, Context, Runtime, RuntimeResources
 from reactifact.providers import (
     ImageProvider,
@@ -8,9 +11,6 @@ from reactifact.providers import (
     LLMRequest,
     LLMResponse,
 )
-from examples.repair.agents import RepairFlow
-from examples.repair.models import ChatReply, Project, ProjectInfo, UserMsg
-from examples.repair.services import FAST_ABILITIES_TEXT, Catalog
 
 
 def test_capabilities_answered_without_llm(tmp_path):

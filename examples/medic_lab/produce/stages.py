@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import BaseModel
 from reactifact import Artifact, Context, Event, Produce
 from reactifact.recipes import fan_out_sources, materialize_doc
 from reactifact.sources import SourceRef
 from reactifact.structured import StructuredLLM
-from pydantic import BaseModel
 
 from ..models import (
     Claim,

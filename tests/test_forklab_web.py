@@ -1,8 +1,8 @@
 """forklab web: the fork → merge pipeline streams status events and a result."""
 
-from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.forklab.web import create_app
 from fastapi.testclient import TestClient
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 
 
 class ScriptedLLM(LLMProvider):

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Runtime, create_agent
 from reactifact.recipes import WindowPruner, WindowSummarizer
-from pydantic import BaseModel
 
 
 class Msg(BaseModel):

@@ -13,13 +13,13 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from pydantic import BaseModel
 from reactifact import Context
 from reactifact.checkpoints import FileKVBackend, SQLiteKVBackend
 from reactifact.cli import build_parser, main
 from reactifact.cli.common import load_agents, open_store
 from reactifact.session import SessionStore
 from reactifact.tracing import RunTrace, TraceStore
-from pydantic import BaseModel
 
 
 class Doc(BaseModel):

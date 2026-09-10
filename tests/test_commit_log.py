@@ -2,10 +2,10 @@
 behavior is covered by tests/test_backbone.py and tests/test_relations.py
 through the public Context API; these lock in the extracted unit directly."""
 
+from pydantic import BaseModel
 from reactifact.commit import Commit, Write
 from reactifact.commit_log import CommitLog
 from reactifact.patches import Create, Delete, Link, Unlink, Update
-from pydantic import BaseModel
 
 
 class Note(BaseModel):

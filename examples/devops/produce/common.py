@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Literal
 
+from pydantic import BaseModel
 from reactifact import Context
 from reactifact.structured import StructuredLLM
-from pydantic import BaseModel
 
 from ..prompts import ROUTE_SYSTEM
 

@@ -1,5 +1,5 @@
-from reactifact.artifacts import Artifact
 from pydantic import BaseModel
+from reactifact.artifacts import Artifact
 
 
 class Person(BaseModel):

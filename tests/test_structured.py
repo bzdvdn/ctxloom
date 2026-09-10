@@ -1,10 +1,10 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Consume, Context, Runtime, RuntimeResources
 from reactifact.llm_agent import StructuredGenerateAgent
 from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from reactifact.structured import parse_structured, structured_llm
-from pydantic import BaseModel
 
 
 class Summary(BaseModel):

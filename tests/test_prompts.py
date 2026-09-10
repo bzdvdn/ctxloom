@@ -1,8 +1,8 @@
 """Prompt templating (§68): strict variables, defaults, model attributes, chat rows."""
 
+from pydantic import BaseModel
 from reactifact.prompts import MessagesPrompt, PromptTemplate
 from reactifact.providers import Message
-from pydantic import BaseModel
 
 
 class Doc(BaseModel):

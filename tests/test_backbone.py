@@ -1,8 +1,8 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, EventType, Patch, Runtime, Trigger
 from reactifact.commit import Read, Write
-from pydantic import BaseModel
 
 
 class Question(BaseModel):

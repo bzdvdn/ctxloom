@@ -2,13 +2,13 @@ import asyncio
 import os
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from pydantic import BaseModel
 from reactifact import Consume, SessionStore, create_agent, produce
 from reactifact.chat import ChatAssistant
 from reactifact.checkpoints import FileKVBackend
 from reactifact.web import create_chat_router
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from pydantic import BaseModel
 
 
 class Q(BaseModel):

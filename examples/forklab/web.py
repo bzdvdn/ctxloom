@@ -22,13 +22,13 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add repo root to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from reactifact.providers import LLMProvider, openai_llm, openrouter_llm
-from reactifact.viz import context_to_mermaid
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from reactifact.providers import LLMProvider, openai_llm, openrouter_llm
+from reactifact.viz import context_to_mermaid
 
 from examples.forklab.pipeline import (
     evaluate_runtime,

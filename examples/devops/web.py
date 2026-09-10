@@ -18,13 +18,6 @@ from typing import Any
 if __package__ in (None, ""):  # running as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from reactifact import Budget, RuntimeResources, SessionStore
-from reactifact.chat import ChatAssistant
-from reactifact.checkpoints import FileKVBackend
-from reactifact.providers import openai_llm, openrouter_llm
-from reactifact.tracing import Tracer, TraceStore
-from reactifact.tracing.web import create_trace_router
-from reactifact.web import create_chat_router
 from dotenv import load_dotenv
 from examples.devops.agents import (
     AnsibleAgent,
@@ -36,6 +29,13 @@ from examples.devops.agents import (
 from examples.devops.models import ChatReply, UserMsg
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from reactifact import Budget, RuntimeResources, SessionStore
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.providers import openai_llm, openrouter_llm
+from reactifact.tracing import Tracer, TraceStore
+from reactifact.tracing.web import create_trace_router
+from reactifact.web import create_chat_router
 
 
 def build_llm() -> Any | None:

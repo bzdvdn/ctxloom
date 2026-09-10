@@ -2,10 +2,10 @@
 
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Context, MergeConflict, RuntimeResources
 from reactifact.branching import BranchStore
 from reactifact.checkpoints import SQLiteKVBackend
-from pydantic import BaseModel
 
 
 class Note(BaseModel):

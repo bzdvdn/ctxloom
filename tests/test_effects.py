@@ -2,6 +2,7 @@
 
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Consume,
@@ -12,7 +13,6 @@ from reactifact import (
 )
 from reactifact.effects import Effects, Handle, current_effects
 from reactifact.patches import Create, Link, Update
-from pydantic import BaseModel
 
 
 class Note(BaseModel):

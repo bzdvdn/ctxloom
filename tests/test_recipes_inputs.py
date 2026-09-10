@@ -1,8 +1,8 @@
 """find/find_all: locate typed artifacts inside a produce's `inputs` list."""
 
+from pydantic import BaseModel
 from reactifact import Context, RuntimeResources
 from reactifact.recipes import find, find_all
-from pydantic import BaseModel
 
 
 class Question(BaseModel):

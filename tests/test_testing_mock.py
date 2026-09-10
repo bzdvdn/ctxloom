@@ -14,12 +14,12 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from pydantic import BaseModel
 from reactifact import Agent, Consume, RuntimeResources, tool
 from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from reactifact.testing import ScenarioError, ScenarioLab
 from reactifact.testing.mock import ResourceFault, ResourceFaultInstaller, _FailingProxy
 from reactifact.tool_use import ToolAnswer, ToolUse
-from pydantic import BaseModel
 
 
 def run(coro):

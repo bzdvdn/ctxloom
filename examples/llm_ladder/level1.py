@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Artifact,
@@ -33,7 +34,6 @@ from reactifact import (
 from reactifact.prompts import PromptTemplate
 from reactifact.providers import LLMProvider
 from reactifact.recipes import find
-from pydantic import BaseModel
 
 
 def build_llm() -> LLMProvider | None:

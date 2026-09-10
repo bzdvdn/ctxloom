@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Patch, Runtime, RuntimeResources
 from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from reactifact.tracing import (
@@ -11,7 +12,6 @@ from reactifact.tracing import (
     Tracer,
     TraceStore,
 )
-from pydantic import BaseModel
 
 
 def run(coro):
@@ -360,9 +360,9 @@ def _basic(user: str, password: str) -> str:
 
 
 def test_trace_router_basic_auth(tmp_path):
-    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+    from reactifact.tracing.web import create_trace_router
 
     store = TraceStore(str(tmp_path / "auth.db"))
     run(store.export(RunTrace(id="r1", session_id="s", outcome="completed")))
@@ -387,9 +387,9 @@ def test_trace_router_basic_auth(tmp_path):
 
 
 def test_trace_router_open_without_auth(tmp_path):
-    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+    from reactifact.tracing.web import create_trace_router
 
     store = TraceStore(str(tmp_path / "open.db"))
     app = FastAPI()
@@ -399,9 +399,9 @@ def test_trace_router_open_without_auth(tmp_path):
 
 
 def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
-    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+    from reactifact.tracing.web import create_trace_router
 
     store = TraceStore(str(tmp_path / "diag.db"))
     run(
@@ -427,10 +427,10 @@ def test_trace_run_page_embeds_mermaid_diagram(tmp_path):
 
 
 def test_trace_run_page_embeds_provenance_graph(tmp_path):
-    from reactifact.tracing.models import RelationRef
-    from reactifact.tracing.web import create_trace_router
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+    from reactifact.tracing.models import RelationRef
+    from reactifact.tracing.web import create_trace_router
 
     store = TraceStore(str(tmp_path / "evg.db"))
     run(

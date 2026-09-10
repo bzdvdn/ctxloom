@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Context,
@@ -10,7 +11,6 @@ from reactifact import (
     Trigger,
 )
 from reactifact.providers import FakeEmbedder
-from pydantic import BaseModel
 
 
 class TextData(BaseModel):

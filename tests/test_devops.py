@@ -1,13 +1,5 @@
 import asyncio
 
-from reactifact import (
-    Budget,
-    Context,
-    PendingQuestion,
-    Runtime,
-    RuntimeResources,
-)
-from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.devops.agents import (
     AnsibleAgent,
     GitlabAgent,
@@ -17,6 +9,14 @@ from examples.devops.agents import (
 )
 from examples.devops.models import ChatReply, GitlabReport, K8sReport, UserMsg
 from examples.devops.tools import CALLS
+from reactifact import (
+    Budget,
+    Context,
+    PendingQuestion,
+    Runtime,
+    RuntimeResources,
+)
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 
 
 class ScriptedLLM(LLMProvider):

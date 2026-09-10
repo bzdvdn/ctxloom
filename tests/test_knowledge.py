@@ -2,15 +2,6 @@ import asyncio
 import logging
 from pathlib import Path
 
-from reactifact import (
-    Budget,
-    Context,
-    Runtime,
-    RuntimeResources,
-)
-from reactifact.providers import LLMProvider, LLMResponseChunk
-from reactifact.recipes import keyword_score
-from reactifact.sources import CSVSource, FileSystemSource
 from examples.knowledge.agents import (
     AnswerBuilder,
     CalculatorAgent,
@@ -32,6 +23,15 @@ from examples.knowledge.models import (
     Spreadsheet,
     UserQuery,
 )
+from reactifact import (
+    Budget,
+    Context,
+    Runtime,
+    RuntimeResources,
+)
+from reactifact.providers import LLMProvider, LLMResponseChunk
+from reactifact.recipes import keyword_score
+from reactifact.sources import CSVSource, FileSystemSource
 
 DOCS = Path(__file__).resolve().parents[1] / "examples" / "knowledge" / "docs"
 

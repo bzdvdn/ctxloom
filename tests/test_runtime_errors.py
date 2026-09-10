@@ -2,8 +2,8 @@
 
 import asyncio
 
-from reactifact import Agent, Consume, Context, Patch, Produce, Runtime
 from pydantic import BaseModel
+from reactifact import Agent, Consume, Context, Patch, Produce, Runtime
 
 
 class Trigger(BaseModel):

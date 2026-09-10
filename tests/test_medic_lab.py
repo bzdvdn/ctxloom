@@ -6,8 +6,6 @@ Hermetic: the evidence pool is the local fixture pages (no network).
 import asyncio
 from pathlib import Path
 
-from reactifact import Budget, Context, Runtime, RuntimeResources
-from reactifact.sources import FileSystemSource
 from examples.medic_lab.agents import medic_lab_agents
 from examples.medic_lab.models import (
     Claim,
@@ -16,6 +14,8 @@ from examples.medic_lab.models import (
     ResearchReport,
     SearchDone,
 )
+from reactifact import Budget, Context, Runtime, RuntimeResources
+from reactifact.sources import FileSystemSource
 
 PAGES = Path(__file__).resolve().parents[1] / "examples" / "medic_lab" / "pages"
 QUESTION = "Does vitamin D supplementation prevent colds?"

@@ -13,14 +13,14 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from dotenv import load_dotenv
+from examples.knowledge.agents import AGENTS
+from examples.knowledge.models import Answer, ChatReply, ResearchTurn, UserQuery
 from reactifact import Budget, Runtime, RuntimeResources, SessionStore
 from reactifact.checkpoints import FileKVBackend
 from reactifact.providers import openai_llm, openrouter_llm
 from reactifact.recipes import keyword_score, load_skills
 from reactifact.sources import CSVSource, FileSystemSource
-from dotenv import load_dotenv
-from examples.knowledge.agents import AGENTS
-from examples.knowledge.models import Answer, ChatReply, ResearchTurn, UserQuery
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")

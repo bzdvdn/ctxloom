@@ -3,10 +3,10 @@ import os
 import tempfile
 
 import pytest
+from pydantic import BaseModel
 from reactifact.commit import Commit
 from reactifact.context import Context
 from reactifact.patches import Update
-from pydantic import BaseModel
 
 
 class Doc(BaseModel):

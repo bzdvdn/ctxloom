@@ -6,6 +6,7 @@ they sit next to."""
 from __future__ import annotations
 
 import pytest
+from pydantic import BaseModel
 from reactifact.context import Context
 from reactifact.testing.assertions import (
     ArtifactAssertions,
@@ -14,7 +15,6 @@ from reactifact.testing.assertions import (
 )
 from reactifact.testing.exceptions import AssertionFailure
 from reactifact.testing.fault import ToolCallRecord
-from pydantic import BaseModel
 
 
 class Reply(BaseModel):

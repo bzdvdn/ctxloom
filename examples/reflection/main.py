@@ -16,6 +16,7 @@ import asyncio
 import sys
 from typing import Any
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Artifact,
@@ -29,7 +30,6 @@ from reactifact import (
 from reactifact.prompts import PromptTemplate
 from reactifact.providers import LLMProvider
 from reactifact.structured import structured_llm
-from pydantic import BaseModel
 
 
 def build_llm() -> LLMProvider | None:

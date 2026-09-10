@@ -1,8 +1,8 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Patch, Runtime
 from reactifact.events import EventType
-from pydantic import BaseModel
 
 
 class Document(BaseModel):

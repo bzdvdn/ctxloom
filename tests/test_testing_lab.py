@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Patch, Produce, RuntimeResources, tool
 from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from reactifact.testing import ScenarioLab
 from reactifact.tool_use import ToolAnswer, ToolUse
-from pydantic import BaseModel
 
 
 def run(coro):

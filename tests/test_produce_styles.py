@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Consume,
@@ -9,7 +10,6 @@ from reactifact import (
     Runtime,
     produce,
 )
-from pydantic import BaseModel
 
 
 class Input(BaseModel):

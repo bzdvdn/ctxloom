@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Context,
@@ -10,7 +11,6 @@ from reactifact import (
     Trigger,
 )
 from reactifact.sources import Source, SourceRef
-from pydantic import BaseModel
 
 
 class MySource(Source):

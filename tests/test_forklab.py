@@ -1,10 +1,10 @@
 """forklab: the branch & merge demo runs deterministically (and, with a model,
 calls the LLM throughout the flow — not just on the first request)."""
 
-from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from examples.forklab.main import _summary
 from examples.forklab.models import Answer, Evidence
 from examples.forklab.pipeline import run
+from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 
 
 class ScriptedLLM(LLMProvider):

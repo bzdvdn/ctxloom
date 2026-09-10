@@ -1,5 +1,5 @@
-from reactifact import Context
 from pydantic import BaseModel
+from reactifact import Context
 
 
 class Question(BaseModel):

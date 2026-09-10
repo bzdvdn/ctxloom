@@ -14,11 +14,11 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from dotenv import load_dotenv
 from reactifact import Budget, Context, Runtime, RuntimeResources
 from reactifact.providers import openai_llm, openrouter_llm
 from reactifact.sources import FileSystemSource, Source, WebSource
 from reactifact.tracing import Tracer, TraceStore
-from dotenv import load_dotenv
 
 from examples.medic_lab.agents import medic_lab_agents
 from examples.medic_lab.models import Question, ResearchReport

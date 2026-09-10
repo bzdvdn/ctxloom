@@ -11,12 +11,12 @@ import json
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
-from reactifact import Budget, Runtime, SessionStore
-from reactifact.interrupt import PendingQuestion
-from reactifact.tracing import Tracer
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+from reactifact import Budget, Runtime, SessionStore
+from reactifact.interrupt import PendingQuestion
+from reactifact.tracing import Tracer
 
 from ..models import Question, ResearchReport
 

@@ -22,10 +22,6 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from reactifact import Budget, SessionStore
-from reactifact.chat import ChatAssistant
-from reactifact.checkpoints import FileKVBackend
-from reactifact.web import create_chat_router
 from dotenv import load_dotenv
 from examples.knowledge.agents import AGENTS
 from examples.knowledge.chat import _UNSET, build_resources
@@ -38,6 +34,10 @@ from examples.knowledge.models import (
 )
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from reactifact import Budget, SessionStore
+from reactifact.chat import ChatAssistant
+from reactifact.checkpoints import FileKVBackend
+from reactifact.web import create_chat_router
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")

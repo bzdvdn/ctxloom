@@ -2,10 +2,10 @@
 
 import asyncio
 
+from examples.adaptive.main import RULES, ArtistA, ArtistB, Task, _metric
 from reactifact import Context, PendingQuestion, RuntimeResources
 from reactifact.providers import LLMProvider, LLMRequest, LLMResponse
 from reactifact.scheduler import uncertainty_policy
-from examples.adaptive.main import RULES, ArtistA, ArtistB, Task, _metric
 
 
 class ScriptedLLM(LLMProvider):

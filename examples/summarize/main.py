@@ -17,10 +17,10 @@ import argparse
 import asyncio
 import sys
 
+from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Runtime, RuntimeResources
 from reactifact.providers import LLMProvider
 from reactifact.recipes import WindowPruner, WindowSummarizer, llm_summarizer
-from pydantic import BaseModel
 
 
 def build_llm() -> LLMProvider | None:

@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from pydantic import BaseModel
 from reactifact import Artifact, Context, Event, Produce
 from reactifact.interrupt import PendingQuestion
 from reactifact.structured import StructuredLLM
-from pydantic import BaseModel
 
 from ..models import (
     Hypothesis,

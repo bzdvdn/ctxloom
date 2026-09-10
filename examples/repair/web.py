@@ -17,6 +17,12 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script — add src to sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from dotenv import load_dotenv
+from examples.repair.agents import RepairFlow
+from examples.repair.models import ChatReply, Project, UserMsg
+from examples.repair.services import Catalog
+from fastapi import FastAPI, Response
+from fastapi.staticfiles import StaticFiles
 from reactifact import Budget, Context, RuntimeResources, SessionStore
 from reactifact.chat import ChatAssistant
 from reactifact.checkpoints import FileKVBackend
@@ -27,12 +33,6 @@ from reactifact.providers import (
     openrouter_llm,
 )
 from reactifact.web import create_chat_router
-from dotenv import load_dotenv
-from examples.repair.agents import RepairFlow
-from examples.repair.models import ChatReply, Project, UserMsg
-from examples.repair.services import Catalog
-from fastapi import FastAPI, Response
-from fastapi.staticfiles import StaticFiles
 
 
 def build_llm() -> Any | None:

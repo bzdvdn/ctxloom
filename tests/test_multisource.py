@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from reactifact import (
     Agent,
     Consume,
@@ -9,7 +10,6 @@ from reactifact import (
     RuntimeResources,
 )
 from reactifact.sources import FileSystemSource, SourceRef
-from pydantic import BaseModel
 
 
 class Question(BaseModel):

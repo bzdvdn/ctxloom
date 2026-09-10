@@ -2,9 +2,9 @@ import asyncio
 import os
 import tempfile
 
+from pydantic import BaseModel
 from reactifact import Context
 from reactifact.checkpoints import SQLiteBackend
-from pydantic import BaseModel
 
 
 class Doc(BaseModel):

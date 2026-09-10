@@ -3,6 +3,7 @@
 import asyncio
 from pathlib import Path
 
+from pydantic import BaseModel
 from reactifact import Context, RuntimeResources
 from reactifact.eval import (
     EvalCase,
@@ -18,7 +19,6 @@ from reactifact.eval import (
     run_suite,
     source_coverage,
 )
-from pydantic import BaseModel
 
 
 class Answer(BaseModel):
@@ -163,9 +163,6 @@ def test_report_render_and_dict():
 
 
 def _run_knowledge_calc() -> Context:
-    from reactifact import Budget, Runtime
-    from reactifact.recipes import keyword_score
-    from reactifact.sources import CSVSource, FileSystemSource
     from examples.knowledge.agents import (
         AnswerBuilder,
         CalculatorAgent,
@@ -178,6 +175,9 @@ def _run_knowledge_calc() -> Context:
         VerifierAgent,
     )
     from examples.knowledge.models import UserQuery
+    from reactifact import Budget, Runtime
+    from reactifact.recipes import keyword_score
+    from reactifact.sources import CSVSource, FileSystemSource
 
     DOCS = Path(__file__).resolve().parents[1] / "examples" / "knowledge" / "docs"
     resources = RuntimeResources(
