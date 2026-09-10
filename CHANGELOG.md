@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-10
+
+Project renamed from `ctxloom` to `reactifact` — the old name collided with
+an unrelated, actively developed GitHub project. Package, imports, CLI env
+var (`CTXLOOM_SCENARIO_MODE` → `REACTIFACT_SCENARIO_MODE`), docs, and
+examples all updated; no functional changes.
+
 ## [0.5.0] — 2026-09-08
 
 Performance and correctness pass across the core runtime (staleness
