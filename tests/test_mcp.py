@@ -1,0 +1,169 @@
+"""MCP client/server, exercised over the real protocol via an in-memory
+transport (`mcp.shared.memory`) — no subprocess, no network, but genuine
+wire-format initialize/list_tools/call_tool/read_resource round-trips."""
+
+import asyncio
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+import pytest
+from pydantic import BaseModel
+from reactifact import Context
+from reactifact.mcp import create_mcp_server, mcp_tools
+from reactifact.tools import Tool, ToolOutput, tool
+
+pytest.importorskip("mcp")
+
+from mcp.shared.memory import create_client_server_memory_streams  # noqa: E402
+
+from mcp import ClientSession  # noqa: E402
+
+
+def run(coro):
+    return asyncio.run(coro)
+
+
+@asynccontextmanager
+async def connected(server) -> AsyncGenerator[ClientSession, None]:
+    """Runs `server` and a `ClientSession` over in-memory streams; both ends
+    speak the real MCP protocol, just without a socket or subprocess."""
+    async with create_client_server_memory_streams() as (
+        client_streams,
+        server_streams,
+    ):
+        client_read, client_write = client_streams
+        server_read, server_write = server_streams
+
+        async def run_server() -> None:
+            await server._lowlevel_server.run(
+                server_read,
+                server_write,
+                server._lowlevel_server.create_initialization_options(),
+            )
+
+        async with asyncio.TaskGroup() as tg:
+            server_task = tg.create_task(run_server())
+            async with ClientSession(client_read, client_write) as session:
+                await session.initialize()
+                yield session
+            server_task.cancel()
+
+
+class Answer(BaseModel):
+    text: str
+
+
+@tool
+async def add(a: int, b: int) -> str:
+    """Adds two integers."""
+    return str(a + b)
+
+
+class AlwaysFails(Tool):
+    name = "always_fails"
+    description = "A tool that always reports an error."
+    schema = {"type": "object", "properties": {}, "required": []}
+
+    async def execute(self, args: dict) -> ToolOutput:
+        return ToolOutput(error="deliberately broken")
+
+
+@tool(destructive=True)
+async def delete_thing(thing_id: str) -> str:
+    """Deletes a thing by id."""
+    return f"deleted {thing_id}"
+
+
+@tool
+async def greet(name: str, loud: bool = False) -> str:
+    """Greets someone, optionally loudly."""
+    text = f"hello {name}"
+    return text.upper() if loud else text
+
+
+def test_mcp_server_exposes_tool_with_real_schema():
+    server = create_mcp_server([add], name="test")
+
+    async def scenario():
+        async with connected(server) as session:
+            listed = await session.list_tools()
+            assert [t.name for t in listed.tools] == ["add"]
+            schema = listed.tools[0].input_schema
+            assert schema["properties"]["a"]["type"] == "integer"
+            assert schema["properties"]["b"]["type"] == "integer"
+            assert set(schema["required"]) == {"a", "b"}
+
+            tools = await mcp_tools(session)
+            assert len(tools) == 1
+            result = await tools[0].execute({"a": 2, "b": 3})
+            assert result.error == ""
+            assert result.text == "5"
+
+    run(scenario())
+
+
+def test_mcp_tool_error_round_trips():
+    server = create_mcp_server([AlwaysFails()], name="test")
+
+    async def scenario():
+        async with connected(server) as session:
+            tools = await mcp_tools(session)
+            result = await tools[0].execute({})
+            assert result.error != ""
+            assert "deliberately broken" in result.error
+
+    run(scenario())
+
+
+def test_mcp_destructive_annotation_round_trips():
+    server = create_mcp_server([delete_thing], name="test")
+
+    async def scenario():
+        async with connected(server) as session:
+            listed = await session.list_tools()
+            assert listed.tools[0].annotations is not None
+            assert listed.tools[0].annotations.destructive_hint is True
+
+            tools = await mcp_tools(session)
+            assert tools[0].destructive is True
+
+    run(scenario())
+
+
+def test_mcp_optional_arg_uses_own_default_when_omitted():
+    server = create_mcp_server([greet], name="test")
+
+    async def scenario():
+        async with connected(server) as session:
+            tools = await mcp_tools(session)
+            (greet_tool,) = tools
+            quiet = await greet_tool.execute({"name": "Ada"})
+            assert quiet.text == "hello Ada"
+            loud = await greet_tool.execute({"name": "Ada", "loud": True})
+            assert loud.text == "HELLO ADA"
+
+    run(scenario())
+
+
+def test_mcp_server_exposes_context_as_resources():
+    ctx = Context()
+    a1 = ctx.create(Answer(text="first"))
+    ctx.create(Answer(text="second"))
+    server = create_mcp_server([], context=ctx, name="test")
+
+    async def scenario():
+        async with connected(server) as session:
+            templates = await session.list_resource_templates()
+            uris = {t.uri_template for t in templates.resource_templates}
+            assert "context://artifacts/{artifact_type}" in uris
+            assert "context://artifact/{artifact_id}" in uris
+
+            listed = await session.read_resource("context://artifacts/Answer")
+            body = listed.contents[0].text
+            assert '"first"' in body or "first" in body
+            assert "second" in body
+
+            one = await session.read_resource(f"context://artifact/{a1.id}")
+            assert "first" in one.contents[0].text
+
+    run(scenario())

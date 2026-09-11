@@ -233,6 +233,14 @@ not estimated — name the source and column it came from.
   prompt. The `knowledge` demo's `cost-reporting` skill
   (`examples/knowledge/skills/`) is the canonical instance — see its
   [README](../../examples/knowledge/README.md#skills--instructions-loaded-by-the-situation-not-the-graph).
+- **Scope**: this covers the instructions half of Claude's Skills format —
+  frontmatter + procedural markdown. It does not cover the other half —
+  bundled executable scripts a skill can ship and have the model run. That's
+  a deliberate line, not a gap to close: executing a skill's own code is a
+  sandboxing and permissions problem, and reactifact's determinism story
+  (§67) is about *not* handing the runtime code to execute unreviewed. If you
+  need that, wire the script as a `Tool` yourself (§46) — reachable from a
+  matched skill's `body` (name it in the instructions) or independent of it.
 
 ## `changed_fields` / `earliest_stage` / `downstream_fields` — change → rebuild
 

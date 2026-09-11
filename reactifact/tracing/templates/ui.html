@@ -135,7 +135,7 @@ async function load(){
   const data=await res.json();
   state.runs=data.items||[]; state.total=data.total||0;
   render();
-  document.getElementById('poll').textContent='обновлено '+new Date().toLocaleTimeString();
+  document.getElementById('poll').textContent='updated '+new Date().toLocaleTimeString();
 }
 
 function render(){

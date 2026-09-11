@@ -11,22 +11,7 @@ generation is genuinely needed (§68): wording each finding (one call on the
 depth branch, three on the breadth branch) and synthesizing the final answer
 over the merged state.
 
-```text
-             base (Question + shared Budget)
-                    /        \
-                   /          \
-          depth fork        breadth fork
-               │                 │
-         1 strong doc       3 weaker docs
-               │                 │   (each finding worded by the LLM)
-              evidence         evidence ×3
-                   \         /
-                    depth.merge(breadth)   ← three-way, conflicts explicit (§40)
-                              │
-                       evaluator (Review)
-                              │
-        Answer (sources/links deterministic, wording LLM-synthesized)
-```
+![A base context holding Question and Budget forks into a depth and a breadth strategy agent; the two forks merge back with a three-way merge, and the final Answer stays linked supported_by evidence from both branches.](../../docs/img/forklab-flow.svg)
 
 ## Run
 

@@ -44,6 +44,15 @@ writes, LLM input/output, timing, plus two live Mermaid diagrams: the run's
 provenance edges, §34). The `devops` example mounts this router and is the
 reference UI.
 
+![Traces list: filterable by outcome and session, each row showing duration and span count.](../img/tracer-list.png)
+
+Opening a run shows work grouped by agent (span count, artifact types touched)
+and the full sequence diagram — here the `devops` example's HITL ask/resume
+flow: `k8s` calls the model across several `artifact_created` spans, then
+`render` builds the final reply:
+
+![Run detail: work grouped by agent, plus a live sequence diagram of every artifact write and LLM call.](../img/tracer-run-detail.png)
+
 ### Langfuse and Postgres as additional sinks
 
 A trace can go to several places at once via `CompositeTracer`, passed to the

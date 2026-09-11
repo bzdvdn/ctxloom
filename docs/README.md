@@ -21,6 +21,7 @@ reference.
 | [recipes](en/recipes.md) | `fan_out_sources`, `materialize_doc`, `StatusMachine` |
 | [patterns](en/patterns.md) | HITL tool approvals, structured LLM, fallbacks, sessions |
 | [observability](en/observability.md) | Traces, SQLite store, dashboard, Langfuse, Postgres |
+| [mcp](en/mcp.md) | MCP client (call remote tools) and server (expose `Tool`s/`Context` as MCP) |
 | [viz](en/viz.md) | Mermaid rendering: blueprint, context, trace + `python -m reactifact` CLI |
 | [replay](en/replay.md) | Record & replay (§55): ReplayLLM, state replay, `replay` CLI |
 | [branching](en/branching.md) | Fork & merge (§39-§40): `branch()`, three-way `merge()`, `BranchStore` |
@@ -45,6 +46,7 @@ reference.
 | [recipes](ru/recipes.md) | `fan_out_sources`, `materialize_doc`, `StatusMachine` |
 | [patterns](ru/patterns.md) | HITL-подтверждение инструментов, structured LLM, фолбэки, сессии |
 | [observability](ru/observability.md) | Трейсы, SQLite-хранилище, дашборд, Langfuse, Postgres |
+| [mcp](ru/mcp.md) | MCP-клиент (вызов удалённых инструментов) и сервер (отдать `Tool`/`Context` как MCP) |
 | [viz](ru/viz.md) | Рендер в Mermaid: blueprint, context, trace + CLI `python -m reactifact` |
 | [replay](ru/replay.md) | Запись и воспроизведение (§55): ReplayLLM, реплей состояния, CLI `replay` |
 | [branching](ru/branching.md) | Форк и слияние (§39-§40): `branch()`, трёхсторонний `merge()`, `BranchStore` |

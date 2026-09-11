@@ -63,7 +63,12 @@ one turn.
 
 There is no orchestration to wire up: each agent declares what it
 `consumes`/`produces`, and the runtime derives execution from state changes.
-This is the actual static map of this demo's 9 agents
+
+![Evidence and Calculation are produced by two agent groups that never reference each other; answer_builder only fires once both exist, and links Answer supported_by each.](../../docs/img/knowledge-flow.svg)
+
+The picture above simplifies the flagship question (`how much does gpu cost
+in total?`) down to its two independent branches. This is the actual static
+map of all 9 agents in this demo
 (`python -m reactifact graph examples.knowledge.agents`):
 
 ```mermaid

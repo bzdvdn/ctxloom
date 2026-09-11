@@ -21,6 +21,7 @@ htmlcov/
 # Environment (local secrets)
 .env
 *.png
+!docs/img/*.png
 *.db
 *.jsonl
 .scratch

@@ -17,6 +17,8 @@ from the local price catalog, and — when you say the plan is over budget —
 .venv/bin/python examples/repair/web.py      # FastAPI + SSE web UI on :8000
 ```
 
+![Five stage agents react to Project.stage; going over budget sends the flow back to plan, not to a shrunk total.](../../docs/img/repair-flow.svg)
+
 ## Highlights demonstrated
 
 - `Context`-driven state machine via `Project.stage` (collect → design → approval),

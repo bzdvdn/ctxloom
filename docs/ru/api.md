@@ -200,3 +200,11 @@
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | примитивы трейсинга (async-приёмники: `export`/`query`/`get`) |
 | `LangfuseTracer`, `PostgresStore` | внешние приёмники трейсов — Postgres поддерживает async чтение+запись; дашборд (`create_trace_router`) принимает любой `TraceReader` |
 | `create_trace_router(store)` (`reactifact.tracing.web`) | FastAPI-роутер дашборда |
+
+## MCP (reactifact.mcp, extra `mcp`)
+
+| Символ | Роль |
+| --- | --- |
+| `mcp_stdio_tools(command, args)`, `mcp_http_tools(url)` | подключение к MCP-серверу, отдаёт его инструменты как `list[Tool]` |
+| `mcp_tools(session)`, `MCPTool` | обернуть инструменты существующей `mcp.ClientSession` |
+| `create_mcp_server(tools, context=...)` | отдать `Tool` (и, с `context=`, артефакты `Context`) как `mcp.server.mcpserver.MCPServer` |

@@ -199,3 +199,11 @@ the stable contract, not a moving target.
 | `Tracer`, `CompositeTracer`, `AgentSpan`, `RunTrace`, `LLMCall`, `TraceStore` | tracing primitives (async sinks: `export`/`query`/`get`) |
 | `LangfuseTracer`, `PostgresStore` | external trace sinks — Postgres supports async read+write; the dashboard (`create_trace_router`) accepts any `TraceReader` |
 | `create_trace_router(store)` (`reactifact.tracing.web`) | FastAPI dashboard router |
+
+## MCP (reactifact.mcp, `mcp` extra)
+
+| Symbol | Role |
+| --- | --- |
+| `mcp_stdio_tools(command, args)`, `mcp_http_tools(url)` | connect to an MCP server, yield its tools as `list[Tool]` |
+| `mcp_tools(session)`, `MCPTool` | wrap tools off an existing `mcp.ClientSession` |
+| `create_mcp_server(tools, context=...)` | expose `Tool`s (and, with `context=`, a `Context`'s artifacts) as an `mcp.server.mcpserver.MCPServer` |

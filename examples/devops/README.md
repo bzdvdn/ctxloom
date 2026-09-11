@@ -49,8 +49,13 @@ are exactly what forces the clarifying question, HITL `type:"ask"`).
 ## How it flows — no graph to draw
 
 Each agent declares what it `consumes`/`produces`; the runtime derives
-execution from state changes. This is the actual static map of this demo's 5
-agents (`python -m reactifact graph examples.devops.agents`):
+execution from state changes.
+
+![The k8s agent's run pauses on PendingQuestion and resumes across two chat turns, rather than starting a new run.](../../docs/img/devops-flow.svg)
+
+The picture above walks the HITL ask/resume path through the `k8s` agent.
+This is the actual static map of all 5 agents in this demo
+(`python -m reactifact graph examples.devops.agents`):
 
 ```mermaid
 flowchart LR

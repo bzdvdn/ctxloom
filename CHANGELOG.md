@@ -6,6 +6,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-09-11
+
+Added `reactifact.mcp` (`mcp` extra, optional — the core stays dependency-free):
+`mcp_stdio_tools`/`mcp_http_tools` connect to an MCP server and hand back its
+tools as ordinary `Tool`s for `ToolUse`/`LLMAgent`; `create_mcp_server` exposes
+reactifact `Tool`s — and, with `context=`, a running `Context`'s artifacts as
+two read-only resources — as an MCP server for Claude Desktop, Claude Code, or
+another agent. Verified end-to-end over the real MCP protocol (in-memory
+transport, not mocked): tool schemas, destructive annotations, tool errors
+(`ToolOutput.error` → MCP `is_error`), and context resources all round-trip
+correctly. See [docs/en/mcp.md](docs/en/mcp.md).
+
+`LangfuseTracer` now ships spans via OTLP/HTTP (`POST /api/public/otel/v1/traces`)
+instead of the legacy `POST /api/public/traces` + `POST /api/public/observations`
+REST ingestion, which Langfuse already rejects on v4 self-hosted and sunsets on
+Langfuse Cloud 2026-11-16. `LangfuseTracer(...)`'s constructor signature is
+unchanged; verified against a real local Langfuse v4 instance (Docker) — spans
+land with the correct type (`SPAN`/`GENERATION`), parent/child hierarchy,
+token usage, and session id.
+
+PyPI metadata: SPDX `license`, `keywords`, and `classifiers` (Python versions,
+Development Status, Topic) now ship in the package, so `reactifact` actually
+shows up in PyPI's own filters instead of just full-text search.
+
+Docs: a new [MCP guide](docs/en/mcp.md), a scope note on Skills (instructions
+only, deliberately no bundled-script execution — see
+[docs/en/recipes.md#skills](docs/en/recipes.md)), a wiring diagram in the
+README and [comparison](docs/en/comparison.md), flow diagrams for the
+`knowledge`/`devops`/`repair`/`forklab` examples, a CLI demo GIF, and trace
+dashboard screenshots in [observability](docs/en/observability.md). Fixed a
+hardcoded Russian string in the trace dashboard's own UI (`tracing/templates/ui.html`).
+
 ## [0.6.0] — 2026-09-10
 
 Project renamed from `ctxloom` to `reactifact` — the old name collided with

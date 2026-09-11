@@ -4,10 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reactifact"
-version = "0.6.0"
+version = "0.6.1"
 description = "Reactive, artifact-driven agent runtime: agents transform versioned, typed, provenance-aware artifacts inside an evolving context"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["agents", "llm", "ai-agents", "reactive", "provenance", "orchestration", "agentic"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
 dependencies = [
     "pydantic>=2.13.4",
     "httpx>=0.27",
@@ -18,6 +31,7 @@ dependencies = [
 Homepage = "https://github.com/bzdvdn/reactifact"
 Repository = "https://github.com/bzdvdn/reactifact"
 Documentation = "https://github.com/bzdvdn/reactifact/tree/master/docs"
+Changelog = "https://github.com/bzdvdn/reactifact/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -33,10 +47,16 @@ web = [
 pg = [
     "psycopg[binary]>=3.2",
 ]
+mcp = [
+    "mcp>=2.2",
+]
 
 # uv-native groups mirror the extras so `uv run`/`uv sync` installs the web demo
 # deps by default (no `--extra` flag needed to boot the examples). Extras stay
-# for PyPI (`pip install reactifact[web]`).
+# for PyPI (`pip install reactifact[web]`). `mcp` joins the default groups too —
+# unlike `pg`, its tests need no external service (in-memory MCP transport), so
+# there's no reason not to run them for real in CI. `pg` stays opt-in; its own
+# test only checks the graceful ImportError path without psycopg installed.
 [dependency-groups]
 dev = [
     "ruff>=0.8",
@@ -51,9 +71,12 @@ web = [
 pg = [
     "psycopg[binary]>=3.2",
 ]
+mcp = [
+    "mcp>=2.2",
+]
 
 [tool.uv]
-default-groups = ["dev", "web"]
+default-groups = ["dev", "web", "mcp"]
 
 # Публикация: в wheel едет только пакет `reactifact`; examples/tests остаются
 # в репозитории для демо и разработки, но не попадают в дистрибутив.

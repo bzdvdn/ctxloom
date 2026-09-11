@@ -236,6 +236,15 @@ not estimated — name the source and column it came from.
   (`examples/knowledge/skills/`) — канонический пример — см. его
   [README](../../examples/knowledge/README.md#skills--instructions-loaded-by-the-situation-not-the-graph)
   (на английском).
+- **Границы**: здесь реализована инструкционная половина формата Claude
+  Skills — frontmatter + процедурный markdown. Вторая половина — бандл
+  исполняемых скриптов, которые skill может нести с собой и которые модель
+  запускает — не реализована. Это осознанная граница, а не пробел для
+  закрытия: выполнение кода skill'а самой моделью — это вопрос sandboxing и
+  прав доступа, а детерминизм reactifact (§67) как раз про то, чтобы *не*
+  отдавать раннтайму на исполнение непроверенный код. Если это нужно —
+  оформите скрипт как `Tool` сами (§46): его можно достать из `body`
+  совпавшего skill (назвать в инструкции) или использовать независимо.
 
 ## `changed_fields` / `earliest_stage` / `downstream_fields` — «изменить → пересобрать»
 

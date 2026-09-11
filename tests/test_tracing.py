@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from pydantic import BaseModel
 from reactifact import Agent, Consume, Context, Patch, Runtime, RuntimeResources
@@ -319,23 +320,45 @@ def test_langfuse_exports_trace_spans_and_llm():
         )
     )
 
-    paths = [url.rsplit("/", 1)[-1] for url, _ in client.requests]
-    assert paths == ["traces", "observations", "observations"]  # trace + span + llm
-    trace_payload = client.requests[0][1]
-    assert trace_payload["id"] == "tr"
-    assert trace_payload["sessionId"] == "s1"
-    span_payload = client.requests[1][1]
-    assert span_payload["type"] == "SPAN"
-    assert span_payload["name"] == "greeter"
-    assert "writes" in span_payload["metadata"]
-    # meaningful input/output: what the agent received / produced (+ type counts)
-    assert span_payload["input"]["read_summary"] == {}
-    assert span_payload["output"]["write_summary"] == {"Answer": 1}
-    assert span_payload["output"]["writes"][0]["artifact_id"] == "a1"
-    llm_payload = client.requests[2][1]
-    assert llm_payload["type"] == "GENERATION"
-    assert llm_payload["usage"] == {"input": 3, "output": 2, "unit": "TOKENS"}
-    assert llm_payload["model"] == "m"
+    # OTLP/HTTP: a single POST to the otel traces endpoint, not the deprecated
+    # /api/public/traces + /api/public/observations REST ingestion (410/404 on
+    # Langfuse v4, sunset on Cloud 2026-11-16).
+    assert len(client.requests) == 1
+    url, body = client.requests[0]
+    assert url.endswith("/api/public/otel/v1/traces")
+    assert langfuse._headers["x-langfuse-ingestion-version"] == "4"
+    assert langfuse._headers["Authorization"].startswith("Basic ")
+
+    spans = body["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    assert len(spans) == 3  # root run span + agent span + llm generation span
+    by_name = {s["name"]: s for s in spans}
+
+    def attr(span: dict, key: str):
+        for a in span["attributes"]:
+            if a["key"] == key:
+                return a["value"]
+        raise KeyError(key)
+
+    root = by_name["reactifact run"]
+    assert attr(root, "langfuse.session.id") == {"stringValue": "s1"}
+    assert attr(root, "langfuse.observation.type") == {"stringValue": "span"}
+
+    agent_span = by_name["greeter"]
+    assert agent_span["parentSpanId"] == root["spanId"]
+    assert attr(agent_span, "langfuse.observation.type") == {"stringValue": "span"}
+    write_summary = json.loads(
+        attr(agent_span, "langfuse.observation.metadata.write_summary")["stringValue"]
+    )
+    assert write_summary == {"Answer": 1}
+    output = json.loads(attr(agent_span, "langfuse.observation.output")["stringValue"])
+    assert output[0]["artifact_id"] == "a1"
+
+    llm_span = by_name["llm:m"]
+    assert llm_span["parentSpanId"] == agent_span["spanId"]
+    assert attr(llm_span, "langfuse.observation.type") == {"stringValue": "generation"}
+    assert attr(llm_span, "gen_ai.usage.input_tokens") == {"intValue": "3"}
+    assert attr(llm_span, "gen_ai.usage.output_tokens") == {"intValue": "2"}
+    assert attr(llm_span, "gen_ai.request.model") == {"stringValue": "m"}
 
 
 def test_postgres_store_requires_pg_extra():

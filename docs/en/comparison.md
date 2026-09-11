@@ -6,6 +6,8 @@ tracing SaaS, no marketplace of pre-built agents. If any of those are what you
 need today, the honest answer is: use LangGraph or CrewAI, they're mature and
 well-supported. Read on if the comparison below still tips your way.
 
+![Left: a hand-wired fetch → verify → answer pipeline. Right: reactifact — search_agent and answer_agent each declare only what they consume and produce, wired together by Context, never each other.](../img/wiring.svg)
+
 ## TL;DR
 
 | | LangGraph | CrewAI | reactifact |
@@ -18,6 +20,7 @@ well-supported. Read on if the comparison below still tips your way.
 | Rollback / branching | checkpointer + manual replay logic | not built in | `context.branch()`, three-way `merge()`, deterministic replay |
 | Maturity / ecosystem | high — used in production widely | high — large community | pre-1.0, one maintainer, small examples set |
 | Managed hosting | LangGraph Platform | CrewAI Enterprise | none |
+| MCP | via LangChain adapters | via CrewAI adapters | client + server built in (`reactifact.mcp`, `mcp` extra) |
 
 ## Where reactifact is *not* the right choice
 
@@ -32,7 +35,9 @@ Being upfront about this matters more than the feature table:
 - **You need a large pre-built agent/tool ecosystem.** LangGraph and CrewAI
   both have more third-party integrations, more Stack Overflow answers, more
   production war stories. reactifact's `Source` abstraction is intentionally
-  small (filesystem, CSV, embeddings, web) — you write the rest.
+  small (filesystem, CSV, embeddings, web) — you write the rest. `reactifact.mcp`
+  ([docs](mcp.md)) reaches any MCP server as a `Tool`, which narrows this for
+  tool-calling specifically, but doesn't touch `Source`/retrieval integrations.
 - **Your team already has deep LangGraph investment.** Rewriting a working
   system for architectural purity is rarely worth it. reactifact is a better fit
   for a *new* agent, not necessarily a migration target for an old one.

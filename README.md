@@ -16,6 +16,8 @@ reactifact flips the model. You describe **what artifacts exist and what agents 
 do with them**; the runtime derives what runs next from **state changes**. Agents
 react to events — there is no graph, no node pipeline.
 
+![Left: a hand-wired fetch → verify → answer pipeline. Right: reactifact — search_agent and answer_agent each declare only what they consume and produce, wired together by Context, never each other.](docs/img/wiring.svg)
+
 ```bash
 pip install reactifact
 ```
@@ -82,6 +84,12 @@ print(answer.data.text)                     # "Refunds are available within 14 d
 print("supported_by:", evidence.data.text)  # provenance you can trace, not just a string in a log
 ```
 
+The same idea, live — the [`knowledge`](examples/knowledge) example's CLI answering a
+harder, multi-source question (docs + a CSV) with a real computed number and
+its sources, no LLM key required:
+
+![CLI demo: asking "how much does gpu cost in total?" — the runtime searches docs and a spreadsheet, computes the sum, verifies it, and answers with sources.](docs/img/knowledge-cli-demo.gif)
+
 ## How it works
 
 ```text
@@ -135,6 +143,10 @@ Full breakdown, including where reactifact is *not* the right choice:
   fallbacks instead of hallucinated answers; the model reasons, never "knows".
 - **Observability** — every run traces agent spans, reads/writes, LLM calls,
   tokens: SQLite store + web dashboard, exportable to Langfuse/Postgres (async sinks).
+- **MCP, both ways** — call any MCP server's tools as a `Tool`
+  (`mcp_stdio_tools`/`mcp_http_tools`), or expose your own `Tool`s and a live
+  `Context` as an MCP server (`create_mcp_server`) for Claude Desktop, Claude
+  Code, or another agent to call into (`mcp` extra).
 - **Budgets & replanning** — cap by runs/time/iterations/tool-calls, replan on decline.
 - **Branching & replay** — `context.branch()`, three-way `merge()`, deterministic
   `ReplayLLM`, all for audit and safe alternative states.
