@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/bzdvdn/reactifact/discussions
+    about: Usage questions and open-ended discussion go here, not the issue tracker.

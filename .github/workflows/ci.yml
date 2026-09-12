@@ -18,7 +18,13 @@ jobs:
       - name: Install
         run: uv sync
       - name: Tests
-        run: uv run python -m pytest -q
+        run: uv run python -m pytest -q --cov=reactifact --cov-report=xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
       - name: Types (mypy)
         run: uv run python -m mypy
       - name: Lint (ruff)

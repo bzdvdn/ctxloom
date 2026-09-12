@@ -1,11 +1,15 @@
-# reactifact
+<p align="center">
+  <img src="docs/img/reactifact-hero.png" alt="reactifact — Agents that react to artifacts, not graphs" width="800">
+</p>
 
 **Stop drawing the graph. Build agents as reactions to versioned, provable artifacts.**
 
 [![CI](https://github.com/bzdvdn/reactifact/actions/workflows/ci.yml/badge.svg)](https://github.com/bzdvdn/reactifact/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/bzdvdn/reactifact/graph/badge.svg)](https://codecov.io/gh/bzdvdn/reactifact)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://github.com/bzdvdn/reactifact)
 [![PyPI version](https://img.shields.io/pypi/v/reactifact)](https://pypi.org/project/reactifact/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bzdvdn/reactifact)
 
 Most agent frameworks make you **draw the graph**: connect nodes, wire memory,
 declare control flow. But a knowledge question — *"why did infra costs jump in
@@ -119,11 +123,32 @@ actual state.
 | Retries/rollback are manual | Context is **git-like versioned** (diff, rollback, branch, merge) |
 | "Who produced this?" is lost | **Provenance** links every derived artifact to its inputs |
 | The model guesses the numbers | **Calculations are calculated** — the LLM is a reasoning component, not the source of truth |
+| Tracing needs a SaaS add-on | **Native trace store** (SQLite + dashboard), exportable to Langfuse/Postgres |
+| MCP via a framework adapter | **MCP both ways** built in — call any server, or expose your own `Context` as one |
+| Pulls in a framework's dependency tree | **3 core deps**: `pydantic`, `httpx`, `python-dotenv` |
 
 Reactive. Deterministic. Accountable.
 
 Full breakdown, including where reactifact is *not* the right choice:
 [docs/en/comparison.md](docs/en/comparison.md).
+
+**Proof, not a claim** — [`examples/ledger`](examples/ledger) is a 4-artifact
+billing calc (`LaborCost`, `Tax`, `Discount`, `Total`) with no LLM, fully
+offline. Edit *one* fact and see what actually reruns:
+
+```text
+>>> editing ONLY TaxRate (0.08 -> 0.12) — a fact nothing about
+>>> LaborCost or Discount ever consumed.
+
+  LaborCost    value=500.0      version=0   # untouched
+  Tax          value=60.0       version=1   # recomputed
+  Discount     value=25.0       version=0   # untouched
+  Total        value=535.0      version=1   # recomputed
+```
+
+2 of 4 artifacts recompute — the 2 that actually depend on `TaxRate` —
+because `Artifact.version` tracks real consumption, not a graph edge you drew
+by hand. Run it yourself: `uv run python -m examples.ledger.main`.
 
 ## Core primitives
 
@@ -198,6 +223,7 @@ Classic-pattern ports run as one-liners too:
 - [Comparison](docs/en/comparison.md) — reactifact vs LangGraph/CrewAI, feature by feature, and when *not* to use reactifact.
 - [Tutorial · llm-ladder](docs/en/examples.md#tutorial-ladder) — learn the workflow.
 - [docs/constitution.md](docs/constitution.md) — the full design rationale and invariants.
+- [Roadmap](docs/roadmap.md) — what's next, and what's deliberately out of scope.
 
 ## Development
 

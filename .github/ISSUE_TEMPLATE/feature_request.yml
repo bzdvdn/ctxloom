@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose something reactifact should do that it doesn't today.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The actual task/agent you're building, not just the missing API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you'd want the API/runtime to look like, if you have an idea.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you've tried
+      description: How you're working around this today, if at all.

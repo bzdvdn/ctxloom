@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in reactifact doesn't behave the way the docs say it should.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected vs. what actually happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A small `Context`/`Agent`/`Produce` snippet that reproduces it. Runnable is best.
+      render: python
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: reactifact version
+      description: Output of `python -c "import reactifact; print(reactifact.__version__)"`
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback / logs
+      render: text
